@@ -1,0 +1,13 @@
+ npm install
+ npm install bcryptjs
+ npm install mysql2
+ npm install react-icons
+ npm install sweetalert2
+ npm install chart.js react-chartjs-2
+ npm install leaflet react-leaflet
+
+ 
+ npm install pg
+
+ 
+ npm audit fix --force
