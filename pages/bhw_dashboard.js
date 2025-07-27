@@ -5,7 +5,6 @@ import { MdDashboard } from "react-icons/md";
 import { FaUserPlus, FaNotesMedical, FaMapMarkedAlt, FaHandHoldingMedical } from "react-icons/fa";
 import { FaPlus, FaTimes, FaArrowLeft, FaEdit, FaTrash } from 'react-icons/fa';
 import Swal from "sweetalert2";
-import BrgyMapping from '../components/BrgMapping';
 
 export default function BHWDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -234,15 +233,4 @@ function BHWDashboardContent() {
 
 function AddPatientRecords() {
  
-}
-
-
-
-function BhwDashboard() {
-  return (
-    <div>
-      {/* Other dashboard components */}
-      <BrgyMapping />
-    </div>
-  );
 }
