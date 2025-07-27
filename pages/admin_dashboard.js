@@ -894,9 +894,462 @@ function ManageUsers() {
 
 
 function AddBHW() {
-  
+  const [bhws, setBhws] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ 
+    fullname: "", 
+    username: "", 
+    email: "", 
+    password: "",
+    barangay: "",
+    contactNumber: ""
+  });
+  const [editingId, setEditingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchBhws();
+  }, []);
+
+  const fetchBhws = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/bhws");
+      if (!res.ok) throw new Error('Failed to fetch BHWs');
+      const data = await res.json();
+      setBhws(data);
+    } catch (err) {
+      setError(err.message);
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const url = editingId ? `/api/bhws?id=${editingId}` : '/api/bhws';
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message);
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: editingId ? 'Updated!' : 'Added!',
+        showConfirmButton: false,
+        timer: 1500
+      });
+      fetchBhws();
+      closeModal();
+    } catch (err) {
+      setError(err.message);
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (result.isConfirmed) {
+        setIsLoading(true);
+        const res = await fetch(`/api/bhws?id=${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) throw new Error('Failed to delete BHW');
+
+        Swal.fire('Deleted!', 'BHW has been deleted.', 'success');
+        fetchBhws();
+      }
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openModal = (bhw = null) => {
+    if (bhw) {
+      setFormData({
+        fullname: bhw.fullname,
+        username: bhw.username,
+        email: bhw.email,
+        barangay: bhw.barangay,
+        contactNumber: bhw.contactNumber,
+        password: ""
+      });
+      setEditingId(bhw.id);
+    } else {
+      setFormData({
+        fullname: "", 
+        username: "", 
+        email: "", 
+        password: "",
+        barangay: "",
+        contactNumber: ""
+      });
+      setEditingId(null);
+    }
+    setIsModalOpen(true);
+    setError(null);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setError(null);
+  };
+
+  return (
+    <div className="p-6 bg-white rounded-lg shadow">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Barangay Health Workers</h1>
+          <p className="text-gray-600">Manage BHW accounts</p>
+        </div>
+        <button
+          onClick={() => openModal()}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2"
+          disabled={isLoading}
+        >
+          <FaUserPlus /> Add BHW
+        </button>
+      </div>
+
+      {/* BHW Table */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {isLoading && !bhws.length ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barangay</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {/* In your table row rendering */}
+{bhws.map((bhw) => (
+  <tr key={bhw.id} className="hover:bg-gray-50">
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="text-sm font-medium text-gray-900">{bhw.fullname}</div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="text-sm text-gray-500">{bhw.email}</div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="text-sm text-gray-500">{bhw.barangay}</div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      {/* Change from contactNumber to contact_number */}
+      <div className="text-sm text-gray-500">{bhw.contact_number || '-'}</div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+      <div className="flex justify-end space-x-2">
+        <button 
+          onClick={() => openModal(bhw)}
+          className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 disabled:opacity-50"
+          disabled={isLoading}
+        >
+          <FaEdit className="w-5 h-5" />
+        </button>
+        <button 
+          onClick={() => handleDelete(bhw.id)}
+          className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 disabled:opacity-50"
+          disabled={isLoading}
+        >
+          <FaTrash className="w-5 h-5" />
+        </button>
+      </div>
+    </td>
+  </tr>
+))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
+{isModalOpen && (
+  <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+      <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-800">
+          {editingId ? 'Edit BHW' : 'Add New BHW'}
+        </h2>
+        <button 
+          onClick={closeModal}
+          className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+          disabled={isLoading}
+        >
+          <FaTimes className="w-5 h-5" />
+        </button>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {error && (
+          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Full Name</label>
+          <input
+            type="text"
+            value={formData.fullname}
+            onChange={(e) => setFormData({...formData, fullname: e.target.value})}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            required
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Barangay</label>
+          <input
+            type="text"
+            value={formData.barangay}
+            onChange={(e) => setFormData({...formData, barangay: e.target.value})}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            required
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Contact Number</label>
+          <input
+            type="text"
+            value={formData.contactNumber}
+            onChange={(e) => setFormData({...formData, contactNumber: e.target.value})}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Email</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            required
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Username</label>
+          <input
+            type="text"
+            value={formData.username}
+            onChange={(e) => setFormData({...formData, username: e.target.value})}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            required
+            disabled={isLoading}
+          />
+        </div>
+
+        {!editingId && (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+              disabled={isLoading}
+            />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={closeModal}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </span>
+            ) : (
+              'Save'
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+      )}
+    </div>
+  );
 }
 
 function LogHistory() {
-  return <div className="p-6 bg-white shadow-md rounded-lg">View system log history here...</div>;
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('all'); // 'all', 'admin', 'doctor', 'bhw'
+
+  useEffect(() => {
+    fetchLogs();
+  }, [filter]);
+
+  const fetchLogs = async () => {
+    try {
+      setIsLoading(true);
+      const url = filter === 'all' 
+        ? '/api/logs' 
+        : `/api/logs?type=${filter}`;
+      
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch logs');
+      const data = await res.json();
+      setLogs(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getUserTypeLabel = (userType) => {
+  switch(userType) {
+    case 'admin': return 'Admin';
+    case 'staff': return 'Staff';
+    case 'doctor': return 'Doctor';
+    case 'bhw': return 'Barangay Health Worker';
+    default: return userType;
+  }
+};
+
+  return (
+    <div className="p-6 bg-white shadow-md rounded-lg">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Login History</h2>
+        <div className="flex items-center space-x-4">
+          <label className="text-sm font-medium text-gray-700">Filter:</label>
+          <select
+  value={filter}
+  onChange={(e) => setFilter(e.target.value)}
+  className="border border-gray-300 rounded-md px-3 py-1"
+>
+  <option value="all">All Users</option>
+  <option value="admin">Admins</option>
+  <option value="staff">Staff</option>
+  <option value="doctor">Doctors</option>
+  <option value="bhw">BHWs</option>
+</select>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {logs.length > 0 ? (
+                logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{log.fullname}</div>
+                      <div className="text-sm text-gray-500">{log.username}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+  log.user_type === 'admin' ? 'bg-purple-100 text-purple-800' :
+  log.user_type === 'staff' ? 'bg-yellow-100 text-yellow-800' :
+  log.user_type === 'doctor' ? 'bg-blue-100 text-blue-800' :
+  'bg-green-100 text-green-800'
+}`}>
+  {getUserTypeLabel(log.user_type)}
+</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(log.login_time).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {log.ip_address || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {log.user_agent ? log.user_agent.substring(0, 50) + (log.user_agent.length > 50 ? '...' : '') : 'N/A'}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                    No login records found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }

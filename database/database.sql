@@ -13,6 +13,70 @@ CREATE TABLE users (
 
 
 
+CREATE TABLE doctors (
+  id SERIAL PRIMARY KEY,
+  fullname VARCHAR(100) NOT NULL,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  specialization VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_doctors_timestamp
+BEFORE UPDATE ON doctors
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+
+
+
+CREATE TABLE bhws (
+  id SERIAL PRIMARY KEY,
+  fullname VARCHAR(100) NOT NULL,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  barangay VARCHAR(100) NOT NULL,
+  contact_number VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_bhws_timestamp
+BEFORE UPDATE ON bhws
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+
+
+
+
+
+
+
+
+
+
+
+
 CREATE TABLE patients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     last_name VARCHAR(50) NOT NULL,
