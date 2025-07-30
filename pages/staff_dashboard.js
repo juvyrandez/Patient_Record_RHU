@@ -4,7 +4,7 @@ import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa"; // New Icons
 import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical,FaHandHoldingMedical,FaPlus } from 'react-icons/fa';
-import { FaTrash,FaUserMd,FaHospital,FaCalendarAlt,FaExclamationTriangle,FaClock, FaTasks, FaCheck,FaBalanceScale} from 'react-icons/fa';
+import { FaTrash,FaUserMd,FaHospital,FaCalendarAlt,FaExclamationTriangle,FaClock, FaTasks, FaCheck,FaBalanceScale,FaWalking} from 'react-icons/fa';
 import { FaFilter, FaFileAlt, FaUser, FaPrint,FaUsers,FaChartBar } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
