@@ -207,6 +207,7 @@ CREATE TABLE referrals (
   other_reason TEXT,
   referred_by_name VARCHAR(100) NOT NULL,
   license_number VARCHAR(50) NOT NULL,
+  status VARCHAR(20) DEFAULT 'Pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

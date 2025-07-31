@@ -2,23 +2,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
-import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa"; // New Icons
-import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical,FaHandHoldingMedical,FaPlus } from 'react-icons/fa';
-import { FaTrash,FaUserMd,FaHospital,FaCalendarAlt,FaExclamationTriangle,FaClock, FaTasks, FaCheck,FaBalanceScale,FaWalking} from 'react-icons/fa';
-import { FaFilter, FaFileAlt, FaUser, FaPrint,FaUsers,FaChartBar } from 'react-icons/fa';
+import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
+import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus } from 'react-icons/fa';
+import { FaTrash, FaUserMd, FaHospital, FaCalendarAlt, FaExclamationTriangle, FaClock, FaTasks, FaCheck, FaBalanceScale, FaWalking, FaSpinner } from 'react-icons/fa';
+import { FaFilter, FaFileAlt, FaUser, FaPrint, FaUsers, FaChartBar } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
 // Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-
-
 export default function StaffDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [fullname, setFullname] = useState("");
+  const [notifications, setNotifications] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -28,6 +28,19 @@ export default function StaffDashboard() {
     } else {
       router.push("/login"); // Redirect if not logged in
     }
+
+    // Fetch notifications
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications');
+        if (!response.ok) throw new Error('Failed to fetch notifications');
+        const data = await response.json();
+        setNotifications(data);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+    fetchNotifications();
   }, []);
 
   const handleLogout = () => {
@@ -36,12 +49,36 @@ export default function StaffDashboard() {
     router.push("/login");
   };
 
+  const toggleNotificationPanel = () => {
+    setNotificationOpen(!notificationOpen);
+    // Close profile dropdown if open
+    if (dropdownOpen) setDropdownOpen(false);
+  };
+
+  const clearNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to clear notifications');
+      setNotifications([]);
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (notification.referral_id) {
+      setActiveTab("Referral");
+      router.push(`/referrals/${notification.referral_id}`);
+    }
+  };
+
   return (
     <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
       <aside className={`bg-white text-gray-800 shadow-lg transition-all 
         ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
-        
         {/* Logo Section */}
         <div className="flex justify-center items-center">
           <img 
@@ -72,27 +109,84 @@ export default function StaffDashboard() {
           <h2 className="text-2xl font-bold">{activeTab}</h2>
           <div className="flex items-center gap-6">
             {/* Notification Bell */}
-            <button className="relative p-3 rounded-full hover:bg-gray-200 transition">
-              <FiBell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 rounded-full">3</span>
-            </button>
+            <div className="relative">
+              <button 
+                className="relative p-3 rounded-full hover:bg-gray-100 transition"
+                onClick={toggleNotificationPanel}
+              >
+                <FiBell size={24} className="text-gray-600" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Panel */}
+              {notificationOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white shadow-md rounded-lg z-50">
+                  <div className="px-4 py-3">
+                    <h3 className="text-base font-medium text-gray-800">Notifications</h3>
+                  </div>
+                  <ul className="max-h-80 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <li 
+                          key={notification.id}
+                          className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-start gap-3"
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="flex-shrink-0 mt-1">
+                            {notification.type === "referral" && <FaFileMedical className="text-blue-400" size={16} />}
+                            {notification.type === "update" && <FaEdit className="text-green-400" size={16} />}
+                            {notification.type === "system" && <FaExclamationTriangle className="text-yellow-400" size={16} />}
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-700 leading-tight">{notification.message}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{notification.time}</p>
+                          </div>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-4 py-3 text-gray-500 text-sm">No new notifications</li>
+                    )}
+                  </ul>
+                  {notifications.length > 0 && (
+                    <div className="px-4 py-2">
+                      <button 
+                        className="w-full text-sm text-blue-500 hover:text-blue-700 transition"
+                        onClick={clearNotifications}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Profile Dropdown */}
             <div className="relative">
-              <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="font-semibold">{fullname || "Staff"}</span>
-                <img src={"/images/admin.png"} alt="Staff" className="w-12 h-12 rounded-full border" />
+              <button 
+                className="flex items-center gap-3" 
+                onClick={() => {
+                  setDropdownOpen(!dropdownOpen);
+                  if (notificationOpen) setNotificationOpen(false); // Close notification panel if open
+                }}
+              >
+                <span className="font-semibold text-gray-700">{fullname || "Staff"}</span>
+                <img src="/images/admin.png" alt="Staff" className="w-10 h-10 rounded-full border" />
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg">
+                <div className="absolute right-0 mt-2 w-44 bg-white shadow-md rounded-lg">
                   <ul className="py-2">
-                    <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-200 cursor-pointer">
+                    <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer text-gray-700">
                       <FiUser />
                       <span>Profile</span>
                     </li>
                     <li 
-                      className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-gray-200 cursor-pointer"
+                      className="flex items-center gap-3 px-4 py-2 text-red-500 hover:bg-gray-50 cursor-pointer"
                       onClick={handleLogout}
                     >
                       <FiLogOut />
@@ -122,7 +216,7 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
   return (
     <li
       className={`flex items-center gap-4 p-4 rounded-lg transition text-gray-700 
-        ${activeTab === label ? "bg-gray-300 font-semibold" : "hover:bg-gray-200"} 
+        ${activeTab === label ? "bg-gray-200 font-semibold" : "hover:bg-gray-100"} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
@@ -2249,7 +2343,7 @@ function ReferralForm() {
     const fetchReferrals = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/referrals');
+        const response = await fetch('/api/view_referrals');
         if (!response.ok) throw new Error('Failed to fetch referrals');
         const data = await response.json();
         setReferrals(data);
@@ -2278,7 +2372,7 @@ function ReferralForm() {
   const handleStatusUpdate = async (id, newStatus) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/referrals?id=${id}`, {
+      const response = await fetch(`/api/view_referrals?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -2492,6 +2586,11 @@ function ReferralForm() {
                       </p>
                       <p><strong>Date/Time:</strong> {new Date(selectedReferral.referral_date).toLocaleDateString()} at {selectedReferral.referral_time}</p>
                       <p><strong>Referred By:</strong> {selectedReferral.referred_by_name} (License: {selectedReferral.license_number})</p>
+                      <p><strong>Status:</strong> 
+                        <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedReferral.status)}`}>
+                          {selectedReferral.status}
+                        </span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2629,7 +2728,7 @@ function ReferralForm() {
                       ) : (
                         <FaTasks className="mr-2" />
                       )}
-                      Mark in Progress
+                      Mark as In Progress
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(selectedReferral.id, 'Completed')}
@@ -2645,7 +2744,7 @@ function ReferralForm() {
                       ) : (
                         <FaCheck className="mr-2" />
                       )}
-                      Mark Completed
+                      Mark as Completed
                     </button>
                   </div>
                 </div>

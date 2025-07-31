@@ -6,18 +6,36 @@ export default async function handler(req, res) {
   try {
     switch (req.method) {
       case 'GET':
-        // Get all referrals with patient info
-        const { rows } = await pool.query(`
-          SELECT r.*, 
-                 p.first_name as patient_first_name,
-                 p.last_name as patient_last_name,
-                 p.middle_name as patient_middle_name,
-                 p.residential_address as patient_address
-          FROM referrals r
-          JOIN patients p ON r.patient_id = p.id
-          ORDER BY r.referral_date DESC, r.referral_time DESC
-        `);
-        res.status(200).json(rows);
+        if (id) {
+          // Get single referral with patient info
+          const { rows } = await pool.query(`
+            SELECT r.*, 
+                   p.first_name as patient_first_name,
+                   p.last_name as patient_last_name,
+                   p.middle_name as patient_middle_name,
+                   p.residential_address as patient_address
+            FROM referrals r
+            JOIN bhw_patients p ON r.patient_id = p.id
+            WHERE r.id = $1
+          `, [id]);
+          if (rows.length === 0) {
+            return res.status(404).json({ message: 'Referral not found' });
+          }
+          res.status(200).json(rows[0]);
+        } else {
+          // Get all referrals with patient info
+          const { rows } = await pool.query(`
+            SELECT r.*, 
+                   p.first_name as patient_first_name,
+                   p.last_name as patient_last_name,
+                   p.middle_name as patient_middle_name,
+                   p.residential_address as patient_address
+            FROM referrals r
+            JOIN bhw_patients p ON r.patient_id = p.id
+            ORDER BY r.referral_date DESC, r.referral_time DESC
+          `);
+          res.status(200).json(rows);
+        }
         break;
 
       case 'PUT':
@@ -26,6 +44,11 @@ export default async function handler(req, res) {
         
         if (!id || !status) {
           return res.status(400).json({ message: 'ID and status are required' });
+        }
+
+        // Validate status value
+        if (!['Pending', 'In Progress', 'Completed'].includes(status)) {
+          return res.status(400).json({ message: 'Invalid status value' });
         }
 
         const { rows: [updatedReferral] } = await pool.query(

@@ -1,4 +1,3 @@
-// referrals.js
 import pool from '@/lib/db';
 
 export default async function handler(req, res) {
@@ -83,6 +82,7 @@ export default async function handler(req, res) {
           return res.status(404).json({ message: 'Patient not found in bhw_patients' });
         }
 
+        // Insert referral
         const { rows: [newReferral] } = await pool.query(
           `INSERT INTO referrals (
             patient_id, referral_type, referral_date, referral_time,
@@ -131,6 +131,17 @@ export default async function handler(req, res) {
           ]
         );
 
+        // Insert notification for the new referral
+        await pool.query(
+          `INSERT INTO notifications (referral_id, message, type, created_at)
+           VALUES ($1, $2, $3, NOW())`,
+          [
+            newReferral.id,
+            `New referral created for ${patientFirstName} ${patientLastName} to ${referredTo}`,
+            'referral'
+          ]
+        );
+
         res.status(201).json(newReferral);
         break;
 
@@ -153,7 +164,7 @@ export default async function handler(req, res) {
           drugAllergy: updateDrugAllergy,
           allergyType: updateAllergyType,
           lastMealTime: updateLastMealTime,
-          bloodPressure: updateBloodPressure,
+          blood_pressure: updateBloodPressure,
           heartRate: updateHeartRate,
           respiratoryRate: updateRespiratoryRate,
           weight: updateWeight,
