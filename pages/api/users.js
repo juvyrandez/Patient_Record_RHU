@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error) {
     console.error("API error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Username or email already exists " });
   } finally {
     client.release();
   }
