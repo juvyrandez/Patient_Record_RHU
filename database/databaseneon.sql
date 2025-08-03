@@ -224,3 +224,31 @@ CREATE TRIGGER update_referrals_timestamp
 BEFORE UPDATE ON referrals
 FOR EACH ROW
 EXECUTE FUNCTION update_referral_timestamp();
+
+
+
+
+------------------------------------------------------------------------------------------
+CREATE TABLE notifications (
+  id SERIAL PRIMARY KEY,
+  referral_id INTEGER REFERENCES referrals(id) ON DELETE SET NULL,
+  message TEXT NOT NULL,
+  type VARCHAR(50) NOT NULL, 
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE OR REPLACE FUNCTION update_notification_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER update_notifications_timestamp
+BEFORE UPDATE ON notifications
+FOR EACH ROW
+EXECUTE FUNCTION update_notification_timestamp();

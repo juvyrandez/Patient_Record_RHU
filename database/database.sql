@@ -343,3 +343,9 @@ CREATE TRIGGER update_patients_timestamp
 BEFORE UPDATE ON patients
 FOR EACH ROW
 EXECUTE FUNCTION update_patient_timestamp();
+
+
+
+
+
+

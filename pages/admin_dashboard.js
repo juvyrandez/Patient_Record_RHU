@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FiMenu, FiUser, FiLogOut, FiBell,FiUsers,FiMapPin } from "react-icons/fi";
-import { MdDashboard,MdLocalHospital,MdOutlineHealthAndSafety,MdPeople } from "react-icons/md";
-import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse } from "react-icons/fa";
-import { BiHistory } from "react-icons/bi";
+import { FiMenu, FiUser, FiLogOut, FiBell, FiUsers, FiMapPin } from "react-icons/fi";
+import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople,MdOutlineAccessTimeFilled  } from "react-icons/md";
+import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
+import { BiHistory,BiSolidReport  } from "react-icons/bi";
 import { BsPersonPlus, BsClipboardData } from 'react-icons/bs';
 import Swal from "sweetalert2";
-
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
+import LogHistory from '/components/AdminComponents/LogHistory';
+import Reports from '/components/AdminComponents/Reports';
 
 // Register ChartJS components
 ChartJS.register(
@@ -20,6 +21,7 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
 
 export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -94,7 +96,16 @@ export default function AdminDashboard() {
               </ul>
             )}
           </li>
-          <SidebarItem icon={BiHistory} label="Log History" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={MdOutlineAccessTimeFilled } label="Log History" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={BiSolidReport } label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <li
+            className={`flex items-center gap-4 p-4 rounded-lg transition text-red-500 
+              hover:bg-gray-200 ${isSidebarOpen ? "" : "justify-center"}`}
+            onClick={handleLogout}
+          >
+            <FiLogOut size={28} />
+            {isSidebarOpen && <span>Logout</span>}
+          </li>
         </ul>
       </aside>
 
@@ -145,6 +156,7 @@ export default function AdminDashboard() {
           {activeTab === "Doctor" && <DoctorList />}
           {activeTab === "BHW" && <BHWList />}
           {activeTab === "Log History" && <LogHistory />}
+          {activeTab === "Reports" && <Reports />}
         </div>
       </main>
     </div>
@@ -180,73 +192,130 @@ function SidebarSubItem({ icon: Icon, label, activeTab, setActiveTab }) {
   );
 }
 
-// Components for different tabs
+
+
+
 function Dashboard() {
-   // Sample data - replace with your actual data
+  // Metrics data
   const metrics = [
     { title: "Total Patients", value: "1,248", icon: <FiUsers className="text-blue-500" size={24} /> },
-    { title: "Doctors/Nurses", value: "18", icon: <MdLocalHospital className="text-green-500" size={24} /> },
+    { title: "Doctors", value: "8", icon: <MdLocalHospital className="text-green-500" size={24} /> },
     { title: "BHW Workers", value: "42", icon: <MdOutlineHealthAndSafety className="text-purple-500" size={24} /> },
-    { title: "Admin Staff", value: "5", icon: <MdPeople className="text-yellow-500" size={24} /> }
+    { title: "RHU Staff", value: "5", icon: <MdPeople className="text-yellow-500" size={24} /> }
   ];
 
+  // Recent Activity data
   const activities = [
     { id: 1, action: "New patient record added", user: "Dr. Santos", time: "10 mins ago" },
     { id: 2, action: "Health checkup completed", user: "Nurse Reyes", time: "25 mins ago" },
     { id: 3, action: "System maintenance performed", user: "Admin", time: "2 hours ago" }
   ];
 
-  // Health Trends data for Line chart
-  const healthTrends = {
-    labels: ['Hypertension', 'Diabetes', 'Respiratory', 'Arthritis', 'Digestive'],
+  // Users Distribution data
+  const usersDistribution = {
+    labels: ['Doctors', 'BHW Workers', 'RHU Staff'],
     datasets: [
       {
-        label: 'Cases This Month',
-        data: [124, 87, 65, 42, 38],
-        borderColor: '#3B82F6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.3,
-        fill: true,
+        label: 'User Count',
+        data: [8, 42, 5],
+        backgroundColor: ['#10B981', '#6366F1', '#F59E0B'],
       },
     ],
   };
 
-  // Staff Distribution data
-  const staffDistribution = {
-    labels: ['Doctors', 'Nurses', 'BHW', 'Admin'],
-    datasets: [
-      {
-        label: 'Staff Count',
-        data: [8, 10, 42, 5],
-        backgroundColor: [
-          '#10B981',
-          '#3B82F6',
-          '#6366F1',
-          '#F59E0B'
-        ],
-      },
-    ],
+  // Monthly Report data
+  const [reportFilter, setReportFilter] = useState('Monthly');
+  const reportData = {
+    Daily: {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [
+        {
+          label: 'Patient Registrations',
+          data: [20, 25, 18, 22, 30, 15, 10],
+          backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        },
+        {
+          label: 'Health Checks',
+          data: [10, 12, 8, 15, 20, 5, 3],
+          backgroundColor: 'rgba(16, 185, 129, 0.5)',
+        },
+      ],
+    },
+    Weekly: {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      datasets: [
+        {
+          label: 'Patient Registrations',
+          data: [120, 140, 110, 130],
+          backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        },
+        {
+          label: 'Health Checks',
+          data: [60, 70, 50, 65],
+          backgroundColor: 'rgba(16, 185, 129, 0.5)',
+        },
+      ],
+    },
+    Monthly: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      datasets: [
+        {
+          label: 'Patient Registrations',
+          data: [300, 320, 280, 310, 340, 330],
+          backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        },
+        {
+          label: 'Health Checks',
+          data: [150, 160, 140, 155, 170, 165],
+          backgroundColor: 'rgba(16, 185, 129, 0.5)',
+        },
+      ],
+    },
   };
+
+  // Recent Patient Registrations data
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
+  const recentPatients = [
+    { id: 1, name: "John Doe", date: "2025-08-01", type: "New" },
+    { id: 2, name: "Jane Smith", date: "2025-07-31", type: "Follow-up" },
+    { id: 3, name: "Mike Reyes", date: "2025-07-30", type: "New" },
+    { id: 4, name: "Anna Cruz", date: "2025-07-29", type: "Follow-up" },
+    { id: 5, name: "Luis Santos", date: "2025-07-28", type: "New" },
+  ];
+  const totalPages = Math.ceil(recentPatients.length / itemsPerPage);
+  const paginatedPatients = recentPatients.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+  const pageNumbers = [];
+  const startPage = Math.max(0, currentPage);
+  const endPage = Math.min(totalPages, startPage + 2);
+  for (let i = startPage; i < endPage; i++) {
+    pageNumbers.push(i);
+  }
+  const startResult = currentPage * itemsPerPage + 1;
+  const endResult = Math.min((currentPage + 1) * itemsPerPage, recentPatients.length);
+  const showingText = `Showing ${startResult}-${endResult} of ${recentPatients.length} results`;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-        <div className="flex items-center space-x-4">
-        </div>
-      </div>
+    <div className="p-4 space-y-4">
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric, index) => (
-          <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="flex justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">{metric.title}</p>
-                <p className="text-2xl font-bold mt-1">{metric.value}</p>
+                <p className="text-xs font-medium text-gray-500">{metric.title}</p>
+                <p className="text-xl font-bold mt-1">{metric.value}</p>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
+              <div className="p-2 bg-gray-50 rounded-lg">
                 {metric.icon}
               </div>
             </div>
@@ -254,114 +323,148 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Quick Actions */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <button className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
-                <BsPersonPlus className="text-blue-600" size={20} />
-                <span className="mt-2 text-sm font-medium">Add Staff</span>
-              </button>
-              <button className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition">
-                <BsClipboardData className="text-green-600" size={20} />
-                <span className="mt-2 text-sm font-medium">Generate Report</span>
-              </button>
-              <button className="flex flex-col items-center justify-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition">
-                <FiMapPin className="text-yellow-600" size={20} />
-                <span className="mt-2 text-sm font-medium">Geo View</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Health Trends */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4">Health Trends (This Month)</h2>
-            <div className="h-64">
-              <Line 
-                data={healthTrends} 
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  scales: {
-                    y: {
-                      beginAtZero: true
-                    }
-                  },
-                  plugins: {
-                    legend: {
-                      position: 'top',
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
+      {/* Monthly Report Chart */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 lg:col-span-3">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-2">
+          <h2 className="text-lg font-semibold">Monthly Reports</h2>
+          <select
+            value={reportFilter}
+            onChange={(e) => setReportFilter(e.target.value)}
+            className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Monthly">Monthly</option>
+          </select>
         </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Recent Activity */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-            <div className="space-y-4">
-              {activities.map(activity => (
-                <div key={activity.id} className="flex items-start">
-                  <div className="p-2 bg-blue-50 rounded-full mr-3">
-                    <FiBell className="text-blue-500" size={16} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{activity.action}</p>
-                    <p className="text-xs text-gray-500">{activity.user} • {activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Staff Distribution */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4">Staff Distribution</h2>
-            <div className="h-64">
-              <Bar
-                data={staffDistribution}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  scales: {
-                    y: {
-                      beginAtZero: true
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
+        <div className="h-64">
+          <Bar
+            data={reportData[reportFilter]}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: { beginAtZero: true, stacked: true },
+                x: { stacked: true },
+              },
+              plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                  callbacks: {
+                    label: (context) => `${context.dataset.label}: ${context.raw}`,
+                  },
+                },
+              },
+            }}
+          />
         </div>
       </div>
 
-      {/* Reports Preview */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Monthly Reports</h2>
-          <button className="text-sm text-blue-600 hover:text-blue-800">View All</button>
+      {/* Right Column */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Recent Activity */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold mb-2">Recent Activity</h2>
+          <div className="space-y-2">
+            {activities.map(activity => (
+              <div key={activity.id} className="flex items-start">
+                <div className="p-1.5 bg-blue-50 rounded-full mr-2">
+                  <FiBell className="text-blue-500" size={14} />
+                </div>
+                <div>
+                  <p className="text-xs font-medium">{activity.action}</p>
+                  <p className="text-xs text-gray-500">{activity.user} • {activity.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4 hover:shadow-md transition">
-            <h3 className="font-medium">May 2024 Report</h3>
-            <p className="text-sm text-gray-500 mt-1">124 new patients, 42 health checks</p>
+
+        {/* Users Distribution */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold mb-2">Users Distribution</h2>
+          <div className="h-64">
+            <Bar
+              data={usersDistribution}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: { beginAtZero: true },
+                },
+                plugins: {
+                  legend: { position: 'top' },
+                },
+              }}
+            />
           </div>
-          <div className="border rounded-lg p-4 hover:shadow-md transition">
-            <h3 className="font-medium">April 2024 Report</h3>
-            <p className="text-sm text-gray-500 mt-1">118 new patients, 39 health checks</p>
+        </div>
+
+        {/* Recent Patient Registrations */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold mb-2">Recent Patient Registrations</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-2 py-1 text-left text-sm font-medium text-gray-500 uppercase">Patient Name</th>
+                  <th className="px-2 py-1 text-left text-sm font-medium text-gray-500 uppercase">Registration Date</th>
+                  <th className="px-2 py-1 text-left text-sm font-medium text-gray-500 uppercase">Type</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200 max-h-[300px] overflow-y-auto">
+                {paginatedPatients.length > 0 ? (
+                  paginatedPatients.map((patient) => (
+                    <tr key={patient.id} className="hover:bg-gray-50 leading-tight">
+                      <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-900">{patient.name}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">{patient.date}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">{patient.type}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="3" className="px-2 py-1 text-center text-xs text-gray-500">
+                      No patient records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          <div className="border rounded-lg p-4 hover:shadow-md transition">
-            <h3 className="font-medium">March 2024 Report</h3>
-            <p className="text-sm text-gray-500 mt-1">112 new patients, 35 health checks</p>
-          </div>
+          {totalPages > 0 && (
+            <div className="flex justify-between items-center p-2 border-t border-gray-200">
+              <span className="text-xs text-gray-600">{showingText}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className="p-1.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FaArrowLeft className="w-3 h-3" />
+                </button>
+                {pageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-2 py-0.5 text-xs font-medium rounded-md ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  className="p-1.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FaArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -380,12 +483,16 @@ function ManageUsers() {
     userType: "Staff",
     specialization: "",
     barangay: "",
-    contact_number: ""
+    contact_number: "",
   });
   const [editingUser, setEditingUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filterType, setFilterType] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
@@ -397,22 +504,26 @@ function ManageUsers() {
       const endpoints = [
         { type: 'Staff', url: '/api/users' },
         { type: 'Doctor', url: '/api/doctors' },
-        { type: 'BHW', url: '/api/bhws' }
+        { type: 'BHW', url: '/api/bhws' },
       ];
 
       const responses = await Promise.all(
         endpoints.map(endpoint => fetch(endpoint.url).then(res => res.json().then(data => ({ type: endpoint.type, data }))))
       );
 
-      const allUsers = responses.flatMap(response => 
+      const allUsers = responses.flatMap(response =>
         response.data.map(user => ({
           ...user,
           userType: response.type,
-          contactNumber: user.contact_number // Map backend contact_number to frontend contactNumber
+          contactNumber: user.contact_number,
         }))
       );
 
+      // Sort by newest (descending id)
+      allUsers.sort((a, b) => b.id - a.id);
       setUsers(allUsers);
+      setSortOrder("newest");
+      setCurrentPage(0);
     } catch (err) {
       setError(err.message);
       Swal.fire('Error', err.message, 'error');
@@ -424,7 +535,7 @@ function ManageUsers() {
   const handleAddOrUpdateUser = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       const { userType, ...data } = formData;
       let url;
@@ -443,7 +554,7 @@ function ManageUsers() {
             username: data.username,
             email: data.email,
             specialization: data.specialization,
-            ...(editingUser ? {} : { password: data.password })
+            ...(editingUser ? {} : { password: data.password }),
           };
           break;
         case 'BHW':
@@ -454,7 +565,7 @@ function ManageUsers() {
             email: data.email,
             barangay: data.barangay,
             contactNumber: data.contact_number,
-            ...(editingUser ? {} : { password: data.password })
+            ...(editingUser ? {} : { password: data.password }),
           };
           break;
         default:
@@ -505,7 +616,7 @@ function ManageUsers() {
           let url;
           let options = {
             method: "DELETE",
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           };
 
           switch (userType) {
@@ -558,7 +669,7 @@ function ManageUsers() {
         userType: user.userType,
         specialization: user.specialization || "",
         barangay: user.barangay || "",
-        contact_number: user.contactNumber || ""
+        contact_number: user.contactNumber || "",
       });
     } else {
       setEditingUser(null);
@@ -570,7 +681,7 @@ function ManageUsers() {
         userType: "Staff",
         specialization: "",
         barangay: "",
-        contact_number: ""
+        contact_number: "",
       });
     }
     setIsModalOpen(true);
@@ -583,9 +694,55 @@ function ManageUsers() {
     setError(null);
   };
 
-  const filteredUsers = filterType === "All" 
+  const handleSortToggle = () => {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : prev === 'desc' ? 'newest' : 'asc'));
+    setCurrentPage(0);
+  };
+
+  // Apply filter and search
+  let filteredUsers = filterType === "All" 
     ? users 
     : users.filter(user => user.userType === filterType);
+
+  filteredUsers = filteredUsers.filter(user =>
+    user.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Apply sorting
+  if (sortOrder === 'asc') {
+    filteredUsers.sort((a, b) => a.fullname.localeCompare(b.fullname));
+  } else if (sortOrder === 'desc') {
+    filteredUsers.sort((a, b) => b.fullname.localeCompare(a.fullname));
+  } else {
+    filteredUsers.sort((a, b) => b.id - a.id);
+  }
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Calculate displayed page numbers (show up to 2 pages)
+  const pageNumbers = [];
+  const startPage = Math.max(0, currentPage);
+  const endPage = Math.min(totalPages, startPage + 2);
+  for (let i = startPage; i < endPage; i++) {
+    pageNumbers.push(i);
+  }
+
+  // Calculate showing results text
+  const startResult = currentPage * itemsPerPage + 1;
+  const endResult = Math.min((currentPage + 1) * itemsPerPage, filteredUsers.length);
+  const showingText = `Showing ${startResult}-${endResult} of ${filteredUsers.length} results`;
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
@@ -595,11 +752,33 @@ function ManageUsers() {
           <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
           <p className="text-sm text-gray-600">Manage all users (Staff, Doctors, BHWs)</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search by name, username, or email"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-64"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(0);
+            }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isLoading}
+            title={sortOrder === 'asc' ? 'Sort Z-A' : sortOrder === 'desc' ? 'Sort by Newest' : 'Sort A-Z'}
+          >
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : sortOrder === 'desc' ? <FaSortAlphaUp className="w-5 h-5" /> : <FaSortAlphaDown className="w-5 h-5" />}
+          </button>
           <select
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => {
+              setFilterType(e.target.value);
+              setCurrentPage(0);
+            }}
           >
             <option value="All">All Users</option>
             <option value="Staff">Staff</option>
@@ -624,71 +803,108 @@ function ManageUsers() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Full Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Username
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User Type
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={`${user.userType}-${user.id}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.fullname}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.username}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.userType}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <button 
-                          onClick={() => openModal(user)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 disabled:opacity-50"
-                          disabled={isLoading}
-                        >
-                          <FaEdit className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteUser(user.id, user.userType)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 disabled:opacity-50"
-                          disabled={isLoading}
-                        >
-                          <FaTrash className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Full Name
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Username
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User Type
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedUsers.map((user) => (
+                    <tr key={`${user.userType}-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{user.fullname}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{user.username}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{user.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{user.userType}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <button 
+                            onClick={() => openModal(user)}
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 disabled:opacity-50"
+                            disabled={isLoading}
+                          >
+                            <FaEdit className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(user.id, user.userType)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 disabled:opacity-50"
+                            disabled={isLoading}
+                          >
+                            <FaTrash className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className="flex justify-between items-center p-4 border-t border-gray-200">
+                <span className="text-sm text-gray-600">{showingText}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowLeft className="w-4 h-4" />
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">
@@ -861,6 +1077,10 @@ function StaffList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
@@ -872,7 +1092,10 @@ function StaffList() {
       const res = await fetch('/api/users');
       if (!res.ok) throw new Error('Failed to fetch staff');
       const data = await res.json();
-      setUsers(data.map(user => ({ ...user, userType: 'Staff' })));
+      const sortedData = data.map(user => ({ ...user, userType: 'Staff' })).sort((a, b) => b.id - a.id);
+      setUsers(sortedData);
+      setSortOrder("newest");
+      setCurrentPage(0);
     } catch (err) {
       Swal.fire('Error', err.message, 'error');
     } finally {
@@ -890,51 +1113,157 @@ function StaffList() {
     setSelectedUser(null);
   };
 
+  const handleSortToggle = () => {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : prev === 'desc' ? 'newest' : 'asc'));
+    setCurrentPage(0);
+  };
+
+  // Apply search
+  let filteredUsers = users.filter(user =>
+    user.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Apply sorting
+  if (sortOrder === 'asc') {
+    filteredUsers.sort((a, b) => a.fullname.localeCompare(b.fullname));
+  } else if (sortOrder === 'desc') {
+    filteredUsers.sort((a, b) => b.fullname.localeCompare(b.fullname));
+  } else {
+    filteredUsers.sort((a, b) => b.id - a.id);
+  }
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Calculate displayed page numbers (show up to 2 pages)
+  const pageNumbers = [];
+  const startPage = Math.max(0, currentPage);
+  const endPage = Math.min(totalPages, startPage + 2);
+  for (let i = startPage; i < endPage; i++) {
+    pageNumbers.push(i);
+  }
+
+  // Calculate showing results text
+  const startResult = currentPage * itemsPerPage + 1;
+  const endResult = Math.min((currentPage + 1) * itemsPerPage, filteredUsers.length);
+  const showingText = `Showing ${startResult}-${endResult} of ${filteredUsers.length} results`;
+
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Staff List</h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">Staff List</h2>
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search by name, username, or email"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-64"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(0);
+            }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isLoading}
+            title={sortOrder === 'asc' ? 'Sort Z-A' : sortOrder === 'desc' ? 'Sort by Newest' : 'Sort A-Z'}
+          >
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : sortOrder === 'desc' ? <FaSortAlphaUp className="w-5 h-5" /> : <FaSortAlphaDown className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
         {isLoading && !users.length ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={`Staff-${user.id}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        onClick={() => openViewModal(user)}
-                        className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50 disabled:opacity-50"
-                        disabled={isLoading}
-                      >
-                        <FaEye className="w-5 h-5" />
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedUsers.map((user) => (
+                    <tr key={`Staff-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button 
+                          onClick={() => openViewModal(user)}
+                          className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50 disabled:opacity-50"
+                          disabled={isLoading}
+                        >
+                          <FaEye className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className="flex justify-between items-center p-4 border-t border-gray-200">
+                <span className="text-sm text-gray-600">{showingText}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowLeft className="w-4 h-4" />
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* View Modal */}
       {isViewModalOpen && selectedUser && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">View Staff Details</h2>
@@ -979,6 +1308,10 @@ function DoctorList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
@@ -990,7 +1323,10 @@ function DoctorList() {
       const res = await fetch('/api/doctors');
       if (!res.ok) throw new Error('Failed to fetch doctors');
       const data = await res.json();
-      setUsers(data.map(user => ({ ...user, userType: 'Doctor' })));
+      const sortedData = data.map(user => ({ ...user, userType: 'Doctor' })).sort((a, b) => b.id - a.id);
+      setUsers(sortedData);
+      setSortOrder("newest");
+      setCurrentPage(0);
     } catch (err) {
       Swal.fire('Error', err.message, 'error');
     } finally {
@@ -1008,51 +1344,157 @@ function DoctorList() {
     setSelectedUser(null);
   };
 
+  const handleSortToggle = () => {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : prev === 'desc' ? 'newest' : 'asc'));
+    setCurrentPage(0);
+  };
+
+  // Apply search
+  let filteredUsers = users.filter(user =>
+    user.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Apply sorting
+  if (sortOrder === 'asc') {
+    filteredUsers.sort((a, b) => a.fullname.localeCompare(b.fullname));
+  } else if (sortOrder === 'desc') {
+    filteredUsers.sort((a, b) => b.fullname.localeCompare(b.fullname));
+  } else {
+    filteredUsers.sort((a, b) => b.id - a.id);
+  }
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Calculate displayed page numbers (show up to 2 pages)
+  const pageNumbers = [];
+  const startPage = Math.max(0, currentPage);
+  const endPage = Math.min(totalPages, startPage + 2);
+  for (let i = startPage; i < endPage; i++) {
+    pageNumbers.push(i);
+  }
+
+  // Calculate showing results text
+  const startResult = currentPage * itemsPerPage + 1;
+  const endResult = Math.min((currentPage + 1) * itemsPerPage, filteredUsers.length);
+  const showingText = `Showing ${startResult}-${endResult} of ${filteredUsers.length} results`;
+
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Doctor List</h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">Doctor List</h2>
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search by name, username, or email"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-64"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(0);
+            }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isLoading}
+            title={sortOrder === 'asc' ? 'Sort Z-A' : sortOrder === 'desc' ? 'Sort by Newest' : 'Sort A-Z'}
+          >
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : sortOrder === 'desc' ? <FaSortAlphaUp className="w-5 h-5" /> : <FaSortAlphaDown className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
         {isLoading && !users.length ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={`Doctor-${user.id}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        onClick={() => openViewModal(user)}
-                        className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50 disabled:opacity-50"
-                        disabled={isLoading}
-                      >
-                        <FaEye className="w-5 h-5" />
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedUsers.map((user) => (
+                    <tr key={`Doctor-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button 
+                          onClick={() => openViewModal(user)}
+                          className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50 disabled:opacity-50"
+                          disabled={isLoading}
+                        >
+                          <FaEye className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className="flex justify-between items-center p-4 border-t border-gray-200">
+                <span className="text-sm text-gray-600">{showingText}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowLeft className="w-4 h-4" />
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* View Modal */}
       {isViewModalOpen && selectedUser && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">View Doctor Details</h2>
@@ -1101,6 +1543,10 @@ function BHWList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
@@ -1112,7 +1558,10 @@ function BHWList() {
       const res = await fetch('/api/bhws');
       if (!res.ok) throw new Error('Failed to fetch BHWs');
       const data = await res.json();
-      setUsers(data.map(user => ({ ...user, userType: 'BHW', contactNumber: user.contact_number })));
+      const sortedData = data.map(user => ({ ...user, userType: 'BHW', contactNumber: user.contact_number })).sort((a, b) => b.id - a.id);
+      setUsers(sortedData);
+      setSortOrder("newest");
+      setCurrentPage(0);
     } catch (err) {
       Swal.fire('Error', err.message, 'error');
     } finally {
@@ -1130,51 +1579,157 @@ function BHWList() {
     setSelectedUser(null);
   };
 
+  const handleSortToggle = () => {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : prev === 'desc' ? 'newest' : 'asc'));
+    setCurrentPage(0);
+  };
+
+  // Apply search
+  let filteredUsers = users.filter(user =>
+    user.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Apply sorting
+  if (sortOrder === 'asc') {
+    filteredUsers.sort((a, b) => a.fullname.localeCompare(b.fullname));
+  } else if (sortOrder === 'desc') {
+    filteredUsers.sort((a, b) => b.fullname.localeCompare(b.fullname));
+  } else {
+    filteredUsers.sort((a, b) => b.id - a.id);
+  }
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Calculate displayed page numbers (show up to 2 pages)
+  const pageNumbers = [];
+  const startPage = Math.max(0, currentPage);
+  const endPage = Math.min(totalPages, startPage + 2);
+  for (let i = startPage; i < endPage; i++) {
+    pageNumbers.push(i);
+  }
+
+  // Calculate showing results text
+  const startResult = currentPage * itemsPerPage + 1;
+  const endResult = Math.min((currentPage + 1) * itemsPerPage, filteredUsers.length);
+  const showingText = `Showing ${startResult}-${endResult} of ${filteredUsers.length} results`;
+
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">BHW List</h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">BHW List</h2>
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search by name, username, or email"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-64"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(0);
+            }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isLoading}
+            title={sortOrder === 'asc' ? 'Sort Z-A' : sortOrder === 'desc' ? 'Sort by Newest' : 'Sort A-Z'}
+          >
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : sortOrder === 'desc' ? <FaSortAlphaUp className="w-5 h-5" /> : <FaSortAlphaDown className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
         {isLoading && !users.length ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={`BHW-${user.id}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        onClick={() => openViewModal(user)}
-                        className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50 disabled:opacity-50"
-                        disabled={isLoading}
-                      >
-                        <FaEye className="w-5 h-5" />
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedUsers.map((user) => (
+                    <tr key={`BHW-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button 
+                          onClick={() => openViewModal(user)}
+                          className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50 disabled:opacity-50"
+                          disabled={isLoading}
+                        >
+                          <FaEye className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className="flex justify-between items-center p-4 border-t border-gray-200">
+                <span className="text-sm text-gray-600">{showingText}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowLeft className="w-4 h-4" />
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* View Modal */}
       {isViewModalOpen && selectedUser && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">View BHW Details</h2>
@@ -1222,128 +1777,3 @@ function BHWList() {
   );
 }
 
-
-
-function LogHistory() {
-  const [logs, setLogs] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'admin', 'doctor', 'bhw'
-
-  useEffect(() => {
-    fetchLogs();
-  }, [filter]);
-
-  const fetchLogs = async () => {
-    try {
-      setIsLoading(true);
-      const url = filter === 'all' 
-        ? '/api/logs' 
-        : `/api/logs?type=${filter}`;
-      
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch logs');
-      const data = await res.json();
-      setLogs(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getUserTypeLabel = (userType) => {
-  switch(userType) {
-    case 'admin': return 'Admin';
-    case 'staff': return 'Staff';
-    case 'doctor': return 'Doctor';
-    case 'bhw': return 'Barangay Health Worker';
-    default: return userType;
-  }
-};
-
-  return (
-    <div className="p-6 bg-white shadow-md rounded-lg">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Login History</h2>
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-700">Filter:</label>
-          <select
-  value={filter}
-  onChange={(e) => setFilter(e.target.value)}
-  className="border border-gray-300 rounded-md px-3 py-1"
->
-  <option value="all">All Users</option>
-  <option value="admin">Admins</option>
-  <option value="staff">Staff</option>
-  <option value="doctor">Doctors</option>
-  <option value="bhw">BHWs</option>
-</select>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {logs.length > 0 ? (
-                logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{log.fullname}</div>
-                      <div className="text-sm text-gray-500">{log.username}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-  log.user_type === 'admin' ? 'bg-purple-100 text-purple-800' :
-  log.user_type === 'staff' ? 'bg-yellow-100 text-yellow-800' :
-  log.user_type === 'doctor' ? 'bg-blue-100 text-blue-800' :
-  'bg-green-100 text-green-800'
-}`}>
-  {getUserTypeLabel(log.user_type)}
-</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(log.login_time).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.ip_address || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {log.user_agent ? log.user_agent.substring(0, 50) + (log.user_agent.length > 50 ? '...' : '') : 'N/A'}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No login records found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
