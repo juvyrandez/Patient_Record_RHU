@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
-import { FaUserPlus, FaNotesMedical, FaMapMarkedAlt, FaHandHoldingMedical } from "react-icons/fa";
+import { FaUserPlus, FaChartBar } from "react-icons/fa";
 import { FaPlus, FaTimes, FaArrowLeft, FaEdit, FaTrash } from 'react-icons/fa';
-import {FaSearch, FaFileMedical, FaEye } from 'react-icons/fa';
-import {FaSpinner } from 'react-icons/fa';
+import { FaSearch, FaFileMedical, FaEye, FaSpinner } from 'react-icons/fa';
 import Swal from "sweetalert2";
 
 export default function BHWDashboard() {
@@ -80,17 +79,17 @@ export default function BHWDashboard() {
             isSidebarOpen={isSidebarOpen} 
           />
           <SidebarItem 
-            icon={FaMapMarkedAlt} 
-            label="Brgy Mapping" 
+            icon={FaUserPlus} 
+            label="Add Patients" 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
             isSidebarOpen={isSidebarOpen} 
           />
           <SidebarItem 
-            icon={FaHandHoldingMedical} 
-            label="Add Patients" 
+            icon={FaChartBar} 
+            label="Reports" 
             activeTab={activeTab} 
-            setActiveTab={setActiveTab} z
+            setActiveTab={setActiveTab} 
             isSidebarOpen={isSidebarOpen} 
           />
         </ul>
@@ -145,8 +144,8 @@ export default function BHWDashboard() {
         {/* Content Section */}
         <div className="mt-6">
           {activeTab === "Dashboard" && <BHWDashboardContent />}
-          {activeTab === "Brgy Mapping" && <BrgyMapping />}
           {activeTab === "Add Patients" && <AddPatientRecords />}
+          {activeTab === "Reports" && <Reports />}
         </div>
       </main>
     </div>
@@ -167,6 +166,12 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
     </li>
   );
 }
+
+
+function Reports() {
+}
+
+
 
 // BHW Dashboard Components
 function BHWDashboardContent() {
