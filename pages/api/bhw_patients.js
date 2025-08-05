@@ -1,27 +1,27 @@
 import pool from '@/lib/db';
 
 export default async function handler(req, res) {
-  const { id } = req.query;
+  const { id, type } = req.query;
 
   try {
     switch (req.method) {
       case 'GET':
         if (id) {
-          // Get single patient
-          const { rows } = await pool.query('SELECT * FROM bhw_patients WHERE id = $1', [id]);
+          // Get single patient with type = 'bhw_data'
+          const { rows } = await pool.query('SELECT * FROM patients WHERE id = $1 AND type = $2', [id, 'bhw_data']);
           if (rows.length === 0) {
             return res.status(404).json({ message: 'Patient not found' });
           }
           res.status(200).json(rows[0]);
         } else {
-          // Get all patients
-          const { rows } = await pool.query('SELECT * FROM bhw_patients ORDER BY last_name, first_name');
+          // Get all patients with type = 'bhw_data'
+          const { rows } = await pool.query('SELECT * FROM patients WHERE type = $1 ORDER BY last_name, first_name', ['bhw_data']);
           res.status(200).json(rows);
         }
         break;
 
       case 'POST':
-        // Create new patient
+        // Create new patient with type = 'bhw_data'
         const {
           last_name,
           first_name,
@@ -53,17 +53,17 @@ export default async function handler(req, res) {
         } = req.body;
 
         const { rows: [newPatient] } = await pool.query(
-          `INSERT INTO bhw_patients (
+          `INSERT INTO patients (
             last_name, first_name, middle_name, maiden_name, suffix, gender,
             birth_date, birth_place, blood_type, civil_status, spouse_name,
             educational_attainment, employment_status, family_member_role,
             residential_address, contact_number, mothers_name, dswd_nhts,
             facility_household_no, pps_member, pps_household_no,
             philhealth_member, philhealth_status, philhealth_number,
-            philhealth_category, pcb_member, status
+            philhealth_category, pcb_member, status, type
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
+            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
           ) RETURNING *`,
           [
             last_name,
@@ -92,14 +92,15 @@ export default async function handler(req, res) {
             philhealth_number,
             philhealth_category,
             pcb_member,
-            status
+            status,
+            'bhw_data'
           ]
         );
         res.status(201).json(newPatient);
         break;
 
       case 'PUT':
-        // Update patient
+        // Update patient with type = 'bhw_data'
         const {
           last_name: update_last_name,
           first_name: update_first_name,
@@ -131,7 +132,7 @@ export default async function handler(req, res) {
         } = req.body;
 
         const { rows: [updatedPatient] } = await pool.query(
-          `UPDATE bhw_patients SET
+          `UPDATE patients SET
             last_name = $1,
             first_name = $2,
             middle_name = $3,
@@ -159,8 +160,9 @@ export default async function handler(req, res) {
             philhealth_category = $25,
             pcb_member = $26,
             status = $27,
+            type = $28,
             updated_at = NOW()
-          WHERE id = $28
+          WHERE id = $29 AND type = $30
           RETURNING *`,
           [
             update_last_name,
@@ -190,17 +192,22 @@ export default async function handler(req, res) {
             update_philhealth_category,
             update_pcb_member,
             update_status,
-            id
+            'bhw_data',
+            id,
+            'bhw_data'
           ]
         );
+        if (!updatedPatient) {
+          return res.status(404).json({ message: 'Patient not found or not a BHW record' });
+        }
         res.status(200).json(updatedPatient);
         break;
 
       case 'DELETE':
-        // Delete patient
-        const { rowCount } = await pool.query('DELETE FROM bhw_patients WHERE id = $1', [id]);
+        // Delete patient with type = 'bhw_data'
+        const { rowCount } = await pool.query('DELETE FROM patients WHERE id = $1 AND type = $2', [id, 'bhw_data']);
         if (rowCount === 0) {
-          return res.status(404).json({ message: 'Patient not found' });
+          return res.status(404).json({ message: 'Patient not found or not a BHW record' });
         }
         res.status(200).json({ message: 'Patient deleted successfully' });
         break;

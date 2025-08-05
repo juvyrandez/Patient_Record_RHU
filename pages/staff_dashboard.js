@@ -4,10 +4,12 @@ import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
 import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus } from 'react-icons/fa';
-import { FaTrash, FaUserMd, FaHospital, FaCalendarAlt, FaExclamationTriangle, FaClock, FaTasks, FaCheck, FaBalanceScale, FaWalking, FaSpinner } from 'react-icons/fa';
-import { FaFilter, FaFileAlt, FaUser, FaPrint, FaUsers, FaChartBar } from 'react-icons/fa';
+import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
+import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import ReferralForm from '/components/StaffComponents/ReferralForm';
+import Reports from '/components/StaffComponents/Reports';
 
 // Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -371,7 +373,8 @@ function PatientRecords() {
     philhealth_number: "",
     philhealth_category: "FE-Private",
     pcb_member: "No",
-    status: "New"
+    status: "New",
+    type: "staff_data"
   });
   const [isEditing, setIsEditing] = useState(false);
   const [currentPatientId, setCurrentPatientId] = useState(null);
@@ -402,6 +405,14 @@ function PatientRecords() {
     referredByName: "",
     licenseNumber: ""
   });
+  const [consultationHistory, setConsultationHistory] = useState([]);
+  const [newConsultation, setNewConsultation] = useState({
+    date: '',
+    history: '',
+    exam: '',
+    assessment: '',
+    treatment: ''
+  });
 
   useEffect(() => {
     fetchPatients();
@@ -409,7 +420,7 @@ function PatientRecords() {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch('/api/patients');
+      const response = await fetch('/api/patients?type=staff_data');
       const data = await response.json();
       setPatients(data);
     } catch (error) {
@@ -417,76 +428,51 @@ function PatientRecords() {
     }
   };
 
-  const [consultationHistory, setConsultationHistory] = useState([]);
-const [newConsultation, setNewConsultation] = useState({
-  date: '',
-  history: '',
-  exam: '',
-  assessment: '',
-  treatment: ''
-});
+  const handleMedicalRecord = (patient) => {
+    setSelectedPatient(patient);
+    setShowFormSelection(true);
+  };
 
+  const handleAddConsultation = () => {
+    if (newConsultation.date && newConsultation.history) {
+      setConsultationHistory([...consultationHistory, newConsultation]);
+      setNewConsultation({
+        date: '',
+        history: '',
+        exam: '',
+        assessment: '',
+        treatment: ''
+      });
+    }
+  };
 
-// Handle medical record button click
-const handleMedicalRecord = (patient) => {
-  setSelectedPatient(patient);
-  setShowFormSelection(true);
-};
+  const handleDeleteConsultation = (index) => {
+    const updatedHistory = [...consultationHistory];
+    updatedHistory.splice(index, 1);
+    setConsultationHistory(updatedHistory);
+  };
 
-// Handle adding new consultation
-const handleAddConsultation = () => {
-  if (newConsultation.date && newConsultation.history) {
-    setConsultationHistory([...consultationHistory, newConsultation]);
-    setNewConsultation({
-      date: '',
-      history: '',
-      exam: '',
-      assessment: '',
-      treatment: ''
-    });
-  }
-};
+  const handleSaveConsultations = () => {
+    console.log('Saving consultations:', consultationHistory);
+    setSelectedPatient(null);
+    setSelectedFormType(null);
+  };
 
-// Handle deleting consultation
-const handleDeleteConsultation = (index) => {
-  const updatedHistory = [...consultationHistory];
-  updatedHistory.splice(index, 1);
-  setConsultationHistory(updatedHistory);
-};
+  const handleSubmitReferral = (e) => {
+    e.preventDefault();
+    
+    if (!referralData.referralType || !referralData.date || !referralData.time || 
+        !referralData.referredTo || !referralData.referredToAddress || 
+        !referralData.chiefComplaints || !referralData.referredByName || 
+        !referralData.licenseNumber) {
+      alert("Please fill all required fields");
+      return;
+    }
 
-// Handle saving all consultations
-const handleSaveConsultations = () => {
-  // Save logic here
-  console.log('Saving consultations:', consultationHistory);
-  // Then close the modal
-  setSelectedPatient(null);
-  setSelectedFormType(null);
-};
-
-
-
-
-// Handle submitting referral
-const handleSubmitReferral = (e) => {
-  e.preventDefault();
-  
-  // Validate required fields
-  if (!referralData.referralType || !referralData.date || !referralData.time || 
-      !referralData.referredTo || !referralData.referredToAddress || 
-      !referralData.chiefComplaints || !referralData.referredByName || 
-      !referralData.licenseNumber) {
-    alert("Please fill all required fields");
-    return;
-  }
-
-  // Handle form submission
-  console.log("Submitting referral:", referralData);
-  
-  // Here you would typically send the data to your backend
-  // Then close the modal
-  setSelectedPatient(null);
-  setSelectedFormType(null);
-};
+    console.log("Submitting referral:", referralData);
+    setSelectedPatient(null);
+    setSelectedFormType(null);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -507,6 +493,37 @@ const handleSubmitReferral = (e) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const patientData = {
+        last_name: formData.last_name,
+        first_name: formData.first_name,
+        middle_name: formData.middle_name,
+        maiden_name: formData.maiden_name,
+        suffix: formData.suffix,
+        gender: formData.gender,
+        birth_date: formData.birth_date,
+        birth_place: formData.birth_place,
+        blood_type: formData.blood_type,
+        civil_status: formData.civil_status,
+        spouse_name: formData.spouse_name,
+        educational_attainment: formData.educational_attainment,
+        employment_status: formData.employment_status,
+        family_member_role: formData.family_member_role,
+        residential_address: formData.residential_address,
+        contact_number: formData.contact_number,
+        mothers_name: formData.mothers_name,
+        dswd_nhts: formData.dswd_nhts === "Yes",
+        facility_household_no: formData.facility_household_no,
+        pps_member: formData.pps_member === "Yes",
+        pps_household_no: formData.pps_household_no,
+        philhealth_member: formData.philhealth_member === "Yes",
+        philhealth_status: formData.philhealth_status,
+        philhealth_number: formData.philhealth_number,
+        philhealth_category: formData.philhealth_category,
+        pcb_member: formData.pcb_member === "Yes",
+        status: formData.status,
+        type: "staff_data"
+      };
+
       const url = isEditing ? `/api/patients?id=${currentPatientId}` : '/api/patients';
       const method = isEditing ? 'PUT' : 'POST';
 
@@ -515,13 +532,15 @@ const handleSubmitReferral = (e) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(patientData),
       });
 
       if (response.ok) {
         fetchPatients();
         setShowForm(false);
         resetForm();
+      } else {
+        console.error('Error saving patient:', await response.text());
       }
     } catch (error) {
       console.error('Error saving patient:', error);
@@ -556,7 +575,8 @@ const handleSubmitReferral = (e) => {
       philhealth_number: "",
       philhealth_category: "FE-Private",
       pcb_member: "No",
-      status: "New"
+      status: "New",
+      type: "staff_data"
     });
     setIsEditing(false);
     setCurrentPatientId(null);
@@ -564,10 +584,10 @@ const handleSubmitReferral = (e) => {
 
   const handleEdit = async (patientId) => {
     try {
-      const response = await fetch(`/api/patients?id=${patientId}`);
+      const response = await fetch(`/api/patients?id=${patientId}&type=staff_data`);
       const patient = await response.json();
       
-      setFormData(patient);
+      setFormData({ ...patient, type: "staff_data" });
       setIsEditing(true);
       setCurrentPatientId(patientId);
       setShowForm(true);
@@ -578,7 +598,7 @@ const handleSubmitReferral = (e) => {
 
   const handleView = async (patientId) => {
     try {
-      const response = await fetch(`/api/patients?id=${patientId}`);
+      const response = await fetch(`/api/patients?id=${patientId}&type=staff_data`);
       const patient = await response.json();
       setViewPatient(patient);
     } catch (error) {
@@ -589,12 +609,14 @@ const handleSubmitReferral = (e) => {
   const handleDelete = async (patientId) => {
     if (window.confirm('Are you sure you want to delete this patient record?')) {
       try {
-        const response = await fetch(`/api/patients?id=${patientId}`, {
+        const response = await fetch(`/api/patients?id=${patientId}&type=staff_data`, {
           method: 'DELETE'
         });
         
         if (response.ok) {
           fetchPatients();
+        } else {
+          console.error('Error deleting patient:', await response.text());
         }
       } catch (error) {
         console.error('Error deleting patient:', error);
@@ -615,14 +637,13 @@ const handleSubmitReferral = (e) => {
   };
 
   const filteredPatients = patients.filter((patient) =>
-    `${patient.last_name} ${patient.first_name} ${patient.middle_name} ${patient.suffix}`
+    `${patient.last_name} ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Patient Records Management</h2>
@@ -637,7 +658,6 @@ const handleSubmitReferral = (e) => {
         </button>
       </div>
 
-      {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -653,7 +673,6 @@ const handleSubmitReferral = (e) => {
         </div>
       </div>
 
-      {/* Patient Form Modal */}
       {showForm && (
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -671,7 +690,6 @@ const handleSubmitReferral = (e) => {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6">
-              {/* Patient Information Section */}
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
@@ -747,7 +765,7 @@ const handleSubmitReferral = (e) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Sex (Kasarian)</label>
                     <div className="flex gap-4">
@@ -795,6 +813,9 @@ const handleSubmitReferral = (e) => {
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700">Blood Type</label>
                     <select
@@ -814,9 +835,6 @@ const handleSubmitReferral = (e) => {
                       <option value="O-">O-</option>
                     </select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
                     <textarea
@@ -1098,7 +1116,6 @@ const handleSubmitReferral = (e) => {
                 </div>
               </div>
 
-              {/* Patient Consent Section */}
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
@@ -2325,449 +2342,4 @@ const handleSubmitReferral = (e) => {
       )}
     </div>
   );
-}
-
-
-
-
-
-function ReferralForm() {
-  const [referrals, setReferrals] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedReferral, setSelectedReferral] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Fetch referrals from API
-  useEffect(() => {
-    const fetchReferrals = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/view_referrals');
-        if (!response.ok) throw new Error('Failed to fetch referrals');
-        const data = await response.json();
-        setReferrals(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchReferrals();
-  }, []);
-
-  const filteredReferrals = referrals.filter(referral => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      `${referral.patient_first_name} ${referral.patient_last_name}`.toLowerCase().includes(searchLower) ||
-      referral.referred_by_name.toLowerCase().includes(searchLower) ||
-      referral.referred_to.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const handleViewDetails = (referral) => {
-    setSelectedReferral(referral);
-  };
-
-  const handleStatusUpdate = async (id, newStatus) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/view_referrals?id=${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) throw new Error('Failed to update status');
-
-      const updatedReferral = await response.json();
-      setReferrals(referrals.map(r => 
-        r.id === id ? updatedReferral : r
-      ));
-      setSelectedReferral(updatedReferral);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getPriorityBadge = (referralType) => {
-    switch (referralType) {
-      case 'EMERGENCY':
-        return { color: 'bg-red-100 text-red-800', icon: <FaExclamationTriangle className="mr-1" /> };
-      case 'AMBULATORY':
-        return { color: 'bg-orange-100 text-orange-800', icon: <FaWalking className="mr-1" /> };
-      case 'MEDICOLEGAL':
-        return { color: 'bg-purple-100 text-purple-800', icon: <FaBalanceScale className="mr-1" /> };
-      default:
-        return { color: 'bg-blue-100 text-blue-800', icon: <FaNotesMedical className="mr-1" /> };
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Completed':
-        return 'bg-green-100 text-green-800';
-      case 'In Progress':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-          <FaNotesMedical className="mr-2 text-blue-600" />
-          View Referrals
-        </h2>
-        
-        <div className="relative w-full md:w-64 mt-4 md:mt-0">
-          <FaSearch className="absolute left-3 top-3 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search referrals..."
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-
-      {isLoading && !referrals.length ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred By</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred To</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredReferrals.length > 0 ? (
-                filteredReferrals.map((referral) => {
-                  const priorityBadge = getPriorityBadge(referral.referral_type);
-                  return (
-                    <tr key={referral.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">
-                          {referral.patient_first_name} {referral.patient_last_name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {referral.patient_middle_name && `${referral.patient_middle_name} • `}
-                          {referral.patient_address}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        <div className="flex items-center">
-                          <FaUserMd className="mr-1 text-green-600" />
-                          {referral.referred_by_name}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          License: {referral.license_number}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        <div className="flex items-center">
-                          <FaHospital className="mr-1 text-blue-600" />
-                          {referral.referred_to}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {referral.referred_to_address}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                        <div className="flex flex-col">
-                          <span className="flex items-center">
-                            <FaCalendarAlt className="mr-1 text-purple-600" />
-                            {new Date(referral.referral_date).toLocaleDateString()}
-                          </span>
-                          <span className="text-xs">
-                            {referral.referral_time}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priorityBadge.color}`}>
-                          {priorityBadge.icon}
-                          {referral.referral_type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(referral.status)}`}>
-                          {referral.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleViewDetails(referral)}
-                          className="text-blue-600 hover:text-blue-900 flex items-center"
-                          disabled={isLoading}
-                        >
-                          <FaEye className="mr-1" />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    No referrals found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Referral Details Modal */}
-      {selectedReferral && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">
-                  Referral Details
-                </h3>
-                <button
-                  onClick={() => setSelectedReferral(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                  disabled={isLoading}
-                >
-                  &times;
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-lg text-gray-800 border-b pb-2 mb-3">
-                      Patient Information
-                    </h4>
-                    <div className="space-y-2">
-                      <p><strong>Name:</strong> {selectedReferral.patient_first_name} {selectedReferral.patient_middle_name} {selectedReferral.patient_last_name}</p>
-                      <p><strong>Address:</strong> {selectedReferral.patient_address}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-lg text-gray-800 border-b pb-2 mb-3">
-                      Referral Information
-                    </h4>
-                    <div className="space-y-2">
-                      <p><strong>Type:</strong> 
-                        <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          getPriorityBadge(selectedReferral.referral_type).color
-                        }`}>
-                          {selectedReferral.referral_type}
-                        </span>
-                      </p>
-                      <p><strong>Date/Time:</strong> {new Date(selectedReferral.referral_date).toLocaleDateString()} at {selectedReferral.referral_time}</p>
-                      <p><strong>Referred By:</strong> {selectedReferral.referred_by_name} (License: {selectedReferral.license_number})</p>
-                      <p><strong>Status:</strong> 
-                        <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedReferral.status)}`}>
-                          {selectedReferral.status}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-lg text-gray-800 border-b pb-2 mb-3">
-                    Medical Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p><strong>Chief Complaints:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded">{selectedReferral.chief_complaints}</p>
-                    </div>
-                    <div>
-                      <p><strong>Medical History:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded">{selectedReferral.medical_history || 'None provided'}</p>
-                    </div>
-                    <div>
-                      <p><strong>Surgical History:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded">
-                        {selectedReferral.surgical_operations === 'YES' 
-                          ? selectedReferral.surgical_procedure 
-                          : 'No surgical history'}
-                      </p>
-                    </div>
-                    <div>
-                      <p><strong>Allergies:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded">
-                        {selectedReferral.drug_allergy === 'YES' 
-                          ? selectedReferral.allergy_type 
-                          : 'No known allergies'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-lg text-gray-800 border-b pb-2 mb-3">
-                    Examination Details
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p><strong>BP:</strong> {selectedReferral.blood_pressure || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p><strong>HR:</strong> {selectedReferral.heart_rate || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p><strong>RR:</strong> {selectedReferral.respiratory_rate || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p><strong>Weight:</strong> {selectedReferral.weight || 'N/A'}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <p><strong>Last Meal:</strong> {selectedReferral.last_meal_time}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-lg text-gray-800 border-b pb-2 mb-3">
-                    Referral Details
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p><strong>Referred To:</strong> {selectedReferral.referred_to}</p>
-                      <p className="text-sm text-gray-600">{selectedReferral.referred_to_address}</p>
-                    </div>
-                    <div>
-                      <p><strong>Impression:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded">{selectedReferral.impression || 'None provided'}</p>
-                    </div>
-                    <div>
-                      <p><strong>Action Taken:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded">{selectedReferral.action_taken || 'None provided'}</p>
-                    </div>
-                    <div>
-                      <p><strong>Referral Reasons:</strong></p>
-                      <div className="mt-1 bg-white p-2 rounded">
-                        {selectedReferral.referral_reasons && selectedReferral.referral_reasons.length > 0 ? (
-                          <ul className="list-disc pl-5">
-                            {selectedReferral.referral_reasons.map((reason, index) => (
-                              <li key={index}>{reason}</li>
-                            ))}
-                            {selectedReferral.other_reason && (
-                              <li>{selectedReferral.other_reason}</li>
-                            )}
-                          </ul>
-                        ) : (
-                          <p>No reasons specified</p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <p><strong>Health Insurance:</strong> {selectedReferral.health_insurance}</p>
-                      {selectedReferral.health_insurance === 'YES' && (
-                        <p className="mt-1">Type: {selectedReferral.insurance_type}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-lg text-gray-800 border-b pb-2 mb-3">
-                    Update Referral Status
-                  </h4>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => handleStatusUpdate(selectedReferral.id, 'Pending')}
-                      className={`px-4 py-2 rounded-md flex items-center ${
-                        selectedReferral.status === 'Pending' 
-                          ? 'bg-yellow-500 text-white' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                      disabled={isLoading}
-                    >
-                      {isLoading && selectedReferral.status === 'Pending' ? (
-                        <FaSpinner className="animate-spin mr-2" />
-                      ) : (
-                        <FaClock className="mr-2" />
-                      )}
-                      Mark as Pending
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(selectedReferral.id, 'In Progress')}
-                      className={`px-4 py-2 rounded-md flex items-center ${
-                        selectedReferral.status === 'In Progress' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                      disabled={isLoading}
-                    >
-                      {isLoading && selectedReferral.status === 'In Progress' ? (
-                        <FaSpinner className="animate-spin mr-2" />
-                      ) : (
-                        <FaTasks className="mr-2" />
-                      )}
-                      Mark as In Progress
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(selectedReferral.id, 'Completed')}
-                      className={`px-4 py-2 rounded-md flex items-center ${
-                        selectedReferral.status === 'Completed' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                      disabled={isLoading}
-                    >
-                      {isLoading && selectedReferral.status === 'Completed' ? (
-                        <FaSpinner className="animate-spin mr-2" />
-                      ) : (
-                        <FaCheck className="mr-2" />
-                      )}
-                      Mark as Completed
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button
-                    onClick={() => setSelectedReferral(null)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                    disabled={isLoading}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function Reports() {
-  
 }

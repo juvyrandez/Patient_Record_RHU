@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
-import { FaTimes, FaLock, FaUser } from "react-icons/fa";
+import { FaTimes, FaLock, FaUser, FaSpinner } from "react-icons/fa";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -12,6 +12,7 @@ export default function Login() {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotError, setForgotError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const res = await fetch("/api/login", {
@@ -80,6 +82,8 @@ export default function Login() {
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -143,6 +147,7 @@ export default function Login() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full p-4 pl-12 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm transition-all duration-300 text-gray-800 placeholder-gray-400"
                 required
+                disabled={isLoading}
               />
               <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
                 <FaUser className="w-5 h-5" />
@@ -157,6 +162,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full p-4 pl-12 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm transition-all duration-300 text-gray-800 placeholder-gray-400"
                 required
+                disabled={isLoading}
               />
               <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
                 <FaLock className="w-5 h-5" />
@@ -165,6 +171,7 @@ export default function Login() {
                 type="button"
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors duration-200"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? <AiFillEyeInvisible size={22} /> : <AiFillEye size={22} />}
               </button>
@@ -178,6 +185,7 @@ export default function Login() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                  disabled={isLoading}
                 />
                 <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700 cursor-pointer">
                   Remember me
@@ -187,6 +195,7 @@ export default function Login() {
                 type="button"
                 className="text-sm text-green-600 hover:text-green-800 font-medium hover:underline"
                 onClick={() => setIsForgotPasswordOpen(true)}
+                disabled={isLoading}
               >
                 Forgot Password?
               </button>
@@ -194,9 +203,17 @@ export default function Login() {
             
             <button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white py-3 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5"
+              className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white py-3 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center"
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? (
+                <>
+                  <FaSpinner className="animate-spin mr-2" />
+                  Signing In...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
 
@@ -216,6 +233,7 @@ export default function Login() {
             <button
               className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
               onClick={() => setIsForgotPasswordOpen(false)}
+              disabled={isLoading}
             >
               <FaTimes size={20} />
             </button>

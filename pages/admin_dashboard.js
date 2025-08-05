@@ -3,8 +3,7 @@ import { useRouter } from "next/router";
 import { FiMenu, FiUser, FiLogOut, FiBell, FiUsers, FiMapPin } from "react-icons/fi";
 import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople,MdOutlineAccessTimeFilled  } from "react-icons/md";
 import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
-import { BiHistory,BiSolidReport  } from "react-icons/bi";
-import { BsPersonPlus, BsClipboardData } from 'react-icons/bs';
+import {BiSolidReport  } from "react-icons/bi";
 import Swal from "sweetalert2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
@@ -475,8 +474,11 @@ function Dashboard() {
 function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [barangays, setBarangays] = useState([]);
   const [formData, setFormData] = useState({
-    fullname: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     username: "",
     email: "",
     password: "",
@@ -497,6 +499,12 @@ function ManageUsers() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (isModalOpen && formData.userType === "BHW") {
+      fetchBarangays();
+    }
+  }, [isModalOpen, formData.userType]);
 
   const fetchUsers = async () => {
     try {
@@ -519,7 +527,6 @@ function ManageUsers() {
         }))
       );
 
-      // Sort by newest (descending id)
       allUsers.sort((a, b) => b.id - a.id);
       setUsers(allUsers);
       setSortOrder("newest");
@@ -532,12 +539,27 @@ function ManageUsers() {
     }
   };
 
+  const fetchBarangays = async () => {
+    try {
+      const res = await fetch('/api/brgy_list');
+      if (!res.ok) {
+        throw new Error('Failed to fetch barangays');
+      }
+      const data = await res.json();
+      setBarangays(data);
+    } catch (err) {
+      setError(err.message);
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
   const handleAddOrUpdateUser = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { userType, ...data } = formData;
+      const { firstName, middleName, lastName, userType, ...data } = formData;
+      const fullname = middleName ? `${firstName} ${middleName} ${lastName}` : `${firstName} ${lastName}`;
       let url;
       let method = editingUser ? 'PUT' : 'POST';
       let body;
@@ -545,12 +567,12 @@ function ManageUsers() {
       switch (userType) {
         case 'Staff':
           url = '/api/users';
-          body = editingUser ? { ...data, id: editingUser.id } : data;
+          body = editingUser ? { ...data, id: editingUser.id, fullname } : { ...data, fullname };
           break;
         case 'Doctor':
           url = editingUser ? `/api/doctors?id=${editingUser.id}` : '/api/doctors';
           body = {
-            fullname: data.fullname,
+            fullname,
             username: data.username,
             email: data.email,
             specialization: data.specialization,
@@ -560,11 +582,11 @@ function ManageUsers() {
         case 'BHW':
           url = editingUser ? `/api/bhws?id=${editingUser.id}` : '/api/bhws';
           body = {
-            fullname: data.fullname,
+            fullname,
             username: data.username,
             email: data.email,
             barangay: data.barangay,
-            contactNumber: data.contact_number,
+            contact_number: data.contact_number,
             ...(editingUser ? {} : { password: data.password }),
           };
           break;
@@ -660,9 +682,15 @@ function ManageUsers() {
 
   const openModal = (user = null) => {
     if (user) {
+      const nameParts = user.fullname.split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts[nameParts.length - 1];
+      const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
       setEditingUser(user);
       setFormData({
-        fullname: user.fullname,
+        firstName,
+        middleName,
+        lastName,
         username: user.username,
         email: user.email,
         password: "",
@@ -674,7 +702,9 @@ function ManageUsers() {
     } else {
       setEditingUser(null);
       setFormData({
-        fullname: "",
+        firstName: "",
+        middleName: "",
+        lastName: "",
         username: "",
         email: "",
         password: "",
@@ -692,6 +722,7 @@ function ManageUsers() {
     setIsModalOpen(false);
     setEditingUser(null);
     setError(null);
+    setBarangays([]);
   };
 
   const handleSortToggle = () => {
@@ -699,7 +730,6 @@ function ManageUsers() {
     setCurrentPage(0);
   };
 
-  // Apply filter and search
   let filteredUsers = filterType === "All" 
     ? users 
     : users.filter(user => user.userType === filterType);
@@ -710,11 +740,10 @@ function ManageUsers() {
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Apply sorting
   if (sortOrder === 'asc') {
     filteredUsers.sort((a, b) => a.fullname.localeCompare(b.fullname));
   } else if (sortOrder === 'desc') {
-    filteredUsers.sort((a, b) => b.fullname.localeCompare(a.fullname));
+    filteredUsers.sort((a, b) => b.fullname.localeCompare(b.fullname));
   } else {
     filteredUsers.sort((a, b) => b.id - a.id);
   }
@@ -731,7 +760,6 @@ function ManageUsers() {
     }
   };
 
-  // Calculate displayed page numbers (show up to 2 pages)
   const pageNumbers = [];
   const startPage = Math.max(0, currentPage);
   const endPage = Math.min(totalPages, startPage + 2);
@@ -739,24 +767,22 @@ function ManageUsers() {
     pageNumbers.push(i);
   }
 
-  // Calculate showing results text
   const startResult = currentPage * itemsPerPage + 1;
   const endResult = Math.min((currentPage + 1) * itemsPerPage, filteredUsers.length);
   const showingText = `Showing ${startResult}-${endResult} of ${filteredUsers.length} results`;
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      {/* Header */}
+    <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-          <p className="text-sm text-gray-600">Manage all users (Staff, Doctors, BHWs)</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">User Management</h2>
+          <p className="text-xs sm:text-sm text-gray-600">Manage all users (Staff, Doctors, BHWs)</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <input
             type="text"
             placeholder="Search by name, username, or email"
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-64"
+            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -770,10 +796,10 @@ function ManageUsers() {
             disabled={isLoading}
             title={sortOrder === 'asc' ? 'Sort Z-A' : sortOrder === 'desc' ? 'Sort by Newest' : 'Sort A-Z'}
           >
-            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : sortOrder === 'desc' ? <FaSortAlphaUp className="w-5 h-5" /> : <FaSortAlphaDown className="w-5 h-5" />}
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" /> : sortOrder === 'desc' ? <FaSortAlphaUp className="w-4 sm:w-5 h-4 sm:h-5" /> : <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" />}
           </button>
           <select
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-auto"
             value={filterType}
             onChange={(e) => {
               setFilterType(e.target.value);
@@ -786,21 +812,20 @@ function ManageUsers() {
             <option value="BHW">BHWs</option>
           </select>
           <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
             onClick={() => openModal()}
             disabled={isLoading}
           >
-            <FaUsers className="w-5 h-5" />
+            <FaUsers className="w-4 sm:w-5 h-4 sm:h-5" />
             <span>Add User</span>
           </button>
         </div>
       </div>
 
-      {/* Users Table */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
         {isLoading && !users.length ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <div className="animate-spin rounded-full h-6 sm:h-8 w-6 sm:w-8 border-b-2 border-blue-500 mx-auto"></div>
           </div>
         ) : (
           <>
@@ -808,19 +833,19 @@ function ManageUsers() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Full Name
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Username
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       User Type
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -828,33 +853,33 @@ function ManageUsers() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedUsers.map((user) => (
                     <tr key={`${user.userType}-${user.id}`} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{user.fullname}</div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">{user.fullname}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{user.username}</div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-500">{user.username}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-500">{user.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{user.userType}</div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-500">{user.userType}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button 
                             onClick={() => openModal(user)}
                             className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 disabled:opacity-50"
                             disabled={isLoading}
                           >
-                            <FaEdit className="w-5 h-5" />
+                            <FaEdit className="w-4 sm:w-5 h-4 sm:h-5" />
                           </button>
                           <button 
                             onClick={() => handleDeleteUser(user.id, user.userType)}
                             className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 disabled:opacity-50"
                             disabled={isLoading}
                           >
-                            <FaTrash className="w-5 h-5" />
+                            <FaTrash className="w-4 sm:w-5 h-4 sm:h-5" />
                           </button>
                         </div>
                       </td>
@@ -863,23 +888,22 @@ function ManageUsers() {
                 </tbody>
               </table>
             </div>
-            {/* Pagination */}
             {totalPages > 0 && (
-              <div className="flex justify-between items-center p-4 border-t border-gray-200">
-                <span className="text-sm text-gray-600">{showingText}</span>
+              <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
+                <span className="text-xs sm:text-sm text-gray-600">{showingText}</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 0}
                     className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <FaArrowLeft className="w-4 h-4" />
+                    <FaArrowLeft className="w-3 sm:w-4 h-3 sm:h-4" />
                   </button>
                   {pageNumbers.map((page) => (
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                      className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
                         currentPage === page
                           ? 'bg-blue-600 text-white'
                           : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
@@ -893,7 +917,7 @@ function ManageUsers() {
                     disabled={currentPage >= totalPages - 1}
                     className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <FaArrowRight className="w-4 h-4" />
+                    <FaArrowRight className="w-3 sm:w-4 h-3 sm:h-4" />
                   </button>
                 </div>
               </div>
@@ -902,12 +926,11 @@ function ManageUsers() {
         )}
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg md:max-w-2xl overflow-y-auto max-h-[90vh]">
+            <div className="sticky top-0 bg-white p-4 sm:p-6 border-b flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-800">
                 {editingUser ? "Edit User" : "Add New User"}
               </h2>
               <button 
@@ -915,21 +938,21 @@ function ManageUsers() {
                 className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
                 disabled={isLoading}
               >
-                <FaTimes className="w-5 h-5" />
+                <FaTimes className="w-4 sm:w-5 h-4 sm:h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleAddOrUpdateUser} className="p-6 space-y-4">
+            <form onSubmit={handleAddOrUpdateUser} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               {error && (
-                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                <div className="p-2 sm:p-3 bg-red-100 border border-red-400 text-red-700 rounded text-xs sm:text-sm">
                   {error}
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">User Type</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700">User Type</label>
                 <select
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   value={formData.userType}
                   onChange={(e) => setFormData({ ...formData, userType: e.target.value })}
                   disabled={isLoading || editingUser}
@@ -941,25 +964,50 @@ function ManageUsers() {
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.fullname}
-                  onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
-                  required
-                  disabled={isLoading}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
+                <div className="space-y-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Middle Name (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Middle Name"
+                    className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
+                    value={formData.middleName}
+                    onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-              
+
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">Username</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700">Username</label>
                 <input
                   type="text"
                   placeholder="Username"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
@@ -968,11 +1016,11 @@ function ManageUsers() {
               </div>
               
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700">Email</label>
                 <input
                   type="email"
                   placeholder="Email"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -982,11 +1030,11 @@ function ManageUsers() {
               
               {formData.userType === "Doctor" && (
                 <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700">Specialization</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Specialization</label>
                   <input
                     type="text"
                     placeholder="Specialization"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                     value={formData.specialization}
                     onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                     disabled={isLoading}
@@ -997,25 +1045,35 @@ function ManageUsers() {
               {formData.userType === "BHW" && (
                 <>
                   <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">Barangay</label>
-                    <input
-                      type="text"
-                      placeholder="Barangay"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Barangay</label>
+                    <select
+                      className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                       value={formData.barangay}
                       onChange={(e) => setFormData({ ...formData, barangay: e.target.value })}
                       required
-                      disabled={isLoading}
-                    />
+                      disabled={isLoading || barangays.length === 0}
+                    >
+                      <option value="" disabled>Select Barangay</option>
+                      {barangays.map((barangay, index) => (
+                        <option key={index} value={barangay}>{barangay}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">Contact Number</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Contact Number (11 digits)</label>
                     <input
-                      type="text"
+                      type="tel"
                       placeholder="Contact Number"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                       value={formData.contact_number}
-                      onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        if (value.length <= 11) {
+                          setFormData({ ...formData, contact_number: value });
+                        }
+                      }}
+                      pattern="[0-9]{11}"
+                      maxLength="11"
                       disabled={isLoading}
                     />
                   </div>
@@ -1024,11 +1082,11 @@ function ManageUsers() {
 
               {!editingUser && (
                 <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Password</label>
                   <input
                     type="password"
                     placeholder="Password"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
@@ -1037,18 +1095,18 @@ function ManageUsers() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="px-3 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                   disabled={isLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="px-3 py-1 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                   disabled={isLoading}
                 >
                   {isLoading ? (

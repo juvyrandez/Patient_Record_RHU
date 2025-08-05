@@ -24,7 +24,7 @@ export default async function handler(req, res) {
                    p.last_name as patient_last_name,
                    p.middle_name as patient_middle_name
             FROM referrals r
-            JOIN bhw_patients p ON r.patient_id = p.id
+            JOIN patients p ON r.patient_id = p.id
             ORDER BY r.referral_date DESC, r.referral_time DESC
           `);
           res.status(200).json(rows);
@@ -75,11 +75,11 @@ export default async function handler(req, res) {
 
         // Verify patient exists in bhw_patients
         const { rows: patientCheck } = await pool.query(
-          'SELECT id FROM bhw_patients WHERE id = $1',
+          'SELECT id FROM patients WHERE id = $1',
           [patientId]
         );
         if (patientCheck.length === 0) {
-          return res.status(404).json({ message: 'Patient not found in bhw_patients' });
+          return res.status(404).json({ message: 'Patient not found in patients' });
         }
 
         // Insert referral

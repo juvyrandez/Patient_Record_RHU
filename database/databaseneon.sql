@@ -66,6 +66,7 @@ EXECUTE FUNCTION update_timestamp();
 
 
 -------------------------------------------------------------
+OLDDDDDDDDDDDDDD
 CREATE TABLE patients (
   id SERIAL PRIMARY KEY,
   last_name VARCHAR(100) NOT NULL,
@@ -114,7 +115,7 @@ EXECUTE FUNCTION update_patient_timestamp();
 
 
 -----------------------------------------------------------------
-CREATE TABLE bhw_patients (
+CREATE TABLE patients (
   id SERIAL PRIMARY KEY,
   last_name VARCHAR(100) NOT NULL,
   first_name VARCHAR(100) NOT NULL,
@@ -143,6 +144,7 @@ CREATE TABLE bhw_patients (
   philhealth_category VARCHAR(50),
   pcb_member BOOLEAN DEFAULT FALSE,
   status VARCHAR(20) DEFAULT 'active',
+  type VARCHAR(20) NOT NULL CHECK (type IN ('staff_data', 'bhw_data')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -178,7 +180,7 @@ CREATE INDEX idx_login_history_user ON login_history(user_id, user_type);
 ------------------------------------------------------------------------------------
 CREATE TABLE referrals (
   id SERIAL PRIMARY KEY,
-  patient_id INTEGER REFERENCES bhw_patients(id),
+  patient_id INTEGER REFERENCES patients(id),
   referral_type VARCHAR(50) NOT NULL,
   referral_date DATE NOT NULL,
   referral_time TIME NOT NULL,
@@ -208,6 +210,7 @@ CREATE TABLE referrals (
   referred_by_name VARCHAR(100) NOT NULL,
   license_number VARCHAR(50) NOT NULL,
   status VARCHAR(20) DEFAULT 'Pending',
+  seen BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -224,6 +227,7 @@ CREATE TRIGGER update_referrals_timestamp
 BEFORE UPDATE ON referrals
 FOR EACH ROW
 EXECUTE FUNCTION update_referral_timestamp();
+
 
 
 

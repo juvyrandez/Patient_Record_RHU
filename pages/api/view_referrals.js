@@ -15,7 +15,7 @@ export default async function handler(req, res) {
                    p.middle_name as patient_middle_name,
                    p.residential_address as patient_address
             FROM referrals r
-            JOIN bhw_patients p ON r.patient_id = p.id
+            JOIN patients p ON r.patient_id = p.id
             WHERE r.id = $1
           `, [id]);
           if (rows.length === 0) {
@@ -31,8 +31,8 @@ export default async function handler(req, res) {
                    p.middle_name as patient_middle_name,
                    p.residential_address as patient_address
             FROM referrals r
-            JOIN bhw_patients p ON r.patient_id = p.id
-            ORDER BY r.referral_date DESC, r.referral_time DESC
+            JOIN patients p ON r.patient_id = p.id
+            ORDER BY r.created_at DESC
           `);
           res.status(200).json(rows);
         }
