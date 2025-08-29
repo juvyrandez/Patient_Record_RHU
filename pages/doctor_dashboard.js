@@ -11,41 +11,107 @@ export default function DoctorDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [fullname, setFullname] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const storedName = localStorage.getItem("fullname");
-    if (storedName) {
-      setFullname(storedName);
-    } else {
-      router.push("/login");
-    }
-  }, []);
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/profile", {
+          credentials: "include", // Important for sending cookies
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if user is a doctor
+          if (data.usertype !== 'doctor') {
+            Swal.fire({
+              icon: "error",
+              title: "Access Denied",
+              text: "You don't have permission to access this page",
+            });
+            await handleLogout();
+            return;
+          }
+          
+          setFullname(data.fullname);
+        } else {
+          // Token is invalid or expired
+          Swal.fire({
+            icon: "error",
+            title: "Session Expired",
+            text: "Please login again",
+          });
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to load profile data",
+        });
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleLogout = () => {
-    localStorage.removeItem("fullname");
-    localStorage.removeItem("usertype");
-    router.push("/login");
+    fetchProfile();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You will be logged out of the system",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, logout"
+      });
+      
+      if (result.isConfirmed) {
+        // Call the logout API
+        await fetch("/api/logout", {
+          method: "POST",
+          credentials: "include", // Important for sending cookies
+        });
+        
+        // Redirect to login page
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Error logging out:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Logout Error",
+        text: "There was a problem logging out. Please try again.",
+      });
+    }
   };
 
   return (
     <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-white text-gray-800 shadow-lg transition-all 
+      <aside className={`bg-[#027d42] text-white shadow-lg transition-all 
         ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
         
         {/* Logo Section */}
         <div className="flex justify-center items-center">
           <img 
-            src="/images/rhulogo.jpg" 
+            src="/images/ourlogo.png" 
             alt="Doctor Logo" 
             className={`transition-all duration-300 ${isSidebarOpen ? "w-32 h-32" : "w-12 h-12"}`} 
           />
         </div>
 
         <div className="flex items-center justify-between mt-4">
-          {isSidebarOpen && <h1 className="text-lg font-bold text-gray-700">Doctor Dashboard</h1>}
-          <button className="text-gray-700 p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          {isSidebarOpen && <h1 className="text-lg font-bold text-white">Doctor Dashboard</h1>}
+          <button className="text-white p-2 hover:bg-green-600 rounded-full" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FiMenu size={28} />
           </button>
         </div>
@@ -107,12 +173,12 @@ export default function DoctorDashboard() {
   );
 }
 
-// Sidebar Item Component (same as before)
+// Sidebar Item Component
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-gray-700 
-        ${activeTab === label ? "bg-gray-300 font-semibold" : "hover:bg-gray-200"} 
+      className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
+        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
@@ -121,6 +187,9 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
     </li>
   );
 }
+
+
+
 
 // Doctor Dashboard Components
 function DoctorDashboardContent() {

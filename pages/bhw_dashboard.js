@@ -15,55 +15,106 @@ export default function BHWDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const storedName = localStorage.getItem("fullname");
-    const userType = localStorage.getItem("usertype");
-    
-    // Redirect if not BHW or not logged in
-    if (!storedName || userType !== 'bhw') {
-      router.push("/login");
-    } else {
-      setFullname(storedName);
-    }
-  }, []);
 
-  const handleLogout = () => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "You will be logged out of the system",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, logout"
-    }).then((result) => {
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/profile", {
+          credentials: "include", // Important for sending cookies
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if user is a BHW
+          if (data.usertype !== 'bhw') {
+            Swal.fire({
+              icon: "error",
+              title: "Access Denied",
+              text: "You don't have permission to access this page",
+            });
+            await handleLogout();
+            return;
+          }
+          
+          setFullname(data.fullname);
+        } else {
+          // Token is invalid or expired
+          Swal.fire({
+            icon: "error",
+            title: "Session Expired",
+            text: "Please login again",
+          });
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to load profile data",
+        });
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You will be logged out of the system",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, logout"
+      });
+      
       if (result.isConfirmed) {
-        localStorage.removeItem("fullname");
-        localStorage.removeItem("usertype");
+        // Call the logout API
+        await fetch("/api/logout", {
+          method: "POST",
+          credentials: "include", // Important for sending cookies
+        });
+        
+        // Redirect to login page
         router.push("/login");
       }
-    });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Logout Error",
+        text: "There was a problem logging out. Please try again.",
+      });
+    }
   };
 
   return (
     <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-white text-gray-800 shadow-lg transition-all 
+      <aside className={`bg-[#027d42] text-white shadow-lg transition-all 
         ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
         
         {/* Logo Section */}
         <div className="flex justify-center items-center">
           <img 
-            src="/images/rhulogo.jpg" 
+            src="/images/ourlogo.png" 
             alt="BHW Logo" 
             className={`transition-all duration-300 ${isSidebarOpen ? "w-32 h-32" : "w-12 h-12"}`} 
           />
         </div>
 
         <div className="flex items-center justify-between mt-4">
-          {isSidebarOpen && <h1 className="text-lg font-bold text-gray-700">BHW Dashboard</h1>}
+          {isSidebarOpen && <h1 className="text-lg font-bold text-white">BHW Dashboard</h1>}
           <button 
-            className="text-gray-700 p-2 hover:bg-gray-200 rounded-full"
+            className="text-white p-2 hover:bg-green-600 rounded-full"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
             <FiMenu size={28} />
@@ -156,8 +207,8 @@ export default function BHWDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-gray-700 cursor-pointer
-        ${activeTab === label ? "bg-gray-300 font-semibold" : "hover:bg-gray-200"} 
+      className={`flex items-center gap-4 p-4 rounded-lg transition text-white cursor-pointer
+        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
@@ -166,6 +217,7 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
     </li>
   );
 }
+
 
 
 function Reports() {
@@ -245,6 +297,7 @@ function AddPatientRecords() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [brgyList, setBrgyList] = useState([]);
   const [formData, setFormData] = useState({
     last_name: "",
     first_name: "",
@@ -308,7 +361,27 @@ function AddPatientRecords() {
 
   useEffect(() => {
     fetchPatients();
+    fetchBrgyList();
   }, []);
+
+  useEffect(() => {
+    if (formData.civil_status !== "Married" || formData.gender !== "Female") {
+      setFormData(prev => ({ ...prev, maiden_name: "N/A" }));
+    }
+    if (formData.civil_status !== "Married") {
+      setFormData(prev => ({ ...prev, spouse_name: "N/A" }));
+    }
+  }, [formData.civil_status, formData.gender]);
+
+  const fetchBrgyList = async () => {
+    try {
+      const response = await fetch('/api/brgy_list');
+      const data = await response.json();
+      setBrgyList(data);
+    } catch (error) {
+      console.error('Error fetching brgy list:', error);
+    }
+  };
 
   const fetchPatients = async () => {
     try {
@@ -322,10 +395,19 @@ function AddPatientRecords() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === "contact_number") {
+      if (/^\d{0,11}$/.test(value)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleCheckboxChange = (field, value) => {
@@ -347,6 +429,32 @@ function AddPatientRecords() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.contact_number.length !== 11) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Contact number must be exactly 11 digits.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700',
+          popup: 'rounded-lg'
+        }
+      });
+      return;
+    }
+    if (!formData.birth_date) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Birth date is required.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700',
+          popup: 'rounded-lg'
+        }
+      });
+      return;
+    }
     setIsLoading(true);
     try {
       const patientData = {
@@ -392,13 +500,9 @@ function AddPatientRecords() {
       });
 
       if (response.ok) {
-        const newPatient = await response.json();
         fetchPatients();
         setShowForm(false);
         resetForm();
-        if (!isEditing) {
-          handleCreateReferral(newPatient);
-        }
       } else {
         console.error('Error saving patient:', await response.text());
       }
@@ -669,6 +773,7 @@ function AddPatientRecords() {
                       name="maiden_name"
                       value={formData.maiden_name}
                       onChange={handleInputChange}
+                      disabled={formData.civil_status !== "Married" || formData.gender !== "Female"}
                       className="block w-full px-3 py-1 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                     />
                   </div>
@@ -730,6 +835,7 @@ function AddPatientRecords() {
                       value={formData.birth_date}
                       onChange={handleInputChange}
                       className="block w-full px-3 py-1 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
+                      required
                     />
                   </div>
                   <div className="space-y-1">
@@ -766,21 +872,27 @@ function AddPatientRecords() {
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
-                    <textarea
+                    <select
                       name="residential_address"
                       value={formData.residential_address}
                       onChange={handleInputChange}
                       className="block w-full px-3 py-1 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
-                      rows="3"
-                    ></textarea>
+                    >
+                      <option value="">Select Barangay</option>
+                      {brgyList.map((brgy, index) => (
+                        <option key={index} value={brgy}>{brgy}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Contact Number</label>
                     <input
-                      type="text"
+                      type="tel"
                       name="contact_number"
                       value={formData.contact_number}
                       onChange={handleInputChange}
+                      pattern="[0-9]{11}"
+                      maxLength={11}
                       className="block w-full px-3 py-1 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                     />
                   </div>
@@ -810,6 +922,7 @@ function AddPatientRecords() {
                       name="spouse_name"
                       value={formData.spouse_name}
                       onChange={handleInputChange}
+                      disabled={formData.civil_status !== "Married"}
                       className="block w-full px-3 py-1 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                     />
                   </div>

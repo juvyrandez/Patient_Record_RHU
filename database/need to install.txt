@@ -5,9 +5,61 @@
  npm install sweetalert2
  npm install chart.js react-chartjs-2
  npm install leaflet react-leaflet
+ npm install jsonwebtoken cookie
 
- 
+
  npm install pg
 
- 
  npm audit fix --force
+
+
+
+ CREATE TABLE referrals (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id),
+  referral_type VARCHAR(50) NOT NULL,
+  referral_date DATE NOT NULL,
+  referral_time TIME NOT NULL,
+  referred_to VARCHAR(255) NOT NULL,
+  referred_to_address TEXT NOT NULL,
+  patient_last_name VARCHAR(100) NOT NULL,
+  patient_first_name VARCHAR(100) NOT NULL,
+  patient_middle_name VARCHAR(100),
+  patient_address TEXT NOT NULL,
+  chief_complaints TEXT NOT NULL,
+  medical_history TEXT,
+  surgical_operations VARCHAR(10),
+  surgical_procedure TEXT,
+  drug_allergy VARCHAR(10),
+  allergy_type TEXT,
+  last_meal_time VARCHAR(10),
+  blood_pressure VARCHAR(20),
+  heart_rate VARCHAR(20),
+  respiratory_rate VARCHAR(20),
+  weight VARCHAR(20),
+  impression TEXT,
+  action_taken TEXT,
+  health_insurance VARCHAR(10),
+  insurance_type TEXT,
+  referral_reasons TEXT[],
+  other_reason TEXT,
+  referred_by_name VARCHAR(100) NOT NULL,
+  license_number VARCHAR(50) NOT NULL,
+  status VARCHAR(20) DEFAULT 'Pending',
+  seen BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_referral_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_referrals_timestamp
+BEFORE UPDATE ON referrals
+FOR EACH ROW
+EXECUTE FUNCTION update_referral_timestamp();

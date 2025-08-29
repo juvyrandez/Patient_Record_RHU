@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiUser, FiLogOut, FiBell, FiUsers, FiMapPin } from "react-icons/fi";
-import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople,MdOutlineAccessTimeFilled  } from "react-icons/md";
+import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople, MdOutlineAccessTimeFilled } from "react-icons/md";
 import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
-import {BiSolidReport  } from "react-icons/bi";
+import { BiSolidReport } from "react-icons/bi";
 import Swal from "sweetalert2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import LogHistory from '/components/AdminComponents/LogHistory';
 import Reports from '/components/AdminComponents/Reports';
+
+const JWT_SECRET = process.env.NEXT_PUBLIC_JWT_SECRET || "supersecretkey";
 
 // Register ChartJS components
 ChartJS.register(
@@ -21,48 +23,71 @@ ChartJS.register(
   Legend
 );
 
-
 export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [fullname, setFullname] = useState("");
   const [isUsersDropdownOpen, setIsUsersDropdownOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const storedName = localStorage.getItem("fullname");
-    if (storedName) {
-      setFullname(storedName);
-    } else {
-      router.push("/login");
-    }
-  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("fullname");
-    localStorage.removeItem("usertype");
-    router.push("/login");
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch("/api/profile", {
+          credentials: "include", // Important for sending cookies
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setFullname(data.fullname);
+          setProfileData(data);
+        } else {
+          // Token is invalid or expired
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        router.push("/login");
+      }
+    };
+
+    fetchProfile();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include", // Important for sending cookies
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
   };
 
   return (
-    <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
+    <div className="flex min-h-screen font-poppins bg-white-100 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-white text-gray-800 shadow-lg transition-all 
-        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
-        
-        {/* Logo Section */}
+      <aside
+        className={`bg-[#027d42] text-white shadow-lg transition-all 
+        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}
+      >
         <div className="flex justify-center items-center">
-          <img 
-            src="/images/rhulogo.jpg" 
-            alt="Admin Logo" 
-            className={`transition-all duration-300 ${isSidebarOpen ? "w-32 h-32" : "w-12 h-12"}`} 
+          <img
+            src="/images/ourlogo.png"
+            alt="Admin Logo"
+            className={`transition-all duration-300 ${isSidebarOpen ? "w-32 h-32" : "w-12 h-12"}`}
           />
         </div>
 
         <div className="flex items-center justify-between mt-4">
-          {isSidebarOpen && <h1 className="text-lg font-bold text-gray-700">Admin Dashboard</h1>}
-          <button className="text-gray-700 p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          {isSidebarOpen && <h1 className="text-lg font-bold text-white">Admin Dashboard</h1>}
+          <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FiMenu size={28} />
           </button>
         </div>
@@ -71,8 +96,8 @@ export default function AdminDashboard() {
           <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <li>
             <div
-              className={`flex items-center gap-4 p-4 rounded-lg transition text-gray-700 
-                ${activeTab.includes("Manage Users") ? "bg-gray-300 font-semibold" : "hover:bg-gray-200"} 
+              className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
+                ${activeTab.includes("Manage Users") ? "bg-green-900 font-semibold" : ""} 
                 ${isSidebarOpen ? "" : "justify-center"}`}
               onClick={() => {
                 setIsUsersDropdownOpen(!isUsersDropdownOpen);
@@ -95,11 +120,11 @@ export default function AdminDashboard() {
               </ul>
             )}
           </li>
-          <SidebarItem icon={MdOutlineAccessTimeFilled } label="Log History" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={BiSolidReport } label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={MdOutlineAccessTimeFilled} label="Log History" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={BiSolidReport} label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <li
-            className={`flex items-center gap-4 p-4 rounded-lg transition text-red-500 
-              hover:bg-gray-200 ${isSidebarOpen ? "" : "justify-center"}`}
+            className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
+              hover:bg-green-600 ${isSidebarOpen ? "" : "justify-center"}`}
             onClick={handleLogout}
           >
             <FiLogOut size={28} />
@@ -113,7 +138,6 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-2xl font-bold">{activeTab}</h2>
           <div className="flex items-center gap-6">
-            {/* Notification Bell */}
             <button className="relative p-3 rounded-full hover:bg-gray-200 transition">
               <FiBell size={24} />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 rounded-full">3</span>
@@ -129,11 +153,17 @@ export default function AdminDashboard() {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg">
                   <ul className="py-2">
-                    <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-200 cursor-pointer">
+                    <li
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-200 cursor-pointer"
+                      onClick={() => {
+                        setProfileOpen(true);
+                        setDropdownOpen(false);
+                      }}
+                    >
                       <FiUser />
                       <span>Profile</span>
                     </li>
-                    <li 
+                    <li
                       className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-gray-200 cursor-pointer"
                       onClick={handleLogout}
                     >
@@ -146,6 +176,25 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Profile Modal */}
+        {profileOpen && profileData && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white w-[400px] p-6 rounded-lg shadow-lg">
+              <h3 className="text-xl font-bold mb-4">Profile Information</h3>
+              <p><strong>Fullname:</strong> {profileData.fullname}</p>
+              <p><strong>Username:</strong> {profileData.username}</p>
+              <p><strong>Email:</strong> {profileData.email}</p>
+              <button
+                className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg"
+                onClick={() => setProfileOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
 
         {/* Content Section */}
         <div className="mt-6">
@@ -166,8 +215,8 @@ export default function AdminDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-gray-700 
-        ${activeTab === label ? "bg-gray-300 font-semibold" : "hover:bg-gray-200"} 
+      className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
+        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
@@ -181,8 +230,8 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 function SidebarSubItem({ icon: Icon, label, activeTab, setActiveTab }) {
   return (
     <li
-      className={`flex items-center gap-3 p-3 rounded-lg transition text-gray-700 
-        ${activeTab === label ? "bg-gray-200 font-semibold" : "hover:bg-gray-100"} cursor-pointer`}
+      className={`flex items-center gap-3 p-3 rounded-lg transition text-white 
+        ${activeTab === label ? "bg-green-900 font-semibold" : ""} cursor-pointer`}
       onClick={() => setActiveTab(label)}
     >
       <Icon size={20} />
@@ -833,19 +882,22 @@ function ManageUsers() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
                       Full Name
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
                       Username
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
                       Email
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
                       User Type
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -853,6 +905,9 @@ function ManageUsers() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedUsers.map((user) => (
                     <tr key={`${user.userType}-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-500">{user.id}</div>
+                      </td>
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                         <div className="text-xs sm:text-sm font-medium text-gray-900">{user.fullname}</div>
                       </td>
@@ -1254,15 +1309,17 @@ function StaffList() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedUsers.map((user) => (
                     <tr key={`Staff-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.id}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
@@ -1485,15 +1542,17 @@ function DoctorList() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedUsers.map((user) => (
                     <tr key={`Doctor-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.id}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>
@@ -1720,15 +1779,17 @@ function BHWList() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedUsers.map((user) => (
                     <tr key={`BHW-${user.id}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.id}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{user.fullname}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.username}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-500">{user.email}</div></td>

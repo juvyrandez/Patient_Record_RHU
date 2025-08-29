@@ -3,13 +3,14 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
-import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus } from 'react-icons/fa';
+import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner } from 'react-icons/fa';
 import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import ReferralForm from '/components/StaffComponents/ReferralForm';
 import Reports from '/components/StaffComponents/Reports';
+import Swal from "sweetalert2";
 
 // Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -21,34 +22,105 @@ export default function StaffDashboard() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [fullname, setFullname] = useState("");
   const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const storedName = localStorage.getItem("fullname");
-    if (storedName) {
-      setFullname(storedName);
-    } else {
-      router.push("/login"); // Redirect if not logged in
-    }
-
-    // Fetch notifications
-    const fetchNotifications = async () => {
+    const fetchProfileAndNotifications = async () => {
       try {
-        const response = await fetch('/api/notifications');
-        if (!response.ok) throw new Error('Failed to fetch notifications');
-        const data = await response.json();
-        setNotifications(data);
+        setIsLoading(true);
+        
+        // Fetch profile first
+        const profileResponse = await fetch("/api/profile", {
+          credentials: "include",
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          
+          // Check if user is staff
+          if (profileData.usertype !== 'staff') {
+            Swal.fire({
+              icon: "error",
+              title: "Access Denied",
+              text: "You don't have permission to access this page",
+            });
+            await handleLogout();
+            return;
+          }
+          
+          setFullname(profileData.fullname);
+          
+          // Fetch notifications after successful auth
+          try {
+            const notificationsResponse = await fetch('/api/notifications', {
+              credentials: "include",
+            });
+            
+            if (notificationsResponse.ok) {
+              const notificationsData = await notificationsResponse.json();
+              setNotifications(notificationsData);
+            } else {
+              console.error('Failed to fetch notifications');
+            }
+          } catch (error) {
+            console.error('Error fetching notifications:', error);
+          }
+        } else {
+          // Token is invalid or expired
+          Swal.fire({
+            icon: "error",
+            title: "Session Expired",
+            text: "Please login again",
+          });
+          router.push("/login");
+        }
       } catch (error) {
-        console.error('Error fetching notifications:', error);
+        console.error("Error fetching profile:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to load profile data",
+        });
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchNotifications();
-  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("fullname");
-    localStorage.removeItem("usertype");
-    router.push("/login");
+    fetchProfileAndNotifications();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You will be logged out of the system",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, logout"
+      });
+      
+      if (result.isConfirmed) {
+        // Call the logout API
+        await fetch("/api/logout", {
+          method: "POST",
+          credentials: "include",
+        });
+        
+        // Redirect to login page
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Error logging out:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Logout Error",
+        text: "There was a problem logging out. Please try again.",
+      });
+    }
   };
 
   const toggleNotificationPanel = () => {
@@ -61,11 +133,27 @@ export default function StaffDashboard() {
     try {
       const response = await fetch('/api/notifications', {
         method: 'DELETE',
+        credentials: "include",
       });
+      
       if (!response.ok) throw new Error('Failed to clear notifications');
       setNotifications([]);
+      setNotificationOpen(false);
+      
+      Swal.fire({
+        icon: "success",
+        title: "Notifications Cleared",
+        text: "All notifications have been cleared",
+        timer: 1500,
+        showConfirmButton: false
+      });
     } catch (error) {
       console.error('Error clearing notifications:', error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to clear notifications",
+      });
     }
   };
 
@@ -74,25 +162,26 @@ export default function StaffDashboard() {
       setActiveTab("Referral");
       router.push(`/referrals/${notification.referral_id}`);
     }
+    setNotificationOpen(false);
   };
 
   return (
     <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-white text-gray-800 shadow-lg transition-all 
+      <aside className={`bg-[#027d42] text-white shadow-lg transition-all 
         ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
         {/* Logo Section */}
         <div className="flex justify-center items-center">
           <img 
-            src="/images/rhulogo.jpg" 
+            src="/images/ourlogo.png" 
             alt="Staff Logo" 
             className={`transition-all duration-300 ${isSidebarOpen ? "w-32 h-32" : "w-12 h-12"}`} 
           />
         </div>
 
         <div className="flex items-center justify-between mt-4">
-          {isSidebarOpen && <h1 className="text-lg font-bold text-gray-700">Staff Dashboard</h1>}
-          <button className="text-gray-700 p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          {isSidebarOpen && <h1 className="text-lg font-bold text-white">Staff Dashboard</h1>}
+          <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FiMenu size={28} />
           </button>
         </div>
@@ -217,8 +306,8 @@ export default function StaffDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-gray-700 
-        ${activeTab === label ? "bg-gray-200 font-semibold" : "hover:bg-gray-100"} 
+      className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
+        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
@@ -346,6 +435,7 @@ function PatientRecords() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showFormSelection, setShowFormSelection] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     last_name: "",
     first_name: "",
@@ -413,10 +503,31 @@ function PatientRecords() {
     assessment: '',
     treatment: ''
   });
+  const [brgyList, setBrgyList] = useState([]);
 
   useEffect(() => {
     fetchPatients();
+    fetchBrgyList();
   }, []);
+
+  const fetchBrgyList = async () => {
+    try {
+      const response = await fetch('/api/brgy_list');
+      const data = await response.json();
+      setBrgyList(data);
+    } catch (error) {
+      console.error('Error fetching brgy list:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.civil_status !== "Married" || formData.gender !== "Female") {
+      setFormData(prev => ({ ...prev, maiden_name: "N/A" }));
+    }
+    if (formData.civil_status !== "Married") {
+      setFormData(prev => ({ ...prev, spouse_name: "N/A" }));
+    }
+  }, [formData.civil_status, formData.gender]);
 
   const fetchPatients = async () => {
     try {
@@ -492,6 +603,22 @@ function PatientRecords() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.birth_date && !isEditing) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Birth date is required.',
+        icon: 'error',
+        timer: 1500,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'swal-custom-popup swal-error-popup',
+          title: 'swal-custom-title',
+          content: 'swal-custom-content'
+        }
+      });
+      return;
+    }
+    setIsLoading(true);
     try {
       const patientData = {
         last_name: formData.last_name,
@@ -536,6 +663,16 @@ function PatientRecords() {
       });
 
       if (response.ok) {
+        Swal.fire({
+          title: 'Record Updated Successfully',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+          customClass: {
+            popup: 'swal-custom-popup swal-success-popup',
+            title: 'swal-custom-title'
+          }
+        });
         fetchPatients();
         setShowForm(false);
         resetForm();
@@ -544,6 +681,18 @@ function PatientRecords() {
       }
     } catch (error) {
       console.error('Error saving patient:', error);
+      Swal.fire({
+        title: 'Error Updating Record',
+        icon: 'error',
+        timer: 1500,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'swal-custom-popup swal-error-popup',
+          title: 'swal-custom-title'
+        }
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -636,6 +785,10 @@ function PatientRecords() {
     return age;
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const filteredPatients = patients.filter((patient) =>
     `${patient.last_name} ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`
       .toLowerCase()
@@ -678,11 +831,11 @@ function PatientRecords() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-gray-800">New Patient Enrollment</h3>
+                <h3 className="text-xl font-bold text-gray-800">{isEditing ? 'Edit Patient Record' : 'New Patient Enrollment'}</h3>
                 <p className="text-sm text-gray-600">Integrated Clinic Information System (ICLINICSYS)</p>
               </div>
               <button 
-                onClick={() => setShowForm(false)} 
+                onClick={() => {setShowForm(false); resetForm();}} 
                 className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
               >
                 <FaTimes className="w-5 h-5" />
@@ -740,6 +893,7 @@ function PatientRecords() {
                       name="maiden_name"
                       value={formData.maiden_name}
                       onChange={handleInputChange}
+                      disabled={formData.civil_status !== "Married" || formData.gender !== "Female"}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -800,7 +954,9 @@ function PatientRecords() {
                       name="birth_date"
                       value={formData.birth_date}
                       onChange={handleInputChange}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${isEditing ? 'bg-gray-100' : ''}`}
+                      required={!isEditing}
+                      readOnly={isEditing}
                     />
                   </div>
                   <div className="space-y-1">
@@ -837,21 +993,27 @@ function PatientRecords() {
                   </div>
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
-                    <textarea
+                    <select
                       name="residential_address"
                       value={formData.residential_address}
                       onChange={handleInputChange}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      rows="3"
-                    ></textarea>
+                    >
+                      <option value="">Select Barangay</option>
+                      {brgyList.map((brgy, index) => (
+                        <option key={index} value={brgy}>{brgy}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700">Contact Number</label>
                     <input
-                      type="text"
+                      type="tel"
                       name="contact_number"
                       value={formData.contact_number}
                       onChange={handleInputChange}
+                      pattern="[0-9]{11}"
+                      maxLength={11}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -881,6 +1043,7 @@ function PatientRecords() {
                       name="spouse_name"
                       value={formData.spouse_name}
                       onChange={handleInputChange}
+                      disabled={formData.civil_status !== "Married"}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1116,67 +1279,69 @@ function PatientRecords() {
                 </div>
               </div>
 
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
-                  <h4 className="text-lg font-semibold text-gray-800">Patient's Consent</h4>
-                  <span className="text-sm text-gray-500 ml-2">(Pahintulot ng pasyente)</span>
-                </div>
-                
-                <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6">
-                  <h5 className="font-bold text-gray-700 mb-3">IN ENGLISH</h5>
-                  <p className="mb-3 text-gray-600">
-                    I have read and understood the Patient's information after I have been made aware of its contents. 
-                    During an informational conversation I was informed in a very comprehensible way about the essence 
-                    and importance of the Integrated Clinic Information System (IClinicsys) by the CHU/RHU representative. 
-                    All my questions during the conversation were answered sufficiently and I had been given enough time 
-                    to decide on this.
-                  </p>
-                  <p className="mb-3 text-gray-600">
-                    Furthermore, I permit the CHU/RHU to encode the information concerning my person and the collected 
-                    data regarding disease symptoms and consultations for said information system.
-                  </p>
-                  <p className="text-gray-600">
-                    I wish to be informed about the medical results concerning me personally or my direct descendants. 
-                    Also, I can cancel my consent at the CHU/RHU any time without giving reasons and without concerning 
-                    any disadvantage for my medical treatment.
-                  </p>
+              {!isEditing && (
+                <div className="mb-8">
+                  <div className="flex items-center mb-4">
+                    <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
+                    <h4 className="text-lg font-semibold text-gray-800">Patient's Consent</h4>
+                    <span className="text-sm text-gray-500 ml-2">(Pahintulot ng pasyente)</span>
+                  </div>
                   
-                  <h5 className="font-bold text-gray-700 mt-5 mb-3">SA FILIPINO</h5>
-                  <p className="mb-3 text-gray-600">
-                    Ako ay nabasa at naintindihan ang impormasyon ng Pasyente matapos akong bigyan ng kaalaman ng mga nilalaman nito. 
-                    Sa isang pag-uusap kasama ang kinatawan ng CHU/RHU ako ay binigyang-paunawa nang mahusay tungkol sa kahalagahan 
-                    at kahalagahan ng Integrated Clinic Information System (IClinicsys). Lahat ng aking mga katanungan sa panahon ng 
-                    pag-uusap ay nasagot ng sapat at ako ay binigyan ng sapat na oras upang magpasiya nito.
-                  </p>
-                  <p className="mb-3 text-gray-600">
-                    Higit pa rito, pinahihintulutan ko ang CHU/RHU upang i-encode ang mga impormasyon patungkol sa akin at ang mga 
-                    nakolektang impormasyon tungkol sa mga sintomas ng aking sakit at konsultasyong kaugnay nito para sa nasabing 
-                    information system.
-                  </p>
-                  <p className="text-gray-600">
-                    Nais kong malaman at maipasa sa aking direktang kapamilya ang aking mga medikal na resulta. Gayundin, maari kong 
-                    kanselahin ang aking pahintulot sa CHU/RHU anumang oras na walang ibinigay na dahilan at walang kinalaman sa 
-                    anumang kawalan para sa aking medikal na paggamot.
-                  </p>
-                </div>
+                  <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6">
+                    <h5 className="font-bold text-gray-700 mb-3">IN ENGLISH</h5>
+                    <p className="mb-3 text-gray-600">
+                      I have read and understood the Patient's information after I have been made aware of its contents. 
+                      During an informational conversation I was informed in a very comprehensible way about the essence 
+                      and importance of the Integrated Clinic Information System (IClinicsys) by the CHU/RHU representative. 
+                      All my questions during the conversation were answered sufficiently and I had been given enough time 
+                      to decide on this.
+                    </p>
+                    <p className="mb-3 text-gray-600">
+                      Furthermore, I permit the CHU/RHU to encode the information concerning my person and the collected 
+                      data regarding disease symptoms and consultations for said information system.
+                    </p>
+                    <p className="text-gray-600">
+                      I wish to be informed about the medical results concerning me personally or my direct descendants. 
+                      Also, I can cancel my consent at the CHU/RHU any time without giving reasons and without concerning 
+                      any disadvantage for my medical treatment.
+                    </p>
+                    
+                    <h5 className="font-bold text-gray-700 mt-5 mb-3">SA FILIPINO</h5>
+                    <p className="mb-3 text-gray-600">
+                      Ako ay nabasa at naintindihan ang impormasyon ng Pasyente matapos akong bigyan ng kaalaman ng mga nilalaman nito. 
+                      Sa isang pag-uusap kasama ang kinatawan ng CHU/RHU ako ay binigyang-paunawa nang mahusay tungkol sa kahalagahan 
+                      at kahalagahan ng Integrated Clinic Information System (IClinicsys). Lahat ng aking mga katanungan sa panahon ng 
+                      pag-uusap ay nasagot ng sapat at ako ay binigyan ng sapat na oras upang magpasiya nito.
+                    </p>
+                    <p className="mb-3 text-gray-600">
+                      Higit pa rito, pinahihintulutan ko ang CHU/RHU upang i-encode ang mga impormasyon patungkol sa akin at ang mga 
+                      nakolektang impormasyon tungkol sa mga sintomas ng aking sakit at konsultasyong kaugnay nito para sa nasabing 
+                      information system.
+                    </p>
+                    <p className="text-gray-600">
+                      Nais kong malaman at maipasa sa aking direktang kapamilya ang aking mga medikal na resulta. Gayundin, maari kong 
+                      kanselahin ang aking pahintulot sa CHU/RHU anumang oras na walang ibinigay na dahilan at walang kinalaman sa 
+                      anumang kawalan para sa aking medikal na paggamot.
+                    </p>
+                  </div>
 
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
-                    <input
-                      type="checkbox"
-                      id="consent"
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      required
-                    />
-                  </div>
-                  <div className="ml-3">
-                    <label htmlFor="consent" className="text-sm text-gray-700">
-                      I agree to the terms and conditions
-                    </label>
+                  <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="checkbox"
+                        id="consent"
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        required
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <label htmlFor="consent" className="text-sm text-gray-700">
+                        I agree to the terms and conditions
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button
@@ -1186,14 +1351,23 @@ function PatientRecords() {
                     resetForm();
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+                  disabled={isLoading}
                 >
-                  Submit Enrollment
+                  {isLoading ? (
+                    <>
+                      <FaSpinner className="animate-spin mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    isEditing ? 'Update Record' : 'Submit Enrollment'
+                  )}
                 </button>
               </div>
             </form>
@@ -1225,9 +1399,6 @@ function PatientRecords() {
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Contact
           </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Status
-          </th>
           <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
             Actions
           </th>
@@ -1258,13 +1429,6 @@ function PatientRecords() {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {patient.contact_number || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  patient.status === 'New' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {patient.status}
-                </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex justify-end space-x-2">
@@ -2264,82 +2428,183 @@ function PatientRecords() {
 
 
       {/* View Patient Modal */}
-      {viewPatient && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-            <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">Patient Details</h3>
-                <p className="text-sm text-gray-600">{viewPatient.last_name}, {viewPatient.first_name}</p>
-              </div>
-              <button 
-                onClick={() => setViewPatient(null)} 
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
-              >
-                <FaTimes className="w-5 h-5" />
-              </button>
+{viewPatient && (
+  <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none">
+      <style>
+        {`
+          @media print {
+            .no-print {
+              display: none !important;
+            }
+            .print-container {
+              width: 100%;
+              max-width: 210mm; /* A4 width */
+              margin: 10mm auto;
+              padding: 10mm;
+              font-size: 12pt;
+              line-height: 1.5;
+            }
+            .print-container h3 {
+              font-size: 16pt;
+              margin-bottom: 8pt;
+            }
+            .print-container h4 {
+              font-size: 14pt;
+              margin-top: 12pt;
+              margin-bottom: 8pt;
+            }
+            .print-container p {
+              font-size: 12pt;
+              margin-bottom: 4pt;
+            }
+            .print-container .grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 10mm;
+            }
+            .print-container .border-b {
+              border-bottom: 1pt solid #000;
+              margin-bottom: 8pt;
+            }
+          }
+        `}
+      </style>
+      <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center print:bg-transparent print:border-none">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Patient Medical Record</h3>
+          <p className="text-sm text-gray-500">Integrated Clinic Information System (ICLINICSYS)</p>
+        </div>
+        <button 
+          onClick={() => setViewPatient(null)} 
+          className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 no-print"
+        >
+          <FaTimes className="w-5 h-5" />
+        </button>
+      </div>
+      
+      <div className="p-6 print-container">
+        <div className="mb-6">
+          <h4 className="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+            Patient Information
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Full Name</p>
+              <p className="text-sm text-gray-900">
+                {viewPatient.last_name}, {viewPatient.first_name} {viewPatient.middle_name || ''} {viewPatient.suffix || ''}
+              </p>
             </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Full Name</p>
-                  <p className="text-gray-900">{viewPatient.last_name}, {viewPatient.first_name} {viewPatient.middle_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Birth Date</p>
-                  <p className="text-gray-900">{viewPatient.birth_date} (Age: {calculateAge(viewPatient.birth_date)})</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Gender</p>
-                  <p className="text-gray-900">{viewPatient.gender}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Contact Number</p>
-                  <p className="text-gray-900">{viewPatient.contact_number || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Civil Status</p>
-                  <p className="text-gray-900">{viewPatient.civil_status}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Blood Type</p>
-                  <p className="text-gray-900">{viewPatient.blood_type || '-'}</p>
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-gray-500">Address</p>
-                <p className="text-gray-900">{viewPatient.residential_address || '-'}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">PhilHealth</p>
-                  <p className="text-gray-900">
-                    {viewPatient.philhealth_member === 'Yes' 
-                      ? `${viewPatient.philhealth_number} (${viewPatient.philhealth_status})`
-                      : 'No'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">4Ps Member</p>
-                  <p className="text-gray-900">{viewPatient.pps_member}</p>
-                </div>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Maiden Name</p>
+              <p className="text-sm text-gray-900">{viewPatient.maiden_name || 'N/A'}</p>
             </div>
-            
-            <div className="p-4 border-t flex justify-end">
-              <button
-                onClick={() => setViewPatient(null)}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Close
-              </button>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Mother's Name</p>
+              <p className="text-sm text-gray-900">{viewPatient.mothers_name || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Gender</p>
+              <p className="text-sm text-gray-900">{viewPatient.gender}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Birth Date</p>
+              <p className="text-sm text-gray-900">
+                {viewPatient.birth_date} (Age: {calculateAge(viewPatient.birth_date)})
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Birthplace</p>
+              <p className="text-sm text-gray-900">{viewPatient.birth_place || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Blood Type</p>
+              <p className="text-sm text-gray-900">{viewPatient.blood_type || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Residential Address</p>
+              <p className="text-sm text-gray-900">{viewPatient.residential_address || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Contact Number</p>
+              <p className="text-sm text-gray-900">{viewPatient.contact_number || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Civil Status</p>
+              <p className="text-sm text-gray-900">{viewPatient.civil_status}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Spouse Name</p>
+              <p className="text-sm text-gray-900">{viewPatient.spouse_name || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Educational Attainment</p>
+              <p className="text-sm text-gray-900">{viewPatient.educational_attainment}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Employment Status</p>
+              <p className="text-sm text-gray-900">{viewPatient.employment_status}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Family Member Role</p>
+              <p className="text-sm text-gray-900">{viewPatient.family_member_role || '-'}</p>
             </div>
           </div>
         </div>
-      )}
+
+        <div className="mb-6">
+          <h4 className="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+            Program Membership
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-600">DSWD NHTS</p>
+              <p className="text-sm text-gray-900">
+                {viewPatient.dswd_nhts ? `Yes (Household No: ${viewPatient.facility_household_no || '-'})` : 'No'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">4Ps Member</p>
+              <p className="text-sm text-gray-900">
+                {viewPatient.pps_member ? `Yes (Household No: ${viewPatient.pps_household_no || '-'})` : 'No'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">PhilHealth Member</p>
+              <p className="text-sm text-gray-900">
+                {viewPatient.philhealth_member 
+                  ? `Yes (${viewPatient.philhealth_status}, Number: ${viewPatient.philhealth_number || '-'}, Category: ${viewPatient.philhealth_category})`
+                  : 'No'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Primary Care Benefit (PCB) Member</p>
+              <p className="text-sm text-gray-900">{viewPatient.pcb_member ? 'Yes' : 'No'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-4 border-t border-gray-200 flex justify-end gap-3 no-print">
+        <button
+          onClick={() => {
+            window.print();
+          }}
+          className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+        >
+          Print
+        </button>
+        <button
+          onClick={() => setViewPatient(null)}
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
+

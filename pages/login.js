@@ -16,40 +16,16 @@ export default function Login() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect if already logged in
-    const storedUser = localStorage.getItem("fullname");
-    if (storedUser) {
-      const userType = localStorage.getItem("usertype");
-      redirectToDashboard(userType);
+    // Pre-fill username from cookie if rememberMe was checked
+    const cookies = document.cookie.split(';');
+    const rememberedUsername = cookies.find(cookie => cookie.trim().startsWith('rememberedUsername='));
+    
+    if (rememberedUsername) {
+      const usernameValue = rememberedUsername.split('=')[1];
+      setUsername(decodeURIComponent(usernameValue));
+      setRememberMe(true);
     }
-
-    // Pre-fill username and rememberMe state from localStorage
-    const savedUsername = localStorage.getItem("rememberedUsername");
-    const savedRememberMe = localStorage.getItem("rememberMe") === "true";
-    if (savedUsername) {
-      setUsername(savedUsername);
-    }
-    setRememberMe(savedRememberMe);
-  }, [router]);
-
-  const redirectToDashboard = (userType) => {
-    switch (userType) {
-      case 'admin':
-        router.push("/admin_dashboard");
-        break;
-      case 'staff':
-        router.push("/staff_dashboard");
-        break;
-      case 'bhw':
-        router.push("/bhw_dashboard");
-        break;
-      case 'doctor':
-        router.push("/doctor_dashboard");
-        break;
-      default:
-        router.push("/");
-    }
-  };
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -61,21 +37,36 @@ export default function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        credentials: "include" // Important for cookies
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem("fullname", data.fullname);
-        localStorage.setItem("usertype", data.usertype);
+        // Set remember me cookie if needed
         if (rememberMe) {
-          localStorage.setItem("rememberedUsername", username);
-          localStorage.setItem("rememberMe", "true");
+          document.cookie = `rememberedUsername=${encodeURIComponent(username)}; max-age=${60 * 60 * 24 * 30}; path=/`;
         } else {
-          localStorage.removeItem("rememberedUsername");
-          localStorage.setItem("rememberMe", "false");
+          document.cookie = "rememberedUsername=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         }
-        redirectToDashboard(data.usertype);
+        
+        // Redirect based on user type
+        switch (data.usertype) {
+          case 'admin':
+            router.push("/admin_dashboard");
+            break;
+          case 'staff':
+            router.push("/staff_dashboard");
+            break;
+          case 'bhw':
+            router.push("/bhw_dashboard");
+            break;
+          case 'doctor':
+            router.push("/doctor_dashboard");
+            break;
+          default:
+            router.push("/");
+        }
       } else {
         setError(data.message || "Login failed. Please check your credentials.");
       }
@@ -96,7 +87,7 @@ export default function Login() {
       return;
     }
 
-    // Simulate sending a password reset email (no backend integration)
+    // Simulate sending a password reset email
     setTimeout(() => {
       setForgotEmail("");
       setIsForgotPasswordOpen(false);
