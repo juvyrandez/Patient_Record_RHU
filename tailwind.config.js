@@ -1,6 +1,10 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   theme: {
     extend: {
+      fontFamily: {
+        poppins: ['Poppins', 'sans-serif'],
+      },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
       },
@@ -12,4 +16,5 @@ module.exports = {
       },
     },
   },
+  plugins: [],
 };

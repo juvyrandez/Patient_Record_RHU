@@ -4,6 +4,7 @@ import { FiMenu, FiUser, FiLogOut, FiBell, FiUsers, FiMapPin } from "react-icons
 import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople, MdOutlineAccessTimeFilled } from "react-icons/md";
 import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
 import { BiSolidReport } from "react-icons/bi";
+import { RiAdminFill } from "react-icons/ri";
 import Swal from "sweetalert2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
@@ -144,11 +145,14 @@ export default function AdminDashboard() {
             </button>
 
             {/* Profile Dropdown */}
-            <div className="relative">
-              <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="font-semibold">{fullname || "Admin"}</span>
-                <img src={"/images/admin.png"} alt="Admin" className="w-12 h-12 rounded-full border" />
-              </button>
+<div className="relative">
+  <button
+    className="flex items-center gap-3"
+    onClick={() => setDropdownOpen(!dropdownOpen)}
+  >
+    <span className="font-semibold">{fullname || "Admin"}</span>
+    <RiAdminFill className="w-12 h-12 rounded-full border p-2 text-gray-700" />
+  </button>
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg">

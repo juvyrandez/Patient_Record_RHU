@@ -2,19 +2,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
-import { FaUserPlus, FaChartBar } from "react-icons/fa";
-import { FaPlus, FaTimes, FaArrowLeft, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaUserPlus, FaChartBar, FaChevronDown } from "react-icons/fa";
+import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash } from 'react-icons/fa';
 import { FaSearch, FaFileMedical, FaEye, FaSpinner } from 'react-icons/fa';
+import { FaUserDoctor } from "react-icons/fa6";
 import Swal from "sweetalert2";
 
 export default function BHWDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const [fullname, setFullname] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -96,6 +97,11 @@ export default function BHWDashboard() {
     }
   };
 
+  const handleAddPatientsClick = () => {
+    setActiveTab("Add Patients");
+    setIsPatientDropdownOpen(!isPatientDropdownOpen);
+  };
+
   return (
     <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
@@ -129,13 +135,35 @@ export default function BHWDashboard() {
             setActiveTab={setActiveTab} 
             isSidebarOpen={isSidebarOpen} 
           />
-          <SidebarItem 
-            icon={FaUserPlus} 
-            label="Add Patients" 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
-            isSidebarOpen={isSidebarOpen} 
-          />
+          <li
+            className={`flex items-center gap-4 p-4 rounded-lg transition text-white cursor-pointer
+              ${activeTab === "Add Patients" ? "bg-green-900 font-semibold" : ""} 
+              ${isSidebarOpen ? "" : "justify-center"}`}
+            onClick={handleAddPatientsClick}
+          >
+            <FaUserPlus size={28} />
+            {isSidebarOpen && (
+              <div className="flex items-center justify-between w-full">
+                <span>Add Patients</span>
+                <FaChevronDown 
+                  size={16} 
+                  className={`transition-transform ${isPatientDropdownOpen ? "rotate-180" : ""}`} 
+                />
+              </div>
+            )}
+          </li>
+          {isPatientDropdownOpen && isSidebarOpen && (
+            <ul className="ml-8 mt-2 space-y-2">
+              <li
+                className={`flex items-center gap-4 p-2 rounded-lg transition text-white cursor-pointer
+                  ${activeTab === "Referrals" ? "bg-green-900 font-semibold" : ""}`}
+                onClick={() => setActiveTab("Referrals")}
+              >
+                <FaFileMedical size={20} />
+                <span>Referrals</span>
+              </li>
+            </ul>
+          )}
           <SidebarItem 
             icon={FaChartBar} 
             label="Reports" 
@@ -164,11 +192,7 @@ export default function BHWDashboard() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
                 <span className="font-semibold">{fullname || "BHW"}</span>
-                <img 
-                  src={"/images/bhw.png"} 
-                  alt="BHW" 
-                  className="w-12 h-12 rounded-full border object-cover"
-                />
+                <FaUserDoctor className="w-12 h-12 rounded-full border p-2 text-gray-700" />
               </button>
 
               {dropdownOpen && (
@@ -196,6 +220,7 @@ export default function BHWDashboard() {
         <div className="mt-6">
           {activeTab === "Dashboard" && <BHWDashboardContent />}
           {activeTab === "Add Patients" && <AddPatientRecords />}
+          {activeTab === "Referrals" && <ViewReferrals />}
           {activeTab === "Reports" && <Reports />}
         </div>
       </main>
@@ -219,10 +244,334 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 }
 
 
+function ViewReferrals() {
+  const [referrals, setReferrals] = useState([]);
+  const [filteredReferrals, setFilteredReferrals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [sortOrder, setSortOrder] = useState('newest'); // 'newest', 'oldest', 'az', 'za'
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
-function Reports() {
+  // Fetch referrals data
+  const fetchReferrals = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/bhw_referrals');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch referrals');
+      }
+      
+      const data = await response.json();
+      setReferrals(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReferrals();
+  }, []);
+
+  // Apply filters, search, and sorting
+  useEffect(() => {
+    let result = [...referrals];
+
+    // Status filter
+    if (filterStatus !== 'All') {
+      result = result.filter(ref => ref.status === filterStatus);
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(ref =>
+        ref.patient_first_name.toLowerCase().includes(query) ||
+        ref.patient_last_name.toLowerCase().includes(query) ||
+        ref.referred_to.toLowerCase().includes(query) ||
+        ref.referred_by_name.toLowerCase().includes(query)
+      );
+    }
+
+    // Sorting
+    switch (sortOrder) {
+      case 'az':
+        result.sort((a, b) => a.patient_last_name.localeCompare(b.patient_last_name));
+        break;
+      case 'za':
+        result.sort((a, b) => b.patient_last_name.localeCompare(a.patient_last_name));
+        break;
+      case 'newest':
+        result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        break;
+      case 'oldest':
+        result.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        break;
+      default:
+        result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    setFilteredReferrals(result);
+    setCurrentPage(0); // Reset to first page when filters change
+  }, [referrals, searchQuery, filterStatus, sortOrder]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredReferrals.length / itemsPerPage);
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i);
+  const currentItems = filteredReferrals.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleSortToggle = () => {
+    const sortOrderCycle = {
+      'newest': 'oldest',
+      'oldest': 'az',
+      'az': 'za',
+      'za': 'newest'
+    };
+    setSortOrder(sortOrderCycle[sortOrder]);
+  };
+
+  const getSortIcon = () => {
+    switch (sortOrder) {
+      case 'az': return <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" />;
+      case 'za': return <FaSortAlphaUp className="w-4 sm:w-5 h-4 sm:h-5" />;
+      case 'newest': return <span className="text-xs font-bold">NEW</span>;
+      case 'oldest': return <span className="text-xs font-bold">OLD</span>;
+      default: return <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" />;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'in progress': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const showingText = `Showing ${Math.min(filteredReferrals.length, (currentPage * itemsPerPage) + 1)}-${Math.min((currentPage + 1) * itemsPerPage, filteredReferrals.length)} of ${filteredReferrals.length} referrals`;
+
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading referrals...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px] flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>Error: {error}</p>
+          <button
+            onClick={fetchReferrals}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Referral Management</h2>
+          <p className="text-xs sm:text-sm text-gray-600">View and manage all patient referrals</p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <input
+            type="text"
+            placeholder="Search by patient name or facility"
+            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={loading}
+          />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={loading}
+            title={`Sort: ${sortOrder}`}
+          >
+            {getSortIcon()}
+          </button>
+          <select
+            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-auto"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            disabled={loading}
+          >
+            <option value="All">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <button
+            onClick={fetchReferrals}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            disabled={loading}
+          >
+            <FaSyncAlt className="w-4 sm:w-5 h-4 sm:h-5" />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Results Count */}
+      <div className="mb-4">
+        <p className="text-sm text-gray-600">
+          {showingText}
+        </p>
+      </div>
+
+      {/* Referrals Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {currentItems.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No referrals found matching your criteria</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Patient
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Referred To
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Referred By
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Seen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentItems.map((referral) => (
+                    <tr key={referral.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {referral.patient_last_name}, {referral.patient_first_name}
+                          {referral.patient_middle_name && ` ${referral.patient_middle_name}`}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {referral.chief_complaints}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{referral.referred_to}</div>
+                        <div className="text-sm text-gray-500">{referral.referred_to_address}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(referral.referral_date)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {referral.referral_time}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(referral.status)}`}>
+                          {referral.status || 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{referral.referred_by_name}</div>
+                        <div className="text-sm text-gray-500">License: {referral.license_number}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          referral.seen ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {referral.seen ? 'Yes' : 'No'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center p-2 border-t border-gray-200">
+                <span className="text-xs text-gray-600">{showingText}</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-1.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowLeft className="w-3 h-3" />
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-2 py-0.5 text-xs font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-1.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
-
 
 
 // BHW Dashboard Components
@@ -298,6 +647,11 @@ function AddPatientRecords() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [brgyList, setBrgyList] = useState([]);
+  const [viewPatient, setViewPatient] = useState(null);
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [filterGender, setFilterGender] = useState('All');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     last_name: "",
     first_name: "",
@@ -669,11 +1023,56 @@ function AddPatientRecords() {
     setShowFormModal(true);
   };
 
-  const filteredPatients = patients.filter((patient) =>
-    `${patient.last_name} ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const handleView = async (patientId) => {
+    try {
+      const response = await fetch(`/api/bhw_patients?id=${patientId}&type=bhw_data`);
+      const patient = await response.json();
+      setViewPatient(patient);
+    } catch (error) {
+      console.error('Error fetching patient for view:', error);
+    }
+  };
+
+  const handleSortToggle = () => {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    setCurrentPage(0);
+  };
+
+  const filteredPatients = patients
+    .filter((patient) =>
+      `${patient.last_name} ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+    )
+    .filter((patient) => filterGender === 'All' || patient.gender === filterGender)
+    .sort((a, b) => {
+      const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
+      const nameB = `${b.last_name} ${b.first_name}`.toLowerCase();
+      if (sortOrder === 'asc') {
+        return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+      } else {
+        return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
+      }
+    });
+
+  const totalItems = filteredPatients.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const pageNumbers = [];
+  for (let i = 0; i < totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
+  const showingText = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`;
 
   return (
     <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
@@ -682,27 +1081,46 @@ function AddPatientRecords() {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Patient Records Management</h2>
           <p className="text-xs sm:text-sm text-gray-600">Manage all patient enrollments and information</p>
         </div>
-        <button 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md"
-          onClick={() => setShowForm(true)}
-        >
-          <FaUserPlus className="w-4 sm:w-5 h-4 sm:h-5" />
-          <span>Add New Patient</span>
-        </button>
-      </div>
-
-      <div className="mb-4 sm:mb-6">
-        <div className="relative max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FaSearch className="text-gray-400 w-4 h-4" />
-          </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <input
             type="text"
-            placeholder="Search patients..."
-            className="block w-full pl-10 pr-3 py-1 sm:py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-sm"
+            placeholder="Search by name"
+            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64 text-xs sm:text-sm"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(0);
+            }}
+            disabled={isLoading}
           />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isLoading}
+            title={sortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
+          >
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" /> : <FaSortAlphaUp className="w-4 sm:w-5 h-4 sm:h-5" />}
+          </button>
+          <select
+            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-auto text-xs sm:text-sm"
+            value={filterGender}
+            onChange={(e) => {
+              setFilterGender(e.target.value);
+              setCurrentPage(0);
+            }}
+          >
+            <option value="All">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <button 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            onClick={() => setShowForm(true)}
+            disabled={isLoading}
+          >
+            <FaUserPlus className="w-4 sm:w-5 h-4 sm:h-5" />
+            <span>Add New Patient</span>
+          </button>
         </div>
       </div>
 
@@ -1252,6 +1670,181 @@ function AddPatientRecords() {
         </div>
       )}
 
+      {viewPatient && (
+        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none">
+            <style>
+              {`
+                @media print {
+                  .no-print {
+                    display: none !important;
+                  }
+                  .print-container {
+                    width: 100%;
+                    max-width: 210mm; /* A4 width */
+                    margin: 10mm auto;
+                    padding: 10mm;
+                    font-size: 12pt;
+                    line-height: 1.5;
+                  }
+                  .print-container h3 {
+                    font-size: 16pt;
+                    margin-bottom: 8pt;
+                  }
+                  .print-container h4 {
+                    font-size: 14pt;
+                    margin-top: 12pt;
+                    margin-bottom: 8pt;
+                  }
+                  .print-container p {
+                    font-size: 12pt;
+                    margin-bottom: 4pt;
+                  }
+                  .print-container .grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 10mm;
+                  }
+                  .print-container .border-b {
+                    border-bottom: 1pt solid #000;
+                    margin-bottom: 8pt;
+                  }
+                }
+              `}
+            </style>
+            <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center print:bg-transparent print:border-none">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Patient Medical Record</h3>
+                <p className="text-sm text-gray-500">Integrated Clinic Information System (ICLINICSYS)</p>
+              </div>
+              <button 
+                onClick={() => setViewPatient(null)} 
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 no-print"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 print-container">
+              <div className="mb-6">
+                <h4 className="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                  Patient Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Full Name</p>
+                    <p className="text-sm text-gray-900">
+                      {viewPatient.last_name}, {viewPatient.first_name} {viewPatient.middle_name || ''} {viewPatient.suffix || ''}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Maiden Name</p>
+                    <p className="text-sm text-gray-900">{viewPatient.maiden_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Mother's Name</p>
+                    <p className="text-sm text-gray-900">{viewPatient.mothers_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Gender</p>
+                    <p className="text-sm text-gray-900">{viewPatient.gender}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Birth Date</p>
+                    <p className="text-sm text-gray-900">
+                      {viewPatient.birth_date} (Age: {calculateAge(viewPatient.birth_date)})
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Birthplace</p>
+                    <p className="text-sm text-gray-900">{viewPatient.birth_place || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Blood Type</p>
+                    <p className="text-sm text-gray-900">{viewPatient.blood_type || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Residential Address</p>
+                    <p className="text-sm text-gray-900">{viewPatient.residential_address || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Contact Number</p>
+                    <p className="text-sm text-gray-900">{viewPatient.contact_number || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Civil Status</p>
+                    <p className="text-sm text-gray-900">{viewPatient.civil_status}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Spouse Name</p>
+                    <p className="text-sm text-gray-900">{viewPatient.spouse_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Educational Attainment</p>
+                    <p className="text-sm text-gray-900">{viewPatient.educational_attainment}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Employment Status</p>
+                    <p className="text-sm text-gray-900">{viewPatient.employment_status}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Family Member Role</p>
+                    <p className="text-sm text-gray-900">{viewPatient.family_member_role || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h4 className="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                  Program Membership
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">DSWD NHTS</p>
+                    <p className="text-sm text-gray-900">
+                      {viewPatient.dswd_nhts ? `Yes (Household No: ${viewPatient.facility_household_no || '-'})` : 'No'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">4Ps Member</p>
+                    <p className="text-sm text-gray-900">
+                      {viewPatient.pps_member ? `Yes (Household No: ${viewPatient.pps_household_no || '-'})` : 'No'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">PhilHealth Member</p>
+                    <p className="text-sm text-gray-900">
+                      {viewPatient.philhealth_member 
+                        ? `Yes (${viewPatient.philhealth_status}, Number: ${viewPatient.philhealth_number || '-'}, Category: ${viewPatient.philhealth_category})`
+                        : 'No'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Primary Care Benefit (PCB) Member</p>
+                    <p className="text-sm text-gray-900">{viewPatient.pcb_member ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-3 no-print">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Print
+              </button>
+              <button
+                onClick={() => setViewPatient(null)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showFormModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-6xl my-8">
@@ -1706,8 +2299,8 @@ function AddPatientRecords() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPatients.length > 0 ? (
-                filteredPatients.map((patient) => (
+              {currentPatients.length > 0 ? (
+                currentPatients.map((patient) => (
                   <tr key={patient.id} className="hover:bg-gray-50">
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                       {patient.last_name}
@@ -1731,14 +2324,22 @@ function AddPatientRecords() {
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {patient.contact_number || "-"}
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 flex gap-2">
+                      <button
+                        onClick={() => handleView(patient.id)}
+                        className="text-green-600 hover:text-green-800 flex items-center"
+                        disabled={isLoading}
+                      >
+                        <FaEye className="mr-1" />
+                        View
+                      </button>
                       <button
                         onClick={() => handleCreateReferral(patient)}
                         className="text-blue-600 hover:text-blue-800 flex items-center"
                         disabled={isLoading}
                       >
                         <FaFileMedical className="mr-1" />
-                        Create Referral
+                        Referral
                       </button>
                     </td>
                   </tr>
@@ -1753,6 +2354,306 @@ function AddPatientRecords() {
             </tbody>
           </table>
         </div>
+        {totalPages > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
+            <span className="text-xs sm:text-sm text-gray-600">{showingText}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 0}
+                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FaArrowLeft className="w-3 sm:w-4 h-3 sm:h-4" />
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages - 1}
+                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FaArrowRight className="w-3 sm:w-4 h-3 sm:h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+function Reports() {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
+
+  // Simple sample reports data
+  const sampleReports = [
+    {
+      id: 1,
+      title: 'Monthly Patient Summary',
+      type: 'Patient',
+      date: '2024-01-15',
+      status: 'Completed',
+      downloads: 45
+    },
+    {
+      id: 2,
+      title: 'Weekly Referrals',
+      type: 'Referral',
+      date: '2024-01-12',
+      status: 'Completed',
+      downloads: 28
+    },
+    {
+      id: 3,
+      title: 'Medication Inventory',
+      type: 'Inventory',
+      date: '2024-01-10',
+      status: 'Pending',
+      downloads: 12
+    },
+    {
+      id: 4,
+      title: 'Annual Health Report',
+      type: 'Health',
+      date: '2024-01-08',
+      status: 'Completed',
+      downloads: 67
+    },
+    {
+      id: 5,
+      title: 'Daily Appointments',
+      type: 'Appointment',
+      date: '2024-01-05',
+      status: 'Completed',
+      downloads: 23
+    },
+    {
+      id: 6,
+      title: 'Financial Summary',
+      type: 'Financial',
+      date: '2024-01-03',
+      status: 'Completed',
+      downloads: 18
+    },
+    {
+      id: 7,
+      title: 'Patient Feedback',
+      type: 'Survey',
+      date: '2024-01-02',
+      status: 'Completed',
+      downloads: 34
+    },
+    {
+      id: 8,
+      title: 'Emergency Cases',
+      type: 'Emergency',
+      date: '2024-01-01',
+      status: 'Completed',
+      downloads: 19
+    },
+    {
+      id: 9,
+      title: 'Vaccination Report',
+      type: 'Vaccination',
+      date: '2023-12-28',
+      status: 'Completed',
+      downloads: 56
+    },
+    {
+      id: 10,
+      title: 'Staff Performance',
+      type: 'HR',
+      date: '2023-12-25',
+      status: 'Completed',
+      downloads: 15
+    }
+  ];
+
+  // Fetch reports data
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setReports(sampleReports);
+    } catch (err) {
+      console.error('Error loading reports:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  // Pagination
+  const totalPages = Math.ceil(reports.length / itemsPerPage);
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i);
+  const currentItems = reports.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleDownload = (reportId) => {
+    console.log(`Downloading report ${reportId}`);
+    // Add download logic here
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[400px]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Reports</h2>
+          <p className="text-xs sm:text-sm text-gray-600">View and download system reports</p>
+        </div>
+        <button
+          onClick={fetchReports}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        >
+          <FaSyncAlt className="w-4 h-4" />
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      {/* Reports List */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {reports.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No reports available</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Report Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentItems.map((report) => (
+                    <tr key={report.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {report.title}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {report.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(report.date)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          report.status === 'Completed' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {report.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleDownload(report.id)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Download report"
+                        >
+                          <FaDownload className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Simple Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center p-4 border-t border-gray-200">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <FaArrowLeft className="w-3 h-3" />
+                  </button>
+                  
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage + 1} of {totalPages}
+                  </span>
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <FaArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

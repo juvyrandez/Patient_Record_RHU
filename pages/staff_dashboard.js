@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
-import { FaUserPlus, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner } from 'react-icons/fa';
+import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp  } from 'react-icons/fa';
 import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
@@ -257,17 +257,17 @@ export default function StaffDashboard() {
             </div>
 
             {/* Profile Dropdown */}
-            <div className="relative">
-              <button 
-                className="flex items-center gap-3" 
-                onClick={() => {
-                  setDropdownOpen(!dropdownOpen);
-                  if (notificationOpen) setNotificationOpen(false); // Close notification panel if open
-                }}
-              >
-                <span className="font-semibold text-gray-700">{fullname || "Staff"}</span>
-                <img src="/images/admin.png" alt="Staff" className="w-10 h-10 rounded-full border" />
-              </button>
+<div className="relative">
+  <button 
+    className="flex items-center gap-3" 
+    onClick={() => {
+      setDropdownOpen(!dropdownOpen);
+      if (notificationOpen) setNotificationOpen(false); // Close notification panel if open
+    }}
+  >
+    <span className="font-semibold text-gray-700">{fullname || "Staff"}</span>
+    <FaUser className="w-12 h-12 rounded-full border p-2 text-gray-700" />
+  </button>
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white shadow-md rounded-lg">
@@ -504,6 +504,10 @@ function PatientRecords() {
     treatment: ''
   });
   const [brgyList, setBrgyList] = useState([]);
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [filterGender, setFilterGender] = useState('All');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchPatients();
@@ -789,11 +793,46 @@ function PatientRecords() {
     window.print();
   };
 
-  const filteredPatients = patients.filter((patient) =>
-    `${patient.last_name} ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const handleSortToggle = () => {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    setCurrentPage(0);
+  };
+
+  const filteredPatients = patients
+    .filter((patient) =>
+      `${patient.last_name} ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+    )
+    .filter((patient) => filterGender === 'All' || patient.gender === filterGender)
+    .sort((a, b) => {
+      const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
+      const nameB = `${b.last_name} ${b.first_name}`.toLowerCase();
+      if (sortOrder === 'asc') {
+        return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+      } else {
+        return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
+      }
+    });
+
+  const totalItems = filteredPatients.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const pageNumbers = [];
+  for (let i = 0; i < totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
+  const showingText = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`;
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
@@ -802,27 +841,50 @@ function PatientRecords() {
           <h2 className="text-2xl font-bold text-gray-800">Patient Records Management</h2>
           <p className="text-sm text-gray-600">Manage all patient enrollments and information</p>
         </div>
-        <button 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md"
-          onClick={() => setShowForm(true)}
-        >
-          <FaUserPlus className="w-5 h-5" />
-          <span>Add New Patient</span>
-        </button>
-      </div>
-
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FaSearch className="text-gray-400" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className="relative max-w-md w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search patients..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(0);
+              }}
+              disabled={isLoading}
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Search patients..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <button
+            onClick={handleSortToggle}
+            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isLoading}
+            title={sortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
+          >
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : <FaSortAlphaUp className="w-5 h-5" />}
+          </button>
+          <select
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-auto"
+            value={filterGender}
+            onChange={(e) => {
+              setFilterGender(e.target.value);
+              setCurrentPage(0);
+            }}
+          >
+            <option value="All">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <button 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            onClick={() => setShowForm(true)}
+          >
+            <FaUserPlus className="w-5 h-5" />
+            <span>Add New Patient</span>
+          </button>
         </div>
       </div>
 
@@ -894,7 +956,7 @@ function PatientRecords() {
                       value={formData.maiden_name}
                       onChange={handleInputChange}
                       disabled={formData.civil_status !== "Married" || formData.gender !== "Female"}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w.full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1375,99 +1437,132 @@ function PatientRecords() {
         </div>
       )}
 
-      {/* Patients Table */}
-<div className="bg-white rounded-xl shadow overflow-hidden">
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Last Name
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            First Name
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Middle Name
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Age
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Gender
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Contact
-          </th>
-          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody className="bg-white divide-y divide-gray-200">
-        {filteredPatients.length > 0 ? (
-          filteredPatients.map((patient) => (
-            <tr key={patient.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {patient.last_name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {patient.first_name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {patient.middle_name || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {calculateAge(patient.birth_date)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  patient.gender === 'Male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
-                }`}>
-                  {patient.gender}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {patient.contact_number || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div className="flex justify-end space-x-2">
-                  <button 
-                    onClick={() => handleView(patient.id)}
-                    className="text-indigo-600 hover:text-indigo-900"
-                    title="View"
-                  >
-                    <FaEye className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => handleEdit(patient.id)}
-                    className="text-blue-600 hover:text-blue-900"
-                    title="Edit"
-                  >
-                    <FaEdit className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => handleMedicalRecord(patient)}
-                    className="text-green-600 hover:text-green-900"
-                    title="Medical Record"
-                  >
-                    <FaFileMedical className="w-5 h-5" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
-              No matching records found.
-            </td>
-          </tr>
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  First Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Middle Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Age
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Gender
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentPatients.length > 0 ? (
+                currentPatients.map((patient) => (
+                  <tr key={patient.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {patient.last_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {patient.first_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {patient.middle_name || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {calculateAge(patient.birth_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        patient.gender === 'Male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
+                      }`}>
+                        {patient.gender}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {patient.contact_number || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <button 
+                          onClick={() => handleView(patient.id)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title="View"
+                        >
+                          <FaEye className="w-5 h-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleEdit(patient.id)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Edit"
+                        >
+                          <FaEdit className="w-5 h-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleMedicalRecord(patient)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Medical Record"
+                        >
+                          <FaFileMedical className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
+                    No matching records found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
+            <span className="text-sm text-gray-600">{showingText}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 0}
+                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FaArrowLeft className="w-4 h-4" />
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-1 text-sm font-medium rounded-md ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages - 1}
+                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FaArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
-      </tbody>
-    </table>
-  </div>
-</div>
+      </div>
 
 {/* Form Selection Modal */}
 {showFormSelection && (

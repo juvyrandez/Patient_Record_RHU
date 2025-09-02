@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard, MdMedicalServices, MdPeople, MdHistory } from "react-icons/md";
 import { FaNotesMedical, FaFileMedical } from "react-icons/fa";
+import { FaUserDoctor } from "react-icons/fa6";
 import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
 import Swal from "sweetalert2";
 
@@ -135,11 +136,14 @@ export default function DoctorDashboard() {
             </button>
 
             {/* Profile Dropdown */}
-            <div className="relative">
-              <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="font-semibold">{fullname || "Doctor"}</span>
-                <img src={"/images/doctor.png"} alt="Doctor" className="w-12 h-12 rounded-full border" />
-              </button>
+<div className="relative">
+  <button 
+    className="flex items-center gap-3" 
+    onClick={() => setDropdownOpen(!dropdownOpen)}
+  >
+    <span className="font-semibold">{fullname || "Doctor"}</span>
+    <FaUserDoctor className="w-12 h-12 rounded-full border p-2 text-gray-700" />
+  </button>
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg">
@@ -227,20 +231,57 @@ function DoctorDashboardContent() {
   );
 }
 
+
+
 function PatientConsultations() {
   const [patients, setPatients] = useState([
-    { id: 1, name: "Juan Dela Cruz", age: 45, status: "Waiting", concern: "Fever and cough" },
-    { id: 2, name: "Maria Santos", age: 32, status: "In Progress", concern: "Back pain" },
-    { id: 3, name: "Pedro Reyes", age: 28, status: "Waiting", concern: "Annual checkup" },
+    { 
+      id: 1, 
+      name: "Alyza Betheney", 
+      patientId: "1232",
+      age: 21, 
+      gender: "Female",
+      status: "Waiting", 
+      concern: "I've been experiencing a cough and sore throat for the past few days",
+      vitalSigns: {
+        bloodPressure: "130/80 mmhg",
+        heartRate: "85 bpm",
+        temperature: "38°C"
+      },
+      possibleDiagnosis: [
+        { condition: "Acute Bronchitis", probability: "83%" },
+        { condition: "Panuhot", probability: "55%" },
+        { condition: "Gl apoan", probability: "21%" }
+      ]
+    },
+    { 
+      id: 2, 
+      name: "Maria Santos", 
+      patientId: "1233",
+      age: 32, 
+      gender: "Female",
+      status: "Waiting", 
+      concern: "Back pain",
+      vitalSigns: {
+        bloodPressure: "120/80 mmhg",
+        heartRate: "75 bpm",
+        temperature: "36.5°C"
+      },
+      possibleDiagnosis: []
+    }
   ]);
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [consultationNotes, setConsultationNotes] = useState("");
-  const [diagnosis, setDiagnosis] = useState("");
-  const [prescription, setPrescription] = useState("");
+  const [finalDiagnosis, setFinalDiagnosis] = useState("");
+  const [treatmentPlan, setTreatmentPlan] = useState("");
 
   const handleStartConsultation = (patient) => {
     setSelectedPatient(patient);
+    // Pre-fill treatment plan with initial recommendations if available
+    if (patient.id === 1) {
+      setTreatmentPlan("Paracetamol 500mg, twice daily for 5 days\nDrink plenty of water 8-12 glasses");
+    }
   };
 
   const handleCompleteConsultation = () => {
@@ -251,10 +292,18 @@ function PatientConsultations() {
       timer: 2000,
       showConfirmButton: false,
     });
+    
+    // Update patient status to completed
+    setPatients(patients.map(patient => 
+      patient.id === selectedPatient.id 
+        ? { ...patient, status: "Completed" }
+        : patient
+    ));
+    
     setSelectedPatient(null);
     setConsultationNotes("");
-    setDiagnosis("");
-    setPrescription("");
+    setFinalDiagnosis("");
+    setTreatmentPlan("");
   };
 
   return (
@@ -278,16 +327,19 @@ function PatientConsultations() {
                 <tr key={patient.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{patient.name}</div>
+                    <div className="text-xs text-gray-500">ID: {patient.patientId}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{patient.age}</div>
+                    <div className="text-sm text-gray-500">{patient.age} yrs</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{patient.concern}</div>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-500 max-w-xs truncate">{patient.concern}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      patient.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                      patient.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 
+                      patient.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-green-100 text-green-800'
                     }`}>
                       {patient.status}
                     </span>
@@ -295,7 +347,7 @@ function PatientConsultations() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button 
                       onClick={() => handleStartConsultation(patient)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-blue-900 px-3 py-1 bg-blue-50 rounded-md"
                     >
                       Start Consultation
                     </button>
@@ -306,49 +358,121 @@ function PatientConsultations() {
           </table>
         </div>
       ) : (
-        <div className="space-y-4">
-          <h4 className="text-lg font-medium">Consulting with {selectedPatient.name}</h4>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Consultation Notes</label>
-            <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              rows="4"
-              value={consultationNotes}
-              onChange={(e) => setConsultationNotes(e.target.value)}
-            />
+        <div className="space-y-6">
+          {/* Patient Information Header */}
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="text-lg font-semibold text-blue-800">Consulting with {selectedPatient.name}</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm">
+              <div>
+                <span className="font-medium">Patient ID:</span> {selectedPatient.patientId}
+              </div>
+              <div>
+                <span className="font-medium">Age:</span> {selectedPatient.age}
+              </div>
+              <div>
+                <span className="font-medium">Gender:</span> {selectedPatient.gender}
+              </div>
+              <div>
+                <span className="font-medium">Status:</span> {selectedPatient.status}
+              </div>
+            </div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              value={diagnosis}
-              onChange={(e) => setDiagnosis(e.target.value)}
-            />
+
+          {/* Chief Complaint */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h5 className="font-medium text-gray-700 mb-2">Chief Complaint</h5>
+            <p className="text-gray-600">{selectedPatient.concern}</p>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Prescription</label>
-            <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              rows="3"
-              value={prescription}
-              onChange={(e) => setPrescription(e.target.value)}
-            />
+
+          {/* Vital Signs */}
+          <div className="bg-white border border-gray-200 p-4 rounded-lg">
+            <h5 className="font-medium text-gray-700 mb-3">Vital Signs & Observations</h5>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="text-center p-3 bg-blue-50 rounded">
+                <div className="text-sm text-gray-600">Blood Pressure</div>
+                <div className="font-semibold">{selectedPatient.vitalSigns.bloodPressure}</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded">
+                <div className="text-sm text-gray-600">Heart Rate</div>
+                <div className="font-semibold">{selectedPatient.vitalSigns.heartRate}</div>
+              </div>
+              <div className="text-center p-3 bg-yellow-50 rounded">
+                <div className="text-sm text-gray-600">Temperature</div>
+                <div className="font-semibold">{selectedPatient.vitalSigns.temperature}</div>
+              </div>
+            </div>
           </div>
-          
-          <div className="flex justify-end gap-3">
+
+          {/* Possible Diagnosis (Read-only) */}
+          {selectedPatient.possibleDiagnosis && selectedPatient.possibleDiagnosis.length > 0 && (
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <h5 className="font-medium text-gray-700 mb-3">Possible Diagnosis (AI Suggestions)</h5>
+              <div className="space-y-2">
+                {selectedPatient.possibleDiagnosis.map((diagnosis, index) => (
+                  <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
+                    <span className="font-medium">{diagnosis.condition}</span>
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                      {diagnosis.probability} probability
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2 italic">
+                This is a recommendation, doctor's validation is required
+              </p>
+            </div>
+          )}
+
+          {/* Doctor's Input Fields */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Final Diagnosis *</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter final diagnosis..."
+                value={finalDiagnosis}
+                onChange={(e) => setFinalDiagnosis(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Treatment Plan *</label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="4"
+                placeholder="Enter treatment recommendations..."
+                value={treatmentPlan}
+                onChange={(e) => setTreatmentPlan(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Consultation Notes</label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+                placeholder="Additional notes from the consultation..."
+                value={consultationNotes}
+                onChange={(e) => setConsultationNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
             <button
               onClick={() => setSelectedPatient(null)}
-              className="px-4 py-2 border border-gray-300 rounded-md"
+              className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               onClick={handleCompleteConsultation}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={!finalDiagnosis || !treatmentPlan}
             >
               Complete Consultation
             </button>
