@@ -59,17 +59,38 @@ export default function AdminDashboard() {
     fetchProfile();
   }, [router]);
 
-  const handleLogout = async () => {
-    try {
+ const handleLogout = async () => {
+  try {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You will be logged out of the system",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, logout"
+    });
+
+    if (result.isConfirmed) {
+      // Call the logout API
       await fetch("/api/logout", {
         method: "POST",
         credentials: "include", // Important for sending cookies
       });
+
+      // Redirect to login page
       router.push("/login");
-    } catch (error) {
-      console.error("Error logging out:", error);
     }
-  };
+  } catch (error) {
+    console.error("Error logging out:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Logout Error",
+      text: "There was a problem logging out. Please try again.",
+    });
+  }
+};
+
 
   return (
     <div className="flex min-h-screen font-poppins bg-white-100 overflow-hidden">
@@ -202,7 +223,7 @@ export default function AdminDashboard() {
 
         {/* Content Section */}
         <div className="mt-6">
-          {activeTab === "Dashboard" && <Dashboard />}
+          {activeTab === "Dashboard" && <Dashboard setActiveTab={setActiveTab} />}
           {activeTab === "Manage Users" && <ManageUsers />}
           {activeTab === "Staff" && <StaffList />}
           {activeTab === "Doctor" && <DoctorList />}
@@ -247,125 +268,81 @@ function SidebarSubItem({ icon: Icon, label, activeTab, setActiveTab }) {
 
 
 
-function Dashboard() {
-  // Metrics data
-  const metrics = [
-    { title: "Total Patients", value: "1,248", icon: <FiUsers className="text-blue-500" size={24} /> },
-    { title: "Doctors", value: "8", icon: <MdLocalHospital className="text-green-500" size={24} /> },
-    { title: "BHW Workers", value: "42", icon: <MdOutlineHealthAndSafety className="text-purple-500" size={24} /> },
-    { title: "RHU Staff", value: "5", icon: <MdPeople className="text-yellow-500" size={24} /> }
-  ];
-
-  // Recent Activity data
-  const activities = [
-    { id: 1, action: "New patient record added", user: "Dr. Santos", time: "10 mins ago" },
-    { id: 2, action: "Health checkup completed", user: "Nurse Reyes", time: "25 mins ago" },
-    { id: 3, action: "System maintenance performed", user: "Admin", time: "2 hours ago" }
-  ];
-
-  // Users Distribution data
-  const usersDistribution = {
+function Dashboard({ setActiveTab }) {
+  const [metrics, setMetrics] = useState([
+    { title: "Staff Patients", value: "0", icon: <FiUsers className="text-blue-500" size={24} /> },
+    { title: "BHW Patients", value: "0", icon: <FiUsers className="text-blue-600" size={24} /> },
+    { title: "Doctors", value: "0", icon: <MdLocalHospital className="text-green-500" size={24} /> },
+    { title: "BHW Workers", value: "0", icon: <MdOutlineHealthAndSafety className="text-purple-500" size={24} /> },
+    { title: "RHU Staff", value: "0", icon: <MdPeople className="text-yellow-500" size={24} /> },
+  ]);
+  const [activities, setActivities] = useState([]);
+  const [filteredActivities, setFilteredActivities] = useState([]);
+  const [filter, setFilter] = useState('all'); // Filter state: 'all', 'notification', 'login'
+  const [usersDistribution, setUsersDistribution] = useState({
     labels: ['Doctors', 'BHW Workers', 'RHU Staff'],
-    datasets: [
-      {
-        label: 'User Count',
-        data: [8, 42, 5],
-        backgroundColor: ['#10B981', '#6366F1', '#F59E0B'],
-      },
-    ],
-  };
+    datasets: [{ label: 'User Count', data: [0, 0, 0], backgroundColor: ['#10B981', '#6366F1', '#F59E0B'] }],
+  });
+  const [error, setError] = useState(null);
 
-  // Monthly Report data
-  const [reportFilter, setReportFilter] = useState('Monthly');
-  const reportData = {
-    Daily: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [
-        {
-          label: 'Patient Registrations',
-          data: [20, 25, 18, 22, 30, 15, 10],
-          backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        },
-        {
-          label: 'Health Checks',
-          data: [10, 12, 8, 15, 20, 5, 3],
-          backgroundColor: 'rgba(16, 185, 129, 0.5)',
-        },
-      ],
-    },
-    Weekly: {
-      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-      datasets: [
-        {
-          label: 'Patient Registrations',
-          data: [120, 140, 110, 130],
-          backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        },
-        {
-          label: 'Health Checks',
-          data: [60, 70, 50, 65],
-          backgroundColor: 'rgba(16, 185, 129, 0.5)',
-        },
-      ],
-    },
-    Monthly: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      datasets: [
-        {
-          label: 'Patient Registrations',
-          data: [300, 320, 280, 310, 340, 330],
-          backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        },
-        {
-          label: 'Health Checks',
-          data: [150, 160, 140, 155, 170, 165],
-          backgroundColor: 'rgba(16, 185, 129, 0.5)',
-        },
-      ],
-    },
-  };
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/metrics', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setMetrics([
+            { title: "Staff Patients", value: data.metrics.staffPatients.toString(), icon: <FiUsers className="text-blue-500" size={24} /> },
+            { title: "BHW Patients", value: data.metrics.bhwPatients.toString(), icon: <FiUsers className="text-blue-600" size={24} /> },
+            { title: "Doctors", value: data.metrics.doctors.toString(), icon: <MdLocalHospital className="text-green-500" size={24} /> },
+            { title: "BHW Workers", value: data.metrics.bhwWorkers.toString(), icon: <MdOutlineHealthAndSafety className="text-purple-500" size={24} /> },
+            { title: "RHU Staff", value: data.metrics.rhuStaff.toString(), icon: <MdPeople className="text-yellow-500" size={24} /> },
+          ]);
+          setActivities(data.activities);
+          setFilteredActivities(data.activities);
+          setUsersDistribution(data.usersDistribution);
+          setError(null);
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to fetch metrics:', response.statusText, errorData);
+          setError(`Failed to fetch data: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setError('Error connecting to server');
+      }
+    };
 
-  // Recent Patient Registrations data
-  const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 10;
-  const recentPatients = [
-    { id: 1, name: "John Doe", date: "2025-08-01", type: "New" },
-    { id: 2, name: "Jane Smith", date: "2025-07-31", type: "Follow-up" },
-    { id: 3, name: "Mike Reyes", date: "2025-07-30", type: "New" },
-    { id: 4, name: "Anna Cruz", date: "2025-07-29", type: "Follow-up" },
-    { id: 5, name: "Luis Santos", date: "2025-07-28", type: "New" },
-  ];
-  const totalPages = Math.ceil(recentPatients.length / itemsPerPage);
-  const paginatedPatients = recentPatients.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
-  const handlePageChange = (page) => {
-    if (page >= 0 && page < totalPages) {
-      setCurrentPage(page);
+    fetchData();
+  }, []);
+
+  // Apply filter when filter state or activities change
+  useEffect(() => {
+    if (filter === 'all') {
+      setFilteredActivities(activities);
+    } else {
+      setFilteredActivities(activities.filter(activity => activity.source === filter));
     }
-  };
-  const pageNumbers = [];
-  const startPage = Math.max(0, currentPage);
-  const endPage = Math.min(totalPages, startPage + 2);
-  for (let i = startPage; i < endPage; i++) {
-    pageNumbers.push(i);
-  }
-  const startResult = currentPage * itemsPerPage + 1;
-  const endResult = Math.min((currentPage + 1) * itemsPerPage, recentPatients.length);
-  const showingText = `Showing ${startResult}-${endResult} of ${recentPatients.length} results`;
+  }, [filter, activities]);
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-6">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metrics Cards (Single Row) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {metrics.map((metric, index) => (
           <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="flex justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500">{metric.title}</p>
-                <p className="text-xl font-bold mt-1">{metric.value}</p>
+                <p className="text-sm font-medium text-gray-500">{metric.title}</p>
+                <p className="text-2xl font-bold mt-1">{metric.value}</p>
               </div>
               <div className="p-2 bg-gray-50 rounded-lg">
                 {metric.icon}
@@ -375,60 +352,86 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* Monthly Report Chart */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 lg:col-span-3">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-2">
-          <h2 className="text-lg font-semibold">Monthly Reports</h2>
-          <select
-            value={reportFilter}
-            onChange={(e) => setReportFilter(e.target.value)}
-            className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+      {/* Quick Actions */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h2 className="text-lg font-semibold mb-2">Quick Actions</h2>
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => setActiveTab("Manage Users")}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+            aria-label="Navigate to Manage Users"
           >
-            <option value="Daily">Daily</option>
-            <option value="Weekly">Weekly</option>
-            <option value="Monthly">Monthly</option>
-          </select>
-        </div>
-        <div className="h-64">
-          <Bar
-            data={reportData[reportFilter]}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                y: { beginAtZero: true, stacked: true },
-                x: { stacked: true },
-              },
-              plugins: {
-                legend: { position: 'top' },
-                tooltip: {
-                  callbacks: {
-                    label: (context) => `${context.dataset.label}: ${context.raw}`,
-                  },
-                },
-              },
-            }}
-          />
+            Manage Users
+          </button>
+          <button
+            onClick={() => setActiveTab("Log History")}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+            aria-label="Navigate to Log History"
+          >
+            Log History
+          </button>
+          <button
+            onClick={() => setActiveTab("Reports")}
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
+            aria-label="Navigate to Reports"
+          >
+            Reports
+          </button>
         </div>
       </div>
 
-      {/* Right Column */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Lower Row: Recent Activity and Users Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Activity */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-2">Recent Activity</h2>
-          <div className="space-y-2">
-            {activities.map(activity => (
-              <div key={activity.id} className="flex items-start">
-                <div className="p-1.5 bg-blue-50 rounded-full mr-2">
-                  <FiBell className="text-blue-500" size={14} />
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-lg font-semibold">Recent Activity</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${
+                  filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                aria-label="Show all activities"
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter('notification')}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${
+                  filter === 'notification' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                aria-label="Show notifications"
+              >
+                Notifications
+              </button>
+              <button
+                onClick={() => setFilter('login')}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${
+                  filter === 'login' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                aria-label="Show login history"
+              >
+                Login History
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {filteredActivities.length > 0 ? (
+              filteredActivities.map(activity => (
+                <div key={activity.id} className="flex items-start">
+                  <div className="p-1.5 bg-blue-50 rounded-full mr-2">
+                    <FiBell className="text-blue-500" size={14} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{activity.action}</p>
+                    <p className="text-xs text-gray-500">{activity.date} • {activity.time}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium">{activity.action}</p>
-                  <p className="text-xs text-gray-500">{activity.user} • {activity.time}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No recent activities</p>
+            )}
           </div>
         </div>
 
@@ -450,73 +453,6 @@ function Dashboard() {
               }}
             />
           </div>
-        </div>
-
-        {/* Recent Patient Registrations */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-2">Recent Patient Registrations</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-2 py-1 text-left text-sm font-medium text-gray-500 uppercase">Patient Name</th>
-                  <th className="px-2 py-1 text-left text-sm font-medium text-gray-500 uppercase">Registration Date</th>
-                  <th className="px-2 py-1 text-left text-sm font-medium text-gray-500 uppercase">Type</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200 max-h-[300px] overflow-y-auto">
-                {paginatedPatients.length > 0 ? (
-                  paginatedPatients.map((patient) => (
-                    <tr key={patient.id} className="hover:bg-gray-50 leading-tight">
-                      <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-900">{patient.name}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">{patient.date}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">{patient.type}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="3" className="px-2 py-1 text-center text-xs text-gray-500">
-                      No patient records found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {totalPages > 0 && (
-            <div className="flex justify-between items-center p-2 border-t border-gray-200">
-              <span className="text-xs text-gray-600">{showingText}</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 0}
-                  className="p-1.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <FaArrowLeft className="w-3 h-3" />
-                </button>
-                {pageNumbers.map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-2 py-0.5 text-xs font-medium rounded-md ${
-                      currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {page + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage >= totalPages - 1}
-                  className="p-1.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <FaArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

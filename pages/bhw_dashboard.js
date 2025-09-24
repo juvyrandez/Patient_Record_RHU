@@ -3,10 +3,24 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaUserPlus, FaChartBar, FaChevronDown } from "react-icons/fa";
-import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash, FaUsers, FaClock, FaCheckCircle } from 'react-icons/fa';
+
 import { FaSearch, FaFileMedical, FaEye, FaSpinner } from 'react-icons/fa';
 import { FaUserDoctor } from "react-icons/fa6";
 import Swal from "sweetalert2";
+// Charts
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title as ChartTitle,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend);
 
 export default function BHWDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -14,6 +28,7 @@ export default function BHWDashboard() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const [fullname, setFullname] = useState("");
+  const [barangay, setBarangay] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -40,6 +55,7 @@ export default function BHWDashboard() {
           }
           
           setFullname(data.fullname);
+          if (data.barangay) setBarangay(data.barangay);
         } else {
           // Token is invalid or expired
           Swal.fire({
@@ -218,8 +234,8 @@ export default function BHWDashboard() {
 
         {/* Content Section */}
         <div className="mt-6">
-          {activeTab === "Dashboard" && <BHWDashboardContent />}
-          {activeTab === "Add Patients" && <AddPatientRecords />}
+          {activeTab === "Dashboard" && <BHWDashboardContent onQuickAction={setActiveTab} />}
+          {activeTab === "Add Patients" && <AddPatientRecords bhwName={fullname} bhwBarangay={barangay} />}
           {activeTab === "Referrals" && <ViewReferrals />}
           {activeTab === "Reports" && <Reports />}
         </div>
@@ -573,73 +589,173 @@ function ViewReferrals() {
   );
 }
 
-
-// BHW Dashboard Components
-function BHWDashboardContent() {
+function BHWDashboardContent({ onQuickAction }) {
   const [stats, setStats] = useState({
     totalPatients: 0,
-    newThisMonth: 0,
-    pendingCheckups: 0,
-    pendingReferrals: 0
+    pendingReferrals: 0,
+    completedReferrals: 0,
   });
+  const [referrals, setReferrals] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setStats({
-        totalPatients: 124,
-        newThisMonth: 12,
-        pendingCheckups: 5,
-        pendingReferrals: 3
-      });
-    }, 500);
-  }, []);
+    const loadStats = async () => {
+      try {
+        setLoading(true);
+        const [patientsRes, referralsRes] = await Promise.all([
+          fetch('/api/bhw_patients?type=bhw_data'),
+          fetch('/api/bhw_referrals'),
+        ]);
+        const [patientsData, referralsData] = await Promise.all([
+          patientsRes.ok ? patientsRes.json() : Promise.resolve([]),
+          referralsRes.ok ? referralsRes.json() : Promise.resolve([]),
+        ]);
 
-  return (
-    <div className="p-6 bg-white shadow-md rounded-lg">
-      <h3 className="text-xl font-semibold mb-4">Barangay Health Worker Dashboard</h3>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-blue-50 p-6 rounded-lg shadow">
-          <h4 className="font-medium text-blue-800">Total Patients</h4>
-          <p className="text-3xl font-bold mt-2">{stats.totalPatients}</p>
+          const totalPatients = Array.isArray(patientsData) ? patientsData.length : 0;
+          const pendingReferrals = Array.isArray(referralsData)
+            ? referralsData.filter(r => (r.status || '').toLowerCase() === 'pending').length
+            : 0;
+          const completedReferrals = Array.isArray(referralsData)
+            ? referralsData.filter(r => (r.status || '').toLowerCase() === 'completed').length
+            : 0;
+
+          setReferrals(Array.isArray(referralsData) ? referralsData : []);
+          setStats({ totalPatients, pendingReferrals, completedReferrals });
+        } catch (e) {
+          console.error('Error loading dashboard stats:', e);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadStats();
+    }, []);
+
+    const chartCounts = {
+      pending: referrals.filter(r => (r.status || '').toLowerCase() === 'pending').length,
+      completed: referrals.filter(r => (r.status || '').toLowerCase() === 'completed').length,
+      inprogress: referrals.filter(r => (r.status || '').toLowerCase() === 'in progress').length,
+    };
+
+    const maxBhwCount = Math.max(chartCounts.pending, chartCounts.completed, chartCounts.inprogress);
+    const chartData = {
+      labels: ['Pending', 'Completed', 'In Progress'],
+      datasets: [
+        {
+          label: 'Referrals',
+          data: [chartCounts.pending, chartCounts.completed, chartCounts.inprogress],
+          backgroundColor: ['#f59e0b', '#10b981', '#3b82f6'],
+          borderRadius: 6,
+          barThickness: 40,
+          maxBarThickness: 64,
+          categoryPercentage: 0.9,
+          barPercentage: 0.9,
+        },
+      ],
+    };
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      elements: { bar: { borderRadius: 6, borderSkipped: 'bottom' } },
+      plugins: {
+        legend: { position: 'top' },
+        title: { display: false },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      indexAxis: 'x',
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, suggestedMax: Math.max(3, maxBhwCount + 1), ticks: { precision: 0, stepSize: 1 } },
+      },
+    };
+
+    return (
+      <div className="p-4 space-y-6">
+        <h3 className="text-xl font-semibold mb-4">Barangay Health Worker Dashboard</h3>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Patients</p>
+                <p className="text-2xl font-bold mt-1">{loading ? '—' : stats.totalPatients}</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <FaUsers className="text-blue-600" size={22} />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Pending Referrals</p>
+                <p className="text-2xl font-bold mt-1">{loading ? '—' : stats.pendingReferrals}</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <FaClock className="text-amber-500" size={22} />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Completed Referrals</p>
+                <p className="text-2xl font-bold mt-1">{loading ? '—' : stats.completedReferrals}</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <FaCheckCircle className="text-green-600" size={22} />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-green-50 p-6 rounded-lg shadow">
-          <h4 className="font-medium text-green-800">New This Month</h4>
-          <p className="text-3xl font-bold mt-2">{stats.newThisMonth}</p>
+
+        {/* Quick Actions */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+          <h2 className="text-lg font-semibold mb-2">Quick Actions</h2>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => onQuickAction && onQuickAction('Add Patients')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              aria-label="Navigate to Add Patients"
+            >
+              Add Patient
+            </button>
+            <button
+              onClick={() => onQuickAction && onQuickAction('Referrals')}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+              aria-label="Navigate to Referrals"
+            >
+              Referrals
+            </button>
+            <button
+              onClick={() => onQuickAction && onQuickAction('Reports')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
+              aria-label="Navigate to Reports"
+            >
+              Reports
+            </button>
+          </div>
         </div>
-        <div className="bg-yellow-50 p-6 rounded-lg shadow">
-          <h4 className="font-medium text-yellow-800">Active</h4>
-          <p className="text-3xl font-bold mt-2">{stats.pendingCheckups}</p>
-        </div>
-        <div className="bg-purple-50 p-6 rounded-lg shadow">
-          <h4 className="font-medium text-purple-800">Pending Referrals</h4>
-          <p className="text-3xl font-bold mt-2">{stats.pendingReferrals}</p>
+
+        {/* Referrals Analytics */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold mb-3">Referrals Analytics</h2>
+          <div className="w-full h-64">
+            <Bar key={`bhw-analytics-${chartCounts.pending}-${chartCounts.completed}-${chartCounts.inprogress}`}
+                 data={chartData}
+                 options={chartOptions}
+                 redraw
+            />
+          </div>
         </div>
       </div>
-      <div className="mt-6">
-        <h4 className="font-medium mb-2">Recent Activities</h4>
-        <div className="space-y-3">
-          <div className="p-3 border rounded-lg">
-            <p>Added new patient record for Juan Dela Cruz</p>
-            <p className="text-sm text-gray-500">2 hours ago</p>
-          </div>
-          <div className="p-3 border rounded-lg">
-            <p>Updated health status for Maria Santos</p>
-            <p className="text-sm text-gray-500">1 day ago</p>
-          </div>
-          <div className="p-3 border rounded-lg">
-            <p>Referred patient Pedro Reyes to RHU</p>
-            <p className="text-sm text-gray-500">2 days ago</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+    );
+  }
 
 
 
-function AddPatientRecords() {
+function AddPatientRecords({ bhwName, bhwBarangay }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [patients, setPatients] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -1018,7 +1134,11 @@ function AddPatientRecords() {
       patientLastName: patient.last_name || "",
       patientFirstName: patient.first_name || "",
       patientMiddleName: patient.middle_name || "",
-      patientAddress: patient.residential_address || ""
+      patientAddress: patient.residential_address || "",
+      // Auto-fill for BHW referral destination and referring person
+      referredTo: "Rural Health Unit of Balingasag",
+      referredToAddress: "Barangay Waterfall, Balingasag Misamis Oriental",
+      referredByName: `${bhwName || ''}${bhwBarangay ? ' - ' + bhwBarangay : ''}`.trim()
     }));
     setShowFormModal(true);
   };
@@ -1672,46 +1792,35 @@ function AddPatientRecords() {
 
       {viewPatient && (
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none print-root">
             <style>
               {`
+                @page { size: A4; margin: 12mm; }
                 @media print {
-                  .no-print {
-                    display: none !important;
-                  }
+                  html, body { background: #fff !important; }
+                  /* Show only the modal content */
+                  body * { visibility: hidden !important; }
+                  .print-root, .print-root * { visibility: visible !important; }
+                  .print-root { position: static !important; box-shadow: none !important; }
+                  .no-print { display: none !important; }
+                  /* Container tuned for single page */
                   .print-container {
                     width: 100%;
-                    max-width: 210mm; /* A4 width */
-                    margin: 10mm auto;
-                    padding: 10mm;
-                    font-size: 12pt;
-                    line-height: 1.5;
+                    max-width: 190mm;
+                    margin: 0 auto;
+                    padding: 0;
+                    font-size: 10.5pt;
+                    line-height: 1.35;
                   }
-                  .print-container h3 {
-                    font-size: 16pt;
-                    margin-bottom: 8pt;
-                  }
-                  .print-container h4 {
-                    font-size: 14pt;
-                    margin-top: 12pt;
-                    margin-bottom: 8pt;
-                  }
-                  .print-container p {
-                    font-size: 12pt;
-                    margin-bottom: 4pt;
-                  }
-                  .print-container .grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 10mm;
-                  }
-                  .print-container .border-b {
-                    border-bottom: 1pt solid #000;
-                    margin-bottom: 8pt;
-                  }
+                  .print-container h3 { font-size: 13pt; margin-bottom: 5pt; }
+                  .print-container h4 { font-size: 12pt; margin: 6pt 0 5pt; }
+                  .print-container p { font-size: 10.5pt; margin-bottom: 2pt; }
+                  .print-container .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4mm; }
+                  .print-container .border-b { border-bottom: 1pt solid #000; margin-bottom: 5pt; }
                 }
               `}
             </style>
+            
             <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center print:bg-transparent print:border-none">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Patient Medical Record</h3>
@@ -1752,7 +1861,8 @@ function AddPatientRecords() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Birth Date</p>
                     <p className="text-sm text-gray-900">
-                      {viewPatient.birth_date} (Age: {calculateAge(viewPatient.birth_date)})
+                      {(viewPatient.birth_date ? viewPatient.birth_date.toString().split('T')[0] : '-')}
+                      {' '} (Age: {calculateAge(viewPatient.birth_date)})
                     </p>
                   </div>
                   <div>
@@ -2394,104 +2504,90 @@ function AddPatientRecords() {
 }
 
 
-
 function Reports() {
-  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
 
-  // Simple sample reports data
-  const sampleReports = [
+  // Live data
+  const [staffPatients, setStaffPatients] = useState([]);
+  const [referrals, setReferrals] = useState([]);
+
+  // Derived analytics
+  const statusCounts = {
+    pending: referrals.filter(r => (r.status || '').toLowerCase() === 'pending').length,
+    completed: referrals.filter(r => (r.status || '').toLowerCase() === 'completed').length,
+    inprogress: referrals.filter(r => (r.status || '').toLowerCase() === 'in progress').length,
+  };
+
+  const maxReportCount = Math.max(statusCounts.pending, statusCounts.completed, statusCounts.inprogress);
+  const analyticsData = {
+    labels: ['Pending', 'Completed', 'In Progress'],
+    datasets: [
+      {
+        label: 'Referrals',
+        data: [statusCounts.pending, statusCounts.completed, statusCounts.inprogress],
+        backgroundColor: ['#f59e0b', '#10b981', '#3b82f6'],
+        borderRadius: 6,
+        barThickness: 40,
+        maxBarThickness: 64,
+        categoryPercentage: 0.9,
+        barPercentage: 0.9,
+      },
+    ],
+  };
+
+  const analyticsOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    elements: { bar: { borderRadius: 6, borderSkipped: 'bottom' } },
+    plugins: { legend: { position: 'top' }, title: { display: false } },
+    indexAxis: 'x',
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, suggestedMax: Math.max(3, maxReportCount + 1), ticks: { precision: 0, stepSize: 1 } } },
+  };
+
+  // Build reports list from live data
+  const builtReports = [
     {
-      id: 1,
-      title: 'Monthly Patient Summary',
-      type: 'Patient',
-      date: '2024-01-15',
-      status: 'Completed',
-      downloads: 45
-    },
-    {
-      id: 2,
+      id: 'weekly-referrals',
       title: 'Weekly Referrals',
       type: 'Referral',
-      date: '2024-01-12',
+      date: new Date().toISOString().slice(0,10),
       status: 'Completed',
-      downloads: 28
+      downloads: referrals.length,
     },
     {
-      id: 3,
-      title: 'Medication Inventory',
-      type: 'Inventory',
-      date: '2024-01-10',
-      status: 'Pending',
-      downloads: 12
-    },
-    {
-      id: 4,
-      title: 'Annual Health Report',
-      type: 'Health',
-      date: '2024-01-08',
+      id: 'monthly-patient-summary',
+      title: 'Monthly Patient Summary',
+      type: 'Patient',
+      date: new Date().toISOString().slice(0,10),
       status: 'Completed',
-      downloads: 67
+      downloads: staffPatients.length,
     },
-    {
-      id: 5,
-      title: 'Daily Appointments',
-      type: 'Appointment',
-      date: '2024-01-05',
-      status: 'Completed',
-      downloads: 23
-    },
-    {
-      id: 6,
-      title: 'Financial Summary',
-      type: 'Financial',
-      date: '2024-01-03',
-      status: 'Completed',
-      downloads: 18
-    },
-    {
-      id: 7,
-      title: 'Patient Feedback',
-      type: 'Survey',
-      date: '2024-01-02',
-      status: 'Completed',
-      downloads: 34
-    },
-    {
-      id: 8,
-      title: 'Emergency Cases',
-      type: 'Emergency',
-      date: '2024-01-01',
-      status: 'Completed',
-      downloads: 19
-    },
-    {
-      id: 9,
-      title: 'Vaccination Report',
-      type: 'Vaccination',
-      date: '2023-12-28',
-      status: 'Completed',
-      downloads: 56
-    },
-    {
-      id: 10,
-      title: 'Staff Performance',
-      type: 'HR',
-      date: '2023-12-25',
-      status: 'Completed',
-      downloads: 15
-    }
   ];
 
-  // Fetch reports data
+  // Pagination
+  const totalPages = Math.ceil(builtReports.length / itemsPerPage);
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i);
+  const currentItems = builtReports.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  // Load staff-connected data
   const fetchReports = async () => {
     try {
       setLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setReports(sampleReports);
+      const [patientsRes, referralsRes] = await Promise.all([
+        fetch('/api/patients?type=staff_data', { credentials: 'include' }),
+        fetch('/api/view_referrals', { credentials: 'include' }),
+      ]);
+      const [patientsData, referralsData] = await Promise.all([
+        patientsRes.ok ? patientsRes.json() : Promise.resolve([]),
+        referralsRes.ok ? referralsRes.json() : Promise.resolve([]),
+      ]);
+      setStaffPatients(Array.isArray(patientsData) ? patientsData : []);
+      setReferrals(Array.isArray(referralsData) ? referralsData : []);
     } catch (err) {
       console.error('Error loading reports:', err);
     } finally {
@@ -2499,33 +2595,38 @@ function Reports() {
     }
   };
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
+  useEffect(() => { fetchReports(); }, []);
 
-  // Pagination
-  const totalPages = Math.ceil(reports.length / itemsPerPage);
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i);
-  const currentItems = reports.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
-
-  const handleDownload = (reportId) => {
-    console.log(`Downloading report ${reportId}`);
-    // Add download logic here
-  };
+  const handlePageChange = (page) => setCurrentPage(page);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+      year: 'numeric', month: 'short', day: 'numeric'
     });
+  };
+
+  // Download CSV built from live referrals
+  const handleDownload = (reportId) => {
+    try {
+      const headers = ['Patient', 'Referred To', 'Date', 'Time', 'Status'];
+      const rows = referrals.map(r => [
+        `${r.patient_last_name || ''}, ${r.patient_first_name || ''}`.trim(),
+        r.referred_to || '',
+        r.referral_date || '',
+        r.referral_time || '',
+        r.status || 'Pending',
+      ]);
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reportId}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to download CSV:', e);
+    }
   };
 
   if (loading) {
@@ -2544,7 +2645,7 @@ function Reports() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Reports</h2>
-          <p className="text-xs sm:text-sm text-gray-600">View and download system reports</p>
+          <p className="text-xs sm:text-sm text-gray-600">Staff-connected analytics and downloads</p>
         </div>
         <button
           onClick={fetchReports}
@@ -2555,105 +2656,95 @@ function Reports() {
         </button>
       </div>
 
-      {/* Reports List */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {reports.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No reports available</p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Report Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentItems.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {report.title}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">
-                          {report.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {formatDate(report.date)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          report.status === 'Completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {report.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleDownload(report.id)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Download report"
-                        >
-                          <FaDownload className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Reports List */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          {builtReports.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No reports available</p>
             </div>
-
-            {/* Simple Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center p-4 border-t border-gray-200">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 0}
-                    className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <FaArrowLeft className="w-3 h-3" />
-                  </button>
-                  
-                  <span className="text-sm text-gray-600">
-                    Page {currentPage + 1} of {totalPages}
-                  </span>
-                  
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages - 1}
-                    className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <FaArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentItems.map((report) => (
+                      <tr key={report.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{report.title}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-600">{report.type}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{formatDate(report.date)}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${report.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{report.status}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button onClick={() => handleDownload(report.id)} className="text-blue-600 hover:text-blue-800" title="Download CSV">
+                            <FaDownload className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
-        )}
+
+              {/* Simple Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center p-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 0} className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                      <FaArrowLeft className="w-3 h-3" />
+                    </button>
+                    <span className="text-sm text-gray-600">Page {currentPage + 1} of {totalPages}</span>
+                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages - 1} className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                      <FaArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Analytics Card */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold mb-3">Staff Referrals Analytics</h3>
+          <div className="h-64">
+            <Bar key={`reports-analytics-${statusCounts.pending}-${statusCounts.completed}-${statusCounts.inprogress}`}
+                 data={analyticsData}
+                 options={analyticsOptions}
+                 redraw
+            />
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+            <div className="bg-gray-50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Pending</p>
+              <p className="text-lg font-semibold">{statusCounts.pending}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Completed</p>
+              <p className="text-lg font-semibold">{statusCounts.completed}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">In Progress</p>
+              <p className="text-lg font-semibold">{statusCounts.inprogress}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

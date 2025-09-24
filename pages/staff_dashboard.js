@@ -91,6 +91,13 @@ export default function StaffDashboard() {
     fetchProfileAndNotifications();
   }, [router]);
 
+  // Navigate to Patient Records when requested externally (e.g., from ReferralForm)
+  useEffect(() => {
+    const handler = () => setActiveTab("Patient Records");
+    window.addEventListener('navigateToPatientRecords', handler);
+    return () => window.removeEventListener('navigateToPatientRecords', handler);
+  }, []);
+
   const handleLogout = async () => {
     try {
       const result = await Swal.fire({
@@ -508,10 +515,30 @@ function PatientRecords() {
   const [filterGender, setFilterGender] = useState('All');
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage] = useState(10);
+  const [bhwSearchQuery, setBhwSearchQuery] = useState("");
+  const [bhwResults, setBhwResults] = useState([]);
+  const [showBhwModal, setShowBhwModal] = useState(false);
 
   useEffect(() => {
     fetchPatients();
     fetchBrgyList();
+  }, []);
+
+  // Prefill Add New Patient form if requested via localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('prefill_add_patient');
+      if (raw) {
+        const data = JSON.parse(raw);
+        setFormData(prev => ({ ...prev, ...data }));
+        setIsEditing(false);
+        setCurrentPatientId(null);
+        setShowForm(true);
+        localStorage.removeItem('prefill_add_patient');
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
   }, []);
 
   const fetchBrgyList = async () => {
@@ -545,6 +572,8 @@ function PatientRecords() {
 
   const handleMedicalRecord = (patient) => {
     setSelectedPatient(patient);
+    // Always reset form type when opening the selection modal
+    setSelectedFormType(null);
     setShowFormSelection(true);
   };
 
@@ -571,6 +600,122 @@ function PatientRecords() {
     console.log('Saving consultations:', consultationHistory);
     setSelectedPatient(null);
     setSelectedFormType(null);
+  };
+
+  // Print a clean referral note (single-page A4) without form UI
+  const handlePrintReferral = () => {
+    if (!selectedPatient) return;
+    const pad = (v = '') => (v == null ? '' : v);
+    const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '');
+    const reasons = (referralData.referralReasons || []).join(', ');
+    const surgical = referralData.surgicalOperations === 'YES' ? `YES - ${pad(referralData.surgicalProcedure)}` : 'NO';
+    const allergy = referralData.drugAllergy === 'YES' ? `YES - ${pad(referralData.allergyType)}` : 'NO';
+    const insurance = referralData.healthInsurance === 'YES' ? `YES - ${pad(referralData.insuranceType)}` : 'NO';
+
+    const html = `<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Clinical Referral Note</title>
+        <style>
+          @page { size: A4; margin: 12mm; }
+          body { font-family: Arial, Helvetica, sans-serif; color: #000; }
+          .container { max-width: 190mm; margin: 0 auto; }
+          h1, h2, h3 { margin: 0 0 6px; }
+          .header { text-align: center; margin-bottom: 10px; }
+          .section { margin: 10px 0; }
+          .row { display: flex; gap: 10px; }
+          .col { flex: 1; }
+          .label { font-weight: 600; }
+          .value { border-bottom: 1px solid #000; padding-bottom: 2px; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+          .small { font-size: 11px; color: #333; }
+          .divider { border-top: 1px solid #000; margin: 8px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>RURAL HEALTH UNIT-BALINGASAG</h2>
+            <div class="small">Barangay Waterfall, Balingasag Misamis Oriental • Tel. No. 08833-5016</div>
+          </div>
+          <h3 style="text-align:center;margin:8px 0 12px;">CLINICAL REFERRAL NOTE</h3>
+
+          <div class="section grid">
+            <div><span class="label">Date:</span> <span class="value">${pad(referralData.date)}</span></div>
+            <div><span class="label">Time:</span> <span class="value">${pad(referralData.time)}</span></div>
+            <div><span class="label">Referral Type:</span> <span class="value">${pad(referralData.referralType)}</span></div>
+            <div><span class="label">Referred To:</span> <span class="value">${pad(referralData.referredTo)}</span></div>
+            <div class="col-span-2"><span class="label">Address:</span> <span class="value">${pad(referralData.referredToAddress)}</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section">
+            <div class="label">Patient</div>
+            <div class="grid">
+              <div><span class="label">Name:</span> <span class="value">${pad(selectedPatient.last_name)}, ${pad(selectedPatient.first_name)} ${pad(selectedPatient.middle_name)}</span></div>
+              <div><span class="label">Suffix:</span> <span class="value">${pad(selectedPatient.suffix)}</span></div>
+              <div class="col-span-2"><span class="label">Address:</span> <span class="value">${pad(selectedPatient.residential_address)}</span></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="label">Chief Complaints</div>
+            <div class="value">${pad(referralData.chiefComplaints)}</div>
+          </div>
+
+          <div class="section grid">
+            <div><span class="label">Medical History:</span> <span class="value">${pad(referralData.medicalHistory)}</span></div>
+            <div><span class="label">Surgical Operations:</span> <span class="value">${surgical}</span></div>
+            <div><span class="label">Drug Allergy:</span> <span class="value">${allergy}</span></div>
+            <div><span class="label">Last Meal Time:</span> <span class="value">${pad(referralData.lastMealTime)}</span></div>
+          </div>
+
+          <div class="section grid">
+            <div><span class="label">BP:</span> <span class="value">${pad(referralData.bloodPressure)}</span></div>
+            <div><span class="label">HR:</span> <span class="value">${pad(referralData.heartRate)}</span></div>
+            <div><span class="label">RR:</span> <span class="value">${pad(referralData.respiratoryRate)}</span></div>
+            <div><span class="label">WT:</span> <span class="value">${pad(referralData.weight)}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="label">Impression</div>
+            <div class="value">${pad(referralData.impression)}</div>
+          </div>
+
+          <div class="section">
+            <div class="label">Action Taken (Phone/RECO)</div>
+            <div class="value">${pad(referralData.actionTaken)}</div>
+          </div>
+
+          <div class="section grid">
+            <div><span class="label">Health Insurance:</span> <span class="value">${insurance}</span></div>
+            <div><span class="label">Reason(s) for Referral:</span> <span class="value">${reasons || pad(referralData.otherReason)}</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section grid">
+            <div><span class="label">Referred By:</span> <span class="value">${pad(referralData.referredByName)}</span></div>
+            <div><span class="label">License No.:</span> <span class="value">${pad(referralData.licenseNumber)}</span></div>
+          </div>
+        </div>
+        <script>
+          window.onload = function(){
+            window.focus();
+            window.print();
+            setTimeout(() => window.close(), 250);
+          };
+        </script>
+      </body>
+      </html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   };
 
   const handleSubmitReferral = (e) => {
@@ -759,6 +904,52 @@ function PatientRecords() {
     }
   };
 
+  const handleViewBhw = async (patientId) => {
+    try {
+      const response = await fetch(`/api/searchbhw?id=${patientId}&type=bhw_data`);
+      const patient = await response.json();
+      if (patient) {
+        const formattedBirthDate = patient.birth_date ? patient.birth_date.split('T')[0] : 'N/A';
+        Swal.fire({
+          title: `${patient.last_name}, ${patient.first_name} ${patient.middle_name || ''} ${patient.suffix || ''}`,
+          html: `
+            <div class="text-left">
+              <p><strong>Gender:</strong> ${patient.gender}</p>
+              <p><strong>Age:</strong> ${calculateAge(patient.birth_date)}</p>
+              <p><strong>Birth Date:</strong> ${formattedBirthDate}</p>
+              <p><strong>Birth Place:</strong> ${patient.birth_place || 'N/A'}</p>
+              <p><strong>Blood Type:</strong> ${patient.blood_type || 'N/A'}</p>
+              <p><strong>Civil Status:</strong> ${patient.civil_status}</p>
+              <p><strong>Address:</strong> ${patient.residential_address || 'N/A'}</p>
+              <p><strong>Contact Number:</strong> ${patient.contact_number || 'N/A'}</p>
+              <p><strong>PhilHealth Member:</strong> ${patient.philhealth_member ? 'Yes' : 'No'}</p>
+              ${patient.philhealth_member ? `<p><strong>PhilHealth Number:</strong> ${patient.philhealth_number || 'N/A'}</p>` : ''}
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonText: 'Close',
+          customClass: {
+            popup: 'swal-custom-popup',
+            title: 'swal-custom-title'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching BHW patient for view:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Unable to fetch patient information.',
+        icon: 'error',
+        timer: 1500,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'swal-custom-popup swal-error-popup',
+          title: 'swal-custom-title'
+        }
+      });
+    }
+  };
+
   const handleDelete = async (patientId) => {
     if (window.confirm('Are you sure you want to delete this patient record?')) {
       try {
@@ -834,6 +1025,140 @@ function PatientRecords() {
 
   const showingText = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`;
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (bhwSearchQuery.length > 2 && showBhwModal) {
+        fetchBhwResults(bhwSearchQuery);
+      } else {
+        setBhwResults([]);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [bhwSearchQuery, showBhwModal]);
+
+  const fetchBhwResults = async (query) => {
+    try {
+      const response = await fetch(`/api/searchbhw?type=bhw_data&search=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      setBhwResults(data);
+    } catch (error) {
+      console.error('Error fetching BHW patients:', error);
+    }
+  };
+
+  const handleAddBhwToStaff = async (patient) => {
+    // Check if patient already exists in staff_data
+    const exists = patients.some(
+      (p) =>
+        p.last_name.toLowerCase() === patient.last_name.toLowerCase() &&
+        p.first_name.toLowerCase() === patient.first_name.toLowerCase() &&
+        (p.middle_name || '').toLowerCase() === (patient.middle_name || '').toLowerCase() &&
+        (p.suffix || '').toLowerCase() === (patient.suffix || '').toLowerCase() &&
+        p.birth_date === patient.birth_date
+    );
+
+    if (exists) {
+      Swal.fire({
+        title: 'Error',
+        text: 'This patient is already added as a staff record.',
+        icon: 'error',
+        timer: 1500,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'swal-custom-popup swal-error-popup',
+          title: 'swal-custom-title'
+        }
+      });
+      return;
+    }
+
+    try {
+      const patientData = {
+        ...patient,
+        type: 'staff_data'
+      };
+      delete patientData.id;
+      delete patientData.created_at;
+      delete patientData.updated_at;
+
+      // Double-check with the server before adding
+      const checkResponse = await fetch(`/api/patients?type=staff_data&search=${encodeURIComponent(`${patient.last_name} ${patient.first_name}`)}`);
+      const existingPatients = await checkResponse.json();
+      const duplicate = existingPatients.some(
+        (p) =>
+          p.last_name.toLowerCase() === patient.last_name.toLowerCase() &&
+          p.first_name.toLowerCase() === patient.first_name.toLowerCase() &&
+          (p.middle_name || '').toLowerCase() === (patient.middle_name || '').toLowerCase() &&
+          (p.suffix || '').toLowerCase() === (patient.suffix || '').toLowerCase() &&
+          p.birth_date === patient.birth_date
+      );
+
+      if (duplicate) {
+        Swal.fire({
+          title: 'Error',
+          text: 'This patient is already added as a staff record.',
+          icon: 'error',
+          timer: 1500,
+          showConfirmButton: false,
+          customClass: {
+            popup: 'swal-custom-popup swal-error-popup',
+            title: 'swal-custom-title'
+          }
+        });
+        return;
+      }
+
+      const response = await fetch('/api/patients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patientData),
+      });
+
+      if (response.ok) {
+        Swal.fire({
+          title: 'Patient Added to Staff Successfully',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+          customClass: {
+            popup: 'swal-custom-popup swal-success-popup',
+            title: 'swal-custom-title'
+          }
+        });
+        fetchPatients();
+        setBhwSearchQuery('');
+        setBhwResults([]);
+        setShowBhwModal(false);
+      } else {
+        console.error('Error adding patient:', await response.text());
+        Swal.fire({
+          title: 'Error Adding Patient',
+          icon: 'error',
+          timer: 1500,
+          showConfirmButton: false,
+          customClass: {
+            popup: 'swal-custom-popup swal-error-popup',
+            title: 'swal-custom-title'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      Swal.fire({
+        title: 'Error Adding Patient',
+        icon: 'error',
+        timer: 1500,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'swal-custom-popup swal-error-popup',
+          title: 'swal-custom-title'
+        }
+      });
+    }
+  };
+
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -880,6 +1205,13 @@ function PatientRecords() {
           </select>
           <button 
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            onClick={() => setShowBhwModal(true)}
+          >
+            <FaSearch className="w-5 h-5" />
+            <span>Search BHW</span>
+          </button>
+          <button 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
             onClick={() => setShowForm(true)}
           >
             <FaUserPlus className="w-5 h-5" />
@@ -887,6 +1219,81 @@ function PatientRecords() {
           </button>
         </div>
       </div>
+
+      {showBhwModal && (
+        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Search BHW Patients</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => {
+                  setShowBhwModal(false);
+                  setBhwSearchQuery('');
+                  setBhwResults([]);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="relative mb-4">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search BHW patients by name..."
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                value={bhwSearchQuery}
+                onChange={(e) => setBhwSearchQuery(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            {bhwResults.length > 0 && (
+              <div className="bg-white border border-gray-300 rounded-lg shadow-md p-4 max-h-60 overflow-y-auto">
+                {bhwResults.map((patient) => {
+                  const exists = patients.some(
+                    (p) =>
+                      p.last_name.toLowerCase() === patient.last_name.toLowerCase() &&
+                      p.first_name.toLowerCase() === patient.first_name.toLowerCase() &&
+                      (p.middle_name || '').toLowerCase() === (patient.middle_name || '').toLowerCase() &&
+                      (p.suffix || '').toLowerCase() === (patient.suffix || '').toLowerCase() &&
+                      p.birth_date === patient.birth_date
+                  );
+                  return (
+                    <div key={patient.id} className="flex justify-between items-center mb-3 pb-2 border-b last:border-b-0">
+                      <span className="text-sm text-gray-700 flex-1">
+                        {patient.last_name}, {patient.first_name} {patient.middle_name || ''} {patient.suffix || ''} - Age: {calculateAge(patient.birth_date)} - Gender: {patient.gender}
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleViewBhw(patient.id)}
+                          className="px-3 py-1 rounded-md text-sm bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+                          title="View Patient Info"
+                        >
+                          <FaEye className="inline-block w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleAddBhwToStaff(patient)}
+                          className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                            exists
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                          }`}
+                          disabled={exists}
+                        >
+                          {exists ? 'Added' : 'Add'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+  
 
       {showForm && (
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1642,21 +2049,19 @@ function PatientRecords() {
 {/* Individual Treatment Record Modal */}
 {selectedPatient && selectedFormType === 'treatment' && (
   <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800">
             Individual Treatment Record
           </h3>
           <button 
-            onClick={() => setSelectedPatient(null)}
+            onClick={() => { setSelectedPatient(null); setSelectedFormType(null); }}
             className="text-gray-500 hover:text-gray-700"
           >
             <FaTimes className="w-6 h-6" />
           </button>
         </div>
-
-        
 
         {/* Patient Information */}
         <div className="mb-6">
@@ -1728,87 +2133,106 @@ function PatientRecords() {
           <h4 className="font-bold border-b border-gray-300 pb-1 mb-3">
             II. FOR CHU/RHU PERSONNEL ONLY (PARA SA KINATAWAN NG CHU/RHU LAMANG)
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left column: general visit/consult info */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Visit Type</label>
-              <div className="flex items-center space-x-4">
-                <label className="inline-flex items-center">
-                  <input type="checkbox" className="form-checkbox" />
-                  <span className="ml-2">Walk-in</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input type="checkbox" className="form-checkbox" />
-                  <span className="ml-2">Visited</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input type="checkbox" className="form-checkbox" />
-                  <span className="ml-2">Referral</span>
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Visit Type</label>
+                  <div className="flex items-center flex-wrap gap-4">
+                    <label className="inline-flex items-center">
+                      <input type="checkbox" className="form-checkbox" />
+                      <span className="ml-2">Walk-in</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input type="checkbox" className="form-checkbox" />
+                      <span className="ml-2">Visited</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input type="checkbox" className="form-checkbox" />
+                      <span className="ml-2">Referral</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
+                  <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option>AM</option>
+                    <option>PM</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Temperature</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
               </div>
-              <div className="mt-2">
-                <small className="text-gray-500">For REFERRAL Transaction only.</small>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Referred by</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">REFERRED FROM</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">REFERRED TO</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
-              <input
-                type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="mm/dd/yyyy"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                <option>AM</option>
-                <option>PM</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Temperature</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Referred by</label>
-              <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+            {/* Divider and Right column: Referral-only block */}
+            <div className="relative">
+              {/* Vertical divider line for md+ */}
+              <div className="hidden md:block absolute left-0 top-0 h-full border-l border-gray-300" aria-hidden="true"></div>
+              <div className="md:pl-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <h5 className="text-sm font-semibold text-gray-800 mb-3">For REFERRAL Transaction only.</h5>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">REFERRED FROM</label>
+                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">REFERRED TO</label>
+                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Reason(s) for Referral</label>
+                      <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" placeholder="List reasons here..."></textarea>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Referral By</label>
+                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1837,91 +2261,57 @@ function PatientRecords() {
             </div>
           </div>
           <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">General</span>
-              </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left: checkboxes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {[
+                "General", "Family Planning", "Prenatal", "Postpartum", "Dental Care",
+                "Tuberculosis", "Child Care", "Child Immunization", "Child Nutrition",
+                "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization"
+              ].map((label, idx) => (
+                <label key={idx} className="inline-flex items-center">
+                  <input type="checkbox" className="form-checkbox" />
+                  <span className="ml-2">{label}</span>
+                </label>
+              ))}
             </div>
+
+            {/* Right: Chief Complaints */}
             <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Family Planning</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Prenatal</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Postpartum</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Dental Care</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Tuberculosis</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Child Care</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Child Immunization</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Child Nutrition</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Sick Children</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Injury</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Firecracker Injury</span>
-              </label>
-            </div>
-            <div>
-              <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
-                <span className="ml-2">Adult Immunization</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Chief Complaints</label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                rows="8"
+              ></textarea>
             </div>
           </div>
         </div>
 
         {/* Diagnosis and Treatment */}
         <div className="mb-6">
-          <h4 className="font-bold border-b border-gray-300 pb-1 mb-3">Diagnosis and Treatment</h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-bold border-b border-gray-300 pb-1">
+              Diagnosis and Treatment
+            </h4>
+            <button
+              type="button"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Diagnose
+            </button>
+          </div>
+
+          {/* Top 3 Diagnosis */}
+          <div className="mb-4 p-3 border border-gray-200 rounded-md bg-gray-50">
+            <h5 className="text-sm font-semibold text-gray-700 mb-2">Top 3 Diagnosis</h5>
+            <ul className="list-disc list-inside text-gray-600 text-sm space-y-1">
+              <li>Diagnosis 1</li>
+              <li>Diagnosis 2</li>
+              <li>Diagnosis 3</li>
+            </ul>
+          </div>
+
+          {/* Diagnosis + Medication/Treatment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
@@ -1932,13 +2322,19 @@ function PatientRecords() {
               <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
             </div>
           </div>
+
+          {/* Labs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Laboratory Findings / Impression</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Laboratory Findings / Impression
+              </label>
               <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Performed Laboratory Test</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Performed Laboratory Test
+              </label>
               <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
             </div>
           </div>
@@ -1948,7 +2344,7 @@ function PatientRecords() {
         <div className="flex justify-end space-x-4 mt-6">
           <button
             type="button"
-            onClick={() => setSelectedPatient(null)}
+            onClick={() => { setSelectedPatient(null); setSelectedFormType(null); }}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
           >
             Cancel
@@ -1964,6 +2360,8 @@ function PatientRecords() {
     </div>
   </div>
 )}
+
+
 
 
 {/* Consultation History Modal */}
@@ -2119,7 +2517,19 @@ function PatientRecords() {
             <FaTimes className="w-6 h-6" />
           </button>
         </div>
-
+        {/* Print styles for referral note */}
+        <style>
+          {`
+            @media print {
+              .no-print { display: none !important; }
+              .referral-print h3, .referral-print h4 { margin: 0; }
+              .referral-print .border-black { border-color: #000; }
+              .referral-print input, .referral-print textarea, .referral-print select {
+                border: none !important; padding: 0 !important; background: transparent !important;
+              }
+            }
+          `}
+        </style>
         <div className="text-center mb-4">
           <h3 className="text-lg font-semibold">RURAL HEALTH UNIT-BALINGASAG</h3>
           <p className="text-sm">Barangay Waterfall, Balingasag Misamis Oriental</p>
@@ -2128,7 +2538,7 @@ function PatientRecords() {
         
         <h3 className="text-lg font-semibold mb-4 text-center border-b-2 border-black pb-2">CLINICAL REFERRAL FORM</h3>
         
-        <form onSubmit={handleSubmitReferral} className="space-y-4">
+        <form className="space-y-4 referral-print">
           {/* Referral Type */}
           <div className="flex justify-center gap-8 mb-4">
             {["EMERGENCY", "AMBULATORY", "MEDICOLEGAL"].map((type) => (
@@ -2503,15 +2913,16 @@ function PatientRecords() {
                 setSelectedPatient(null);
                 setSelectedFormType(null);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 no-print"
             >
-              Cancel
+              Close
             </button>
             <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              type="button"
+              onClick={handlePrintReferral}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 no-print"
             >
-              Submit Referral
+              Print Referral
             </button>
           </div>
         </form>
@@ -2525,43 +2936,50 @@ function PatientRecords() {
       {/* View Patient Modal */}
 {viewPatient && (
   <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none print-root">
       <style>
         {`
+          @page { size: A4; margin: 12mm; }
           @media print {
-            .no-print {
-              display: none !important;
-            }
+            html, body { background: #fff !important; }
+            /* Show only the modal content */
+            body * { visibility: hidden !important; }
+            .print-root, .print-root * { visibility: visible !important; }
+            .print-root { position: static !important; box-shadow: none !important; }
+            .no-print { display: none !important; }
+            /* Container tuned for single page */
             .print-container {
               width: 100%;
-              max-width: 210mm; /* A4 width */
-              margin: 10mm auto;
-              padding: 10mm;
-              font-size: 12pt;
-              line-height: 1.5;
+              max-width: 190mm; /* slightly smaller than A4 for safe margins */
+              margin: 0 auto;
+              padding: 0;
+              font-size: 10.5pt;
+              line-height: 1.35;
             }
             .print-container h3 {
-              font-size: 16pt;
-              margin-bottom: 8pt;
+              font-size: 13pt;
+              margin-bottom: 5pt;
             }
             .print-container h4 {
-              font-size: 14pt;
-              margin-top: 12pt;
-              margin-bottom: 8pt;
+              font-size: 12pt;
+              margin-top: 6pt;
+              margin-bottom: 5pt;
             }
             .print-container p {
-              font-size: 12pt;
-              margin-bottom: 4pt;
+              font-size: 10.5pt;
+              margin-bottom: 2pt;
             }
             .print-container .grid {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
-              gap: 10mm;
+              gap: 4mm;
             }
             .print-container .border-b {
               border-bottom: 1pt solid #000;
-              margin-bottom: 8pt;
+              margin-bottom: 5pt;
             }
+            .print-container .text-sm { font-size: 10.5pt; }
+            .print-container .text-base { font-size: 11.5pt; }
           }
         `}
       </style>
@@ -2605,7 +3023,8 @@ function PatientRecords() {
             <div>
               <p className="text-sm font-medium text-gray-600">Birth Date</p>
               <p className="text-sm text-gray-900">
-                {viewPatient.birth_date} (Age: {calculateAge(viewPatient.birth_date)})
+                {(viewPatient.birth_date ? viewPatient.birth_date.toString().split('T')[0] : '-')}
+                {' '} (Age: {calculateAge(viewPatient.birth_date)})
               </p>
             </div>
             <div>
