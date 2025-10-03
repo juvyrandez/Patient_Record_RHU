@@ -2,12 +2,12 @@
 CREATE DATABASE rhu_patient_record;
 
 CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   fullname VARCHAR(255) NOT NULL,
   username VARCHAR(255) NOT NULL UNIQUE,
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  usertype ENUM('admin', 'staff') NOT NULL
+  usertype VARCHAR(20) CHECK (usertype IN ('admin', 'staff')) NOT NULL
 );
 
 
@@ -251,8 +251,64 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 CREATE TRIGGER update_notifications_timestamp
 BEFORE UPDATE ON notifications
 FOR EACH ROW
 EXECUTE FUNCTION update_notification_timestamp();
+
+------------------------------------------------------------------------------------------
+-- Individual Treatment Records (for CHU/RHU Individual Treatment Record modal)
+CREATE TABLE IF NOT EXISTS individual_treatment_records (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE SET NULL,
+  patient_last_name VARCHAR(100) NOT NULL,
+  patient_first_name VARCHAR(100) NOT NULL,
+  patient_middle_name VARCHAR(100),
+  patient_suffix VARCHAR(10),
+  patient_birth_date DATE,
+
+  visit_type VARCHAR(30),
+  consultation_date DATE,
+  consultation_period VARCHAR(2), -- AM/PM
+  consultation_time TIME,
+
+  blood_pressure VARCHAR(20),
+  temperature VARCHAR(20),
+  height_cm VARCHAR(20),
+  weight_kg VARCHAR(20),
+  heart_rate VARCHAR(20),
+  respiratory_rate VARCHAR(20),
+  attending_provider VARCHAR(150),
+
+  referred_from VARCHAR(255),
+  referred_to VARCHAR(255),
+  referral_reasons TEXT[],
+  referred_by VARCHAR(150),
+  purpose_of_visit VARCHAR(100),
+
+  chief_complaints TEXT,
+  diagnosis TEXT,
+  diagnosis_1 TEXT,
+  diagnosis_2 TEXT,
+  diagnosis_3 TEXT,
+  medication TEXT,
+  lab_findings TEXT,
+  lab_tests TEXT,
+
+  referral_id INTEGER REFERENCES referrals(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_itr_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_itr_timestamp_trg
+BEFORE UPDATE ON individual_treatment_records
+FOR EACH ROW
+EXECUTE FUNCTION update_itr_timestamp();

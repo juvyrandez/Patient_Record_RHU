@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaEye, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp, FaSpinner, FaClock, FaTasks, FaCheck,FaSearch, FaTimes, FaHandHoldingMedical } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 
@@ -16,7 +16,74 @@ function ReferralForm() {
   // Treatment Modal State
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
   const [treatmentPatient, setTreatmentPatient] = useState(null);
+  const [treatmentPatientId, setTreatmentPatientId] = useState(null);
   const [treatmentReferral, setTreatmentReferral] = useState(null);
+  const treatmentFormRef = useRef(null);
+
+  // Save treatment record (component scope)
+  const handleSaveTreatmentRecord = async () => {
+    if (!treatmentPatient) return;
+    const root = treatmentFormRef.current;
+    const val = (sel) => root?.querySelector(sel)?.value?.trim() || "";
+    const checkedVal = (sel) => root?.querySelector(sel)?.value?.trim() || "";
+
+    const body = {
+      patient: {
+        last_name: treatmentPatient.last_name,
+        first_name: treatmentPatient.first_name,
+        middle_name: treatmentPatient.middle_name || null,
+        suffix: treatmentPatient.suffix || null,
+        birth_date: treatmentPatient.birth_date || null,
+        patient_id: treatmentPatientId || null,
+      },
+      referral: treatmentReferral || {},
+      record: {
+        visit_type: checkedVal('input[data-field="visit_type"]:checked'),
+        consultation_date: val('[data-field="consultation_date"]'),
+        consultation_period: val('[data-field="consultation_period"]'),
+        consultation_time: val('[data-field="consultation_time"]'),
+        blood_pressure: val('[data-field="blood_pressure"]'),
+        temperature: val('[data-field="temperature"]'),
+        height_cm: val('[data-field="height_cm"]'),
+        weight_kg: val('[data-field="weight_kg"]'),
+        heart_rate: val('[data-field="heart_rate"]'),
+        respiratory_rate: val('[data-field="respiratory_rate"]'),
+        attending_provider: val('[data-field="attending_provider"]'),
+        referred_from: val('[data-field="referred_from"]'),
+        referred_to: val('[data-field="referred_to"]'),
+        referral_reasons: val('[data-field="referral_reasons"]'),
+        referred_by: val('[data-field="referred_by"]'),
+        purpose_of_visit: checkedVal('input[data-field="purpose_of_visit"]:checked'),
+        chief_complaints: val('[data-field="chief_complaints"]'),
+        // Capture diagnosis fields if provided (allowed for pending)
+        diagnosis: val('[data-field="diagnosis"]') || null,
+        diagnosis_1: val('[data-field="diagnosis_1"]') || null,
+        diagnosis_2: val('[data-field="diagnosis_2"]') || null,
+        diagnosis_3: val('[data-field="diagnosis_3"]') || null,
+        // Keep as pending: do NOT send medication/lab fields from staff save
+        medication: null,
+        lab_findings: null,
+        lab_tests: null,
+      }
+    };
+
+    try {
+      const res = await fetch('/api/treatment_records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await Swal.fire({ icon: 'success', title: 'Saved', text: 'Treatment record saved.' });
+      setShowTreatmentModal(false);
+      setTreatmentPatient(null);
+      setTreatmentPatientId(null);
+      setTreatmentReferral(null);
+    } catch (e) {
+      console.error('Save treatment error', e);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save treatment record.' });
+    }
+  };
 
   // Staff patients cache for existence check
   const [staffPatients, setStaffPatients] = useState([]);
@@ -136,6 +203,7 @@ function ReferralForm() {
     const refLast = normalize(referral.patient_last_name);
     const refBirth = referral.patient_birth_date ? new Date(referral.patient_birth_date).toISOString().split('T')[0] : '';
 
+    let matchedPatient = null;
     const exists = (patients || []).some(p => {
       const pFirst = normalize(p.first_name);
       const pLast = normalize(p.last_name);
@@ -143,7 +211,9 @@ function ReferralForm() {
       // Match by first+last name, and if birth dates are available, they must match
       const nameMatch = pFirst === refFirst && pLast === refLast;
       const birthMatch = (!refBirth || !pBirth) ? true : (pBirth === refBirth);
-      return nameMatch && birthMatch;
+      const ok = nameMatch && birthMatch;
+      if (ok && !matchedPatient) matchedPatient = p;
+      return ok;
     });
 
     if (!exists) {
@@ -189,6 +259,7 @@ function ReferralForm() {
       birth_date: referral.patient_birth_date,
       residential_address: referral.patient_address,
     });
+    setTreatmentPatientId(matchedPatient?.id || null);
     setTreatmentReferral(referral);
   };
 
@@ -373,19 +444,22 @@ function ReferralForm() {
                           <div className="flex items-center justify-between">
                             <button
                               onClick={() => handleViewDetails(referral)}
-                              className="text-blue-600 hover:text-blue-900 flex items-center"
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
                               disabled={isLoading}
+                              title="View Details"
+                              aria-label="View Details"
                             >
-                              <FaEye className="mr-1 w-5 h-5" />
-                              View
+                              <FaEye className="w-4 h-4" />
+                              <span>View</span>
                             </button>
                             <button
                               onClick={() => handleOpenTreatment(referral)}
-                              className="text-green-700 hover:text-green-900 flex items-center ml-3"
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100 ml-3"
                               title="Open Treatment Form"
+                              aria-label="Open Treatment Form"
                             >
-                              <FaHandHoldingMedical className="mr-1 w-5 h-5" />
-                              Treatment
+                              <FaHandHoldingMedical className="w-4 h-4" />
+                              <span>Treatment</span>
                             </button>
                             {!referral.seen && (
                               <span className="px-4 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-50 text-green-700">
@@ -666,7 +740,7 @@ function ReferralForm() {
       {treatmentPatient && showTreatmentModal && (
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+            <div className="p-6" ref={treatmentFormRef}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-gray-800">
                   Individual Treatment Record
@@ -757,63 +831,66 @@ function ReferralForm() {
                         <label className="block text-sm font-medium text-gray-700">Visit Type</label>
                         <div className="flex items-center flex-wrap gap-4">
                           <label className="inline-flex items-center">
-                            <input type="checkbox" className="form-checkbox" />
+                            <input type="checkbox" className="form-checkbox" data-field="visit_type" value="Walk-in" />
                             <span className="ml-2">Walk-in</span>
                           </label>
                           <label className="inline-flex items-center">
-                            <input type="checkbox" className="form-checkbox" />
+                            <input type="checkbox" className="form-checkbox" data-field="visit_type" value="Visited" />
                             <span className="ml-2">Visited</span>
                           </label>
                           <label className="inline-flex items-center">
-                            <input type="checkbox" className="form-checkbox" defaultChecked />
+                            <input type="checkbox" className="form-checkbox" defaultChecked data-field="visit_type" value="Referral" />
                             <span className="ml-2">Referral</span>
                           </label>
                         </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
-                        <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_date ? new Date(treatmentReferral.referral_date).toISOString().split('T')[0] : ''} />
+                        <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_date ? new Date(treatmentReferral.referral_date).toISOString().split('T')[0] : ''} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={(() => { try { const h = new Date(`2025-01-01T${treatmentReferral?.referral_time || '00:00'}`).getHours(); return h < 12 ? 'AM' : 'PM'; } catch { return 'AM'; } })()}>
-                          <option>AM</option>
-                          <option>PM</option>
-                        </select>
+                        <div className="flex gap-2">
+                          <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_time || ''} />
+                          <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md" defaultValue={(() => { try { const h = new Date(`2025-01-01T${treatmentReferral?.referral_time || '00:00'}`).getHours(); return h < 12 ? 'AM' : 'PM'; } catch { return 'AM'; } })()}>
+                            <option>AM</option>
+                            <option>PM</option>
+                          </select>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.blood_pressure || ''} />
+                        <input data-field="blood_pressure" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.blood_pressure || ''} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Temperature</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <input data-field="temperature" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <input data-field="height_cm" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.weight || ''} />
+                        <input data-field="weight_kg" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.weight || ''} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.heart_rate || ''} />
+                        <input data-field="heart_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.heart_rate || ''} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.respiratory_rate || ''} />
+                        <input data-field="respiratory_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.respiratory_rate || ''} />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <input data-field="attending_provider" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                       </div>
                     </div>
                   </div>
@@ -827,17 +904,18 @@ function ReferralForm() {
                         <div className="grid grid-cols-1 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700">REFERRED FROM</label>
-                            <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referred_by_name || ''} />
+                            <input data-field="referred_from" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referred_by_name || ''} />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700">REFERRED TO</label>
-                            <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referred_to || ''} />
+                            <input data-field="referred_to" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referred_to || ''} />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700">Reason(s) for Referral</label>
                             <textarea
                               className="w-full px-3 py-2 border border-gray-300 rounded-md"
                               rows="3"
+                              data-field="referral_reasons"
                               defaultValue={(() => {
                                 try {
                                   const reasons = Array.isArray(treatmentReferral?.referral_reasons)
@@ -853,7 +931,7 @@ function ReferralForm() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700">Referral By</label>
-                            <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referred_by_name || ''} />
+                            <input data-field="referred_by" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referred_by_name || ''} />
                           </div>
                         </div>
                       </div>
@@ -887,7 +965,7 @@ function ReferralForm() {
                 </div>
                 <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Left: checkboxes */}
+                  {/* Left: single-select radios */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
                       "General", "Family Planning", "Prenatal", "Postpartum", "Dental Care",
@@ -895,7 +973,7 @@ function ReferralForm() {
                       "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization"
                     ].map((label, idx) => (
                       <label key={idx} className="inline-flex items-center">
-                        <input type="checkbox" className="form-checkbox" />
+                        <input name="purpose_of_visit" value={label} data-field="purpose_of_visit" type="radio" className="form-radio" />
                         <span className="ml-2">{label}</span>
                       </label>
                     ))}
@@ -907,6 +985,7 @@ function ReferralForm() {
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       rows="8"
+                      data-field="chief_complaints"
                       defaultValue={treatmentReferral?.chief_complaints || ''}
                     ></textarea>
                   </div>
@@ -930,22 +1009,22 @@ function ReferralForm() {
                 {/* Top 3 Diagnosis */}
                 <div className="mb-4 p-3 border border-gray-200 rounded-md bg-gray-50">
                   <h5 className="text-sm font-semibold text-gray-700 mb-2">Top 3 Diagnosis</h5>
-                  <ul className="list-disc list-inside text-gray-600 text-sm space-y-1">
-                    <li>Diagnosis 1</li>
-                    <li>Diagnosis 2</li>
-                    <li>Diagnosis 3</li>
-                  </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <input data-field="diagnosis_1" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 1" />
+                    <input data-field="diagnosis_2" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 2" />
+                    <input data-field="diagnosis_3" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 3" />
+                  </div>
                 </div>
 
                 {/* Diagnosis + Medication/Treatment */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
-                    <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                    <textarea data-field="diagnosis" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Medication / Treatment</label>
-                    <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                    <textarea data-field="medication" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
                   </div>
                 </div>
 
@@ -955,13 +1034,13 @@ function ReferralForm() {
                     <label className="block text-sm font-medium text-gray-700">
                       Laboratory Findings / Impression
                     </label>
-                    <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" defaultValue={treatmentReferral?.impression || ''}></textarea>
+                    <textarea data-field="lab_findings" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" defaultValue={treatmentReferral?.impression || ''}></textarea>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Performed Laboratory Test
                     </label>
-                    <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                    <textarea data-field="lab_tests" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
                   </div>
                 </div>
               </div>
@@ -977,6 +1056,7 @@ function ReferralForm() {
                 </button>
                 <button
                   type="button"
+                  onClick={handleSaveTreatmentRecord}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Save Record

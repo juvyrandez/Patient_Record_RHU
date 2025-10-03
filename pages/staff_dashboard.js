@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
@@ -518,6 +518,7 @@ function PatientRecords() {
   const [bhwSearchQuery, setBhwSearchQuery] = useState("");
   const [bhwResults, setBhwResults] = useState([]);
   const [showBhwModal, setShowBhwModal] = useState(false);
+  const treatmentFormRef = useRef(null);
 
   useEffect(() => {
     fetchPatients();
@@ -600,6 +601,66 @@ function PatientRecords() {
     console.log('Saving consultations:', consultationHistory);
     setSelectedPatient(null);
     setSelectedFormType(null);
+  };
+
+  const handleSaveTreatmentRecord = async () => {
+    if (!selectedPatient) return;
+    const root = treatmentFormRef.current;
+    const val = (sel) => root?.querySelector(sel)?.value?.trim() || "";
+    const checkedVal = (sel) => root?.querySelector(sel)?.value?.trim() || "";
+
+    const body = {
+      patient: {
+        last_name: selectedPatient.last_name,
+        first_name: selectedPatient.first_name,
+        middle_name: selectedPatient.middle_name || null,
+        suffix: selectedPatient.suffix || null,
+        birth_date: selectedPatient.birth_date || null,
+        patient_id: selectedPatient.id || null,
+      },
+      record: {
+        visit_type: checkedVal('input[data-field="visit_type"]:checked'),
+        consultation_date: val('[data-field="consultation_date"]'),
+        consultation_period: val('[data-field="consultation_period"]'),
+        consultation_time: val('[data-field="consultation_time"]'),
+        blood_pressure: val('[data-field="blood_pressure"]'),
+        temperature: val('[data-field="temperature"]'),
+        height_cm: val('[data-field="height_cm"]'),
+        weight_kg: val('[data-field="weight_kg"]'),
+        heart_rate: val('[data-field="heart_rate"]'),
+        respiratory_rate: val('[data-field="respiratory_rate"]'),
+        attending_provider: val('[data-field="attending_provider"]'),
+        referred_from: val('[data-field="referred_from"]'),
+        referred_to: val('[data-field="referred_to"]'),
+        referral_reasons: val('[data-field="referral_reasons"]'),
+        referred_by: val('[data-field="referred_by"]'),
+        purpose_of_visit: checkedVal('input[data-field="purpose_of_visit"]:checked'),
+        chief_complaints: val('[data-field="chief_complaints"]'),
+        // Capture diagnosis fields if provided
+        diagnosis: val('[data-field="diagnosis"]') || null,
+        diagnosis_1: val('[data-field="diagnosis_1"]') || null,
+        diagnosis_2: val('[data-field="diagnosis_2"]') || null,
+        diagnosis_3: val('[data-field="diagnosis_3"]') || null,
+        medication: null,
+        lab_findings: null,
+        lab_tests: null,
+      },
+    };
+
+    try {
+      const res = await fetch('/api/treatment_records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await Swal.fire({ icon: 'success', title: 'Saved', text: 'Treatment record saved.' });
+      setSelectedPatient(null);
+      setSelectedFormType(null);
+    } catch (e) {
+      console.error('Save treatment error', e);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save treatment record.' });
+    }
   };
 
   // Print a clean referral note (single-page A4) without form UI
@@ -2050,7 +2111,7 @@ function PatientRecords() {
 {selectedPatient && selectedFormType === 'treatment' && (
   <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6">
+      <div className="p-6" ref={treatmentFormRef}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800">
             Individual Treatment Record
@@ -2141,29 +2202,32 @@ function PatientRecords() {
                   <label className="block text-sm font-medium text-gray-700">Visit Type</label>
                   <div className="flex items-center flex-wrap gap-4">
                     <label className="inline-flex items-center">
-                      <input type="checkbox" className="form-checkbox" />
+                      <input data-field="visit_type" type="radio" name="visit_type" value="Walk-in" className="form-radio" />
                       <span className="ml-2">Walk-in</span>
                     </label>
                     <label className="inline-flex items-center">
-                      <input type="checkbox" className="form-checkbox" />
+                      <input data-field="visit_type" type="radio" name="visit_type" value="Visited" className="form-radio" />
                       <span className="ml-2">Visited</span>
                     </label>
                     <label className="inline-flex items-center">
-                      <input type="checkbox" className="form-checkbox" />
+                      <input data-field="visit_type" type="radio" name="visit_type" value="Referral" className="form-radio" />
                       <span className="ml-2">Referral</span>
                     </label>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
-                  <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option>AM</option>
-                    <option>PM</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md">
+                      <option>AM</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
@@ -2199,10 +2263,6 @@ function PatientRecords() {
                   <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
                   <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Referred by</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
               </div>
             </div>
 
@@ -2227,7 +2287,7 @@ function PatientRecords() {
                       <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" placeholder="List reasons here..."></textarea>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Referral By</label>
+                      <label className="block text-sm font-medium text-gray-700">Referred By</label>
                       <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                     </div>
                   </div>
@@ -2262,7 +2322,7 @@ function PatientRecords() {
           </div>
           <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left: checkboxes */}
+            {/* Left: single-select radios */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {[
                 "General", "Family Planning", "Prenatal", "Postpartum", "Dental Care",
@@ -2270,7 +2330,7 @@ function PatientRecords() {
                 "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization"
               ].map((label, idx) => (
                 <label key={idx} className="inline-flex items-center">
-                  <input type="checkbox" className="form-checkbox" />
+                  <input name="purpose_of_visit" value={label} data-field="purpose_of_visit" type="radio" className="form-radio" />
                   <span className="ml-2">{label}</span>
                 </label>
               ))}
@@ -2282,6 +2342,7 @@ function PatientRecords() {
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 rows="8"
+                data-field="chief_complaints"
               ></textarea>
             </div>
           </div>
@@ -2304,18 +2365,18 @@ function PatientRecords() {
           {/* Top 3 Diagnosis */}
           <div className="mb-4 p-3 border border-gray-200 rounded-md bg-gray-50">
             <h5 className="text-sm font-semibold text-gray-700 mb-2">Top 3 Diagnosis</h5>
-            <ul className="list-disc list-inside text-gray-600 text-sm space-y-1">
-              <li>Diagnosis 1</li>
-              <li>Diagnosis 2</li>
-              <li>Diagnosis 3</li>
-            </ul>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <input data-field="diagnosis_1" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 1" />
+              <input data-field="diagnosis_2" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 2" />
+              <input data-field="diagnosis_3" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 3" />
+            </div>
           </div>
 
           {/* Diagnosis + Medication/Treatment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
-              <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+              <textarea data-field="diagnosis" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Medication / Treatment</label>
@@ -2351,6 +2412,7 @@ function PatientRecords() {
           </button>
           <button
             type="button"
+            onClick={handleSaveTreatmentRecord}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Save Record

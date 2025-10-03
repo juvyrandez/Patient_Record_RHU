@@ -2434,23 +2434,29 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {patient.contact_number || "-"}
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 flex gap-2">
-                      <button
-                        onClick={() => handleView(patient.id)}
-                        className="text-green-600 hover:text-green-800 flex items-center"
-                        disabled={isLoading}
-                      >
-                        <FaEye className="mr-1" />
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleCreateReferral(patient)}
-                        className="text-blue-600 hover:text-blue-800 flex items-center"
-                        disabled={isLoading}
-                      >
-                        <FaFileMedical className="mr-1" />
-                        Referral
-                      </button>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleView(patient.id)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                          disabled={isLoading}
+                          title="View"
+                          aria-label="View"
+                        >
+                          <FaEye className="w-4 h-4" />
+                          <span>View</span>
+                        </button>
+                        <button
+                          onClick={() => handleCreateReferral(patient)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                          disabled={isLoading}
+                          title="Create Referral"
+                          aria-label="Create Referral"
+                        >
+                          <FaFileMedical className="w-4 h-4" />
+                          <span>Referral</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
