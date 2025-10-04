@@ -299,7 +299,7 @@ export default function StaffDashboard() {
 
         {/* Content Section */}
         <div className="mt-6">
-          {activeTab === "Dashboard" && <Dashboard />}
+          {activeTab === "Dashboard" && <Dashboard onQuickAction={setActiveTab} />}
           {activeTab === "Patient Records" && <PatientRecords />}
           {activeTab === "Referral" && <ReferralForm />}
           {activeTab === "Reports" && <Reports />}
@@ -325,110 +325,166 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 }
 
 // Components for different tabs
-function Dashboard() {
+function Dashboard({ onQuickAction }) {
   const [stats, setStats] = useState({
     totalPatients: 0,
     totalReferrals: 0,
-    completedReferrals: 0
+    completedReferrals: 0,
+    diagnosedRecords: 0,
   });
+  const [analytics, setAnalytics] = useState({ labels: [], patients: [], referrals: [], diagnoses: [] });
+  const [loading, setLoading] = useState(false);
 
-  // Sample data - replace with actual API calls
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setStats({
-        totalPatients: 102,
-        totalReferrals: 23,
-        completedReferrals: 13
-      });
-    }, 500);
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/staff_analytics');
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setStats(data.metrics || {});
+        setAnalytics(data.analytics || { labels: [], patients: [], referrals: [], diagnoses: [] });
+      } catch (e) {
+        console.error('Failed to load staff analytics', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  // Sample data for the chart
-  const referralData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+  const chartData = {
+    labels: analytics.labels,
     datasets: [
       {
         label: 'Referrals',
-        data: [32, 45, 28, 55, 42, 60, 48],
-        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-        borderColor: 'rgba(59, 130, 246, 1)',
-        borderWidth: 1
-      }
-    ]
+        data: analytics.referrals,
+        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+      },
+      {
+        label: 'Staff Patients',
+        data: analytics.patients,
+        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+      },
+      {
+        label: 'Diagnosed Records',
+        data: analytics.diagnoses,
+        backgroundColor: 'rgba(245, 158, 11, 0.8)',
+      },
+    ],
   };
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Monthly Referral Count',
-      },
+      legend: { position: 'top' },
+      title: { display: true, text: 'Last 6 Months Analytics' },
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Number of Referrals'
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Month'
-        }
-      }
-    }
+      y: { beginAtZero: true, ticks: { precision: 0 } },
+      x: {},
+    },
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Health Facility Dashboard</h2>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Total Patients Card */}
-        <div className="bg-blue-50 p-6 rounded-lg shadow-sm border border-blue-100">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Total Patients</p>
-              <p className="text-3xl font-bold text-blue-800 mt-2">{stats.totalPatients.toLocaleString()}</p>
+    <div className="space-y-6">
+      <div className="p-6 bg-white rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Health Facility Dashboard</h2>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          {/* Total Patients */}
+          <div className="bg-blue-50 p-6 rounded-lg shadow-sm border border-blue-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-blue-600">Total Patients</p>
+                <p className="text-3xl font-bold text-blue-800 mt-2">{loading ? '—' : (stats.totalPatients || 0).toLocaleString()}</p>
+              </div>
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <FaUsers className="text-xl" />
+              </div>
             </div>
-            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-              <FaUsers className="text-xl" />
+          </div>
+
+          {/* Total Referrals */}
+          <div className="bg-purple-50 p-6 rounded-lg shadow-sm border border-purple-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-purple-600">Total Referrals</p>
+                <p className="text-3xl font-bold text-purple-800 mt-2">{loading ? '—' : (stats.totalReferrals || 0).toLocaleString()}</p>
+              </div>
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <FaFileMedical className="text-xl" />
+              </div>
+            </div>
+          </div>
+
+          {/* Completed Referrals */}
+          <div className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-green-600">Completed Referrals</p>
+                <p className="text-3xl font-bold text-green-800 mt-2">{loading ? '—' : (stats.completedReferrals || 0).toLocaleString()}</p>
+              </div>
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <FaCalendarCheck className="text-xl" />
+              </div>
+            </div>
+          </div>
+
+          {/* Diagnosed Records */}
+          <div className="bg-amber-50 p-6 rounded-lg shadow-sm border border-amber-100">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-amber-600">Diagnosed Records</p>
+                <p className="text-3xl font-bold text-amber-800 mt-2">{loading ? '—' : (stats.diagnosedRecords || 0).toLocaleString()}</p>
+              </div>
+              <div className="p-3 rounded-full bg-amber-100 text-amber-600">
+                <FaNotesMedical className="text-xl" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Total Referrals Card */}
-        <div className="bg-purple-50 p-6 rounded-lg shadow-sm border border-purple-100">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Total Referrals</p>
-              <p className="text-3xl font-bold text-purple-800 mt-2">{stats.totalReferrals.toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-              <FaFileMedical className="text-xl" />
-            </div>
+        {/* Quick Actions */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold mb-2">Quick Actions</h2>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => onQuickAction && onQuickAction('Patient Records')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              aria-label="Navigate to Patient Records"
+            >
+              Patient Records
+            </button>
+            <button
+              onClick={() => onQuickAction && onQuickAction('Referral')}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+              aria-label="Navigate to Referral"
+            >
+              Referral
+            </button>
+            <button
+              onClick={() => onQuickAction && onQuickAction('Reports')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
+              aria-label="Navigate to Reports"
+            >
+              Reports
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Completed Referrals Card */}
-        <div className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-green-600">Completed Referrals</p>
-              <p className="text-3xl font-bold text-green-800 mt-2">{stats.completedReferrals.toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-full bg-green-100 text-green-600">
-              <FaCalendarCheck className="text-xl" />
-            </div>
-          </div>
+      {/* Analytics */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h3 className="text-lg font-semibold mb-3">Staff Analytics</h3>
+        <div className="w-full h-72">
+          <Bar key={`staff-analytics-${analytics.labels.join('-')}`}
+               data={chartData}
+               options={chartOptions}
+               redraw
+          />
         </div>
       </div>
     </div>
