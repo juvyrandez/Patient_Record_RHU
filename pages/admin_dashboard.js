@@ -93,11 +93,11 @@ export default function AdminDashboard() {
 
 
   return (
-    <div className="flex min-h-screen font-poppins bg-white-100 overflow-hidden">
+    <div className="flex min-h-screen font-poppins bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <aside
-        className={`bg-[#027d42] text-white shadow-lg transition-all 
-        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}
+        className={`bg-gradient-to-b from-[#027d42] to-[#025a32] text-white shadow-xl transition-all duration-300 ease-in-out
+        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed z-30 left-0 top-0`}
       >
         <div className="flex justify-center items-center">
           <img
@@ -118,24 +118,24 @@ export default function AdminDashboard() {
           <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <li>
             <div
-              className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
-                ${activeTab.includes("Manage Users") ? "bg-green-900 font-semibold" : ""} 
+              className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+                ${activeTab.includes("Manage Users") ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
                 ${isSidebarOpen ? "" : "justify-center"}`}
               onClick={() => {
                 setIsUsersDropdownOpen(!isUsersDropdownOpen);
                 if (activeTab !== "Manage Users") setActiveTab("Manage Users");
               }}
             >
-              <FaUsers size={28} />
+              <FaUsers size={24} />
               {isSidebarOpen && (
                 <div className="flex justify-between items-center w-full">
-                  <span>Manage Users</span>
-                  <FaChevronDown className={`transition-transform ${isUsersDropdownOpen ? "rotate-180" : ""}`} />
+                  <span className="text-sm font-medium">Manage Users</span>
+                  <FaChevronDown className={`transition-transform duration-200 ${isUsersDropdownOpen ? "rotate-180" : ""}`} size={14} />
                 </div>
               )}
             </div>
             {isUsersDropdownOpen && isSidebarOpen && (
-              <ul className="ml-8 space-y-2 mt-2">
+              <ul className="ml-6 space-y-1 mt-2">
                 <SidebarSubItem icon={FaUserTie} label="Staff" activeTab={activeTab} setActiveTab={setActiveTab} />
                 <SidebarSubItem icon={FaUserMd} label="Doctor" activeTab={activeTab} setActiveTab={setActiveTab} />
                 <SidebarSubItem icon={FaUserNurse} label="BHW" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -145,59 +145,67 @@ export default function AdminDashboard() {
           <SidebarItem icon={MdOutlineAccessTimeFilled} label="Log History" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={BiSolidReport} label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <li
-            className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
-              hover:bg-green-600 ${isSidebarOpen ? "" : "justify-center"}`}
+            className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+              hover:bg-red-500/20 ${isSidebarOpen ? "" : "justify-center"}`}
             onClick={handleLogout}
           >
-            <FiLogOut size={28} />
-            {isSidebarOpen && <span>Logout</span>}
+            <FiLogOut size={24} />
+            {isSidebarOpen && <span className="text-sm font-medium">Logout</span>}
           </li>
         </ul>
       </aside>
 
       {/* Main Content */}
-      <main className="font-poppins text-black flex-1 p-8 bg-gray-100 overflow-auto ml-[5rem] md:ml-0">
-        <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold">{activeTab}</h2>
-          <div className="flex items-center gap-6">
-            <button className="relative p-3 rounded-full hover:bg-gray-200 transition">
-              <FiBell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 rounded-full">3</span>
-            </button>
+      <main className={`font-poppins text-black flex-1 bg-gray-50 overflow-hidden transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"}`}>
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-20 bg-white shadow-sm border-b border-gray-200 p-6" style={{marginLeft: isSidebarOpen ? '256px' : '80px'}}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <MdDashboard className="text-blue-600" size={24} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">{activeTab}</h2>
+            </div>
+            <div className="flex items-center gap-6">
+              <button className="relative p-3 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                <FiBell size={24} className="text-gray-600" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">3</span>
+              </button>
 
-            {/* Profile Dropdown */}
-<div className="relative">
-  <button
-    className="flex items-center gap-3"
-    onClick={() => setDropdownOpen(!dropdownOpen)}
-  >
-    <span className="font-semibold">{fullname || "Admin"}</span>
-    <RiAdminFill className="w-12 h-12 rounded-full border p-2 text-gray-700" />
-  </button>
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button
+                  className="flex items-center gap-3"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                >
+                  <span className="font-semibold text-gray-700">{fullname || "Admin"}</span>
+                  <RiAdminFill className="w-12 h-12 rounded-full border p-2 text-gray-700 bg-gray-100" />
+                </button>
 
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg">
-                  <ul className="py-2">
-                    <li
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-200 cursor-pointer"
-                      onClick={() => {
-                        setProfileOpen(true);
-                        setDropdownOpen(false);
-                      }}
-                    >
-                      <FiUser />
-                      <span>Profile</span>
-                    </li>
-                    <li
-                      className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-gray-200 cursor-pointer"
-                      onClick={handleLogout}
-                    >
-                      <FiLogOut />
-                      <span>Logout</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-gray-100 overflow-hidden">
+                    <ul className="py-1">
+                      <li
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                        onClick={() => {
+                          setProfileOpen(true);
+                          setDropdownOpen(false);
+                        }}
+                      >
+                        <FiUser className="text-gray-500" />
+                        <span className="text-gray-700">Profile</span>
+                      </li>
+                      <li
+                        className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 cursor-pointer transition-colors duration-150"
+                        onClick={handleLogout}
+                      >
+                        <FiLogOut />
+                        <span>Logout</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -221,8 +229,9 @@ export default function AdminDashboard() {
         )}
 
 
-        {/* Content Section */}
-        <div className="mt-6">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 pt-24">
+          {/* Content Section */}
           {activeTab === "Dashboard" && <Dashboard setActiveTab={setActiveTab} />}
           {activeTab === "Manage Users" && <ManageUsers />}
           {activeTab === "Staff" && <StaffList />}
@@ -240,13 +249,13 @@ export default function AdminDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
-        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
+      className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+        ${activeTab === label ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
-      <Icon size={28} />
-      {isSidebarOpen && <span>{label}</span>}
+      <Icon size={24} />
+      {isSidebarOpen && <span className="text-sm font-medium">{label}</span>}
     </li>
   );
 }
@@ -255,12 +264,12 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 function SidebarSubItem({ icon: Icon, label, activeTab, setActiveTab }) {
   return (
     <li
-      className={`flex items-center gap-3 p-3 rounded-lg transition text-white 
-        ${activeTab === label ? "bg-green-900 font-semibold" : ""} cursor-pointer`}
+      className={`flex items-center gap-3 p-2 rounded-lg transition-all duration-200 text-white cursor-pointer
+        ${activeTab === label ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
       onClick={() => setActiveTab(label)}
     >
-      <Icon size={20} />
-      <span>{label}</span>
+      <Icon size={18} />
+      <span className="text-sm">{label}</span>
     </li>
   );
 }
@@ -358,7 +367,7 @@ function Dashboard({ setActiveTab }) {
         <div className="flex flex-wrap gap-4">
           <button
             onClick={() => setActiveTab("Manage Users")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
             aria-label="Navigate to Manage Users"
           >
             Manage Users
@@ -390,7 +399,7 @@ function Dashboard({ setActiveTab }) {
               <button
                 onClick={() => setFilter('all')}
                 className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  filter === 'all' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
                 aria-label="Show all activities"
               >
@@ -399,7 +408,7 @@ function Dashboard({ setActiveTab }) {
               <button
                 onClick={() => setFilter('notification')}
                 className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  filter === 'notification' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  filter === 'notification' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
                 aria-label="Show notifications"
               >
@@ -408,7 +417,7 @@ function Dashboard({ setActiveTab }) {
               <button
                 onClick={() => setFilter('login')}
                 className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  filter === 'login' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  filter === 'login' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
                 aria-label="Show login history"
               >
@@ -420,8 +429,8 @@ function Dashboard({ setActiveTab }) {
             {filteredActivities.length > 0 ? (
               filteredActivities.map(activity => (
                 <div key={activity.id} className="flex items-start">
-                  <div className="p-1.5 bg-blue-50 rounded-full mr-2">
-                    <FiBell className="text-blue-500" size={14} />
+                  <div className="p-1.5 bg-green-50 rounded-full mr-2">
+                    <FiBell className="text-green-500" size={14} />
                   </div>
                   <div>
                     <p className="text-sm font-medium">{activity.action}</p>
@@ -801,7 +810,7 @@ function ManageUsers() {
             <option value="BHW">BHWs</option>
           </select>
           <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
             onClick={() => openModal()}
             disabled={isLoading}
           >
@@ -811,7 +820,7 @@ function ManageUsers() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         {isLoading && !users.length ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-6 sm:h-8 w-6 sm:w-8 border-b-2 border-blue-500 mx-auto"></div>
@@ -820,61 +829,76 @@ function ManageUsers() {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
-                      ID
+                    <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      <div className="flex items-center gap-2">
+                        <FiUsers size={16} />
+                        ID
+                      </div>
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
-                      Full Name
+                    <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      <div className="flex items-center gap-2">
+                        <FiUser size={16} />
+                        Full Name
+                      </div>
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Username
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Email
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       User Type
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-100">
                   {paginatedUsers.map((user) => (
-                    <tr key={`${user.userType}-${user.id}`} className="hover:bg-gray-50">
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="text-xs sm:text-sm text-gray-500">{user.id}</div>
+                    <tr key={`${user.userType}-${user.id}`} className="hover:bg-green-50/30 transition-colors duration-150">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm font-medium text-gray-600">{user.id}</div>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">{user.fullname}</div>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm font-semibold text-gray-900">{user.fullname}</div>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="text-xs sm:text-sm text-gray-500">{user.username}</div>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-600">{user.username}</div>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="text-xs sm:text-sm text-gray-500">{user.email}</div>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-600">{user.email}</div>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="text-xs sm:text-sm text-gray-500">{user.userType}</div>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          user.userType === 'Staff' ? 'bg-green-100 text-green-800' :
+                          user.userType === 'Doctor' ? 'bg-green-100 text-green-800' :
+                          user.userType === 'BHW' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.userType}
+                        </span>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button 
                             onClick={() => openModal(user)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 disabled:opacity-50"
+                            className="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-100 disabled:opacity-50 transition-colors duration-150"
                             disabled={isLoading}
+                            title="Edit User"
                           >
-                            <FaEdit className="w-4 sm:w-5 h-4 sm:h-5" />
+                            <FaEdit className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDeleteUser(user.id, user.userType)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 disabled:opacity-50"
+                            className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors duration-150"
                             disabled={isLoading}
+                            title="Delete User"
                           >
-                            <FaTrash className="w-4 sm:w-5 h-4 sm:h-5" />
+                            <FaTrash className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -884,13 +908,13 @@ function ManageUsers() {
               </table>
             </div>
             {totalPages > 0 && (
-              <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
-                <span className="text-xs sm:text-sm text-gray-600">{showingText}</span>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-100 bg-gray-50/50 gap-2">
+                <span className="text-xs sm:text-sm text-gray-600 font-medium">{showingText}</span>
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 0}
-                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-white hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                   >
                     <FaArrowLeft className="w-3 sm:w-4 h-3 sm:h-4" />
                   </button>
@@ -898,10 +922,10 @@ function ManageUsers() {
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
+                      className={`px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-150 ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                          ? 'bg-green-600 text-white shadow-sm'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-green-50 hover:border-green-200'
                       }`}
                     >
                       {page + 1}
@@ -910,7 +934,7 @@ function ManageUsers() {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages - 1}
-                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-white hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                   >
                     <FaArrowRight className="w-3 sm:w-4 h-3 sm:h-4" />
                   </button>
@@ -1101,7 +1125,7 @@ function ManageUsers() {
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="px-3 py-1 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -1247,13 +1271,13 @@ function StaffList() {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">ID</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Full Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1295,7 +1319,7 @@ function StaffList() {
                       onClick={() => handlePageChange(page)}
                       className={`px-3 py-1 text-sm font-medium rounded-md ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-green-600 text-white'
                           : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                       }`}
                     >
@@ -1480,13 +1504,13 @@ function DoctorList() {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">ID</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Full Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1528,7 +1552,7 @@ function DoctorList() {
                       onClick={() => handlePageChange(page)}
                       className={`px-3 py-1 text-sm font-medium rounded-md ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-green-600 text-white'
                           : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                       }`}
                     >
@@ -1717,13 +1741,13 @@ function BHWList() {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">ID</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Full Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Username</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Full Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1765,7 +1789,7 @@ function BHWList() {
                       onClick={() => handlePageChange(page)}
                       className={`px-3 py-1 text-sm font-medium rounded-md ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-green-600 text-white'
                           : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                       }`}
                     >

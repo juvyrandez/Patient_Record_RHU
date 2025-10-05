@@ -403,15 +403,15 @@ function ReferralForm() {
           <div className="bg-white rounded-xl shadow overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred By</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred To</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred By</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred To</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date/Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Priority</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">

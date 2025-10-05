@@ -173,10 +173,10 @@ export default function StaffDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
+    <div className="flex min-h-screen font-poppins bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-[#027d42] text-white shadow-lg transition-all 
-        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
+      <aside className={`bg-gradient-to-b from-[#027d42] to-[#025a32] text-white shadow-xl transition-all duration-300 ease-in-out
+        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed z-30 left-0 top-0`}>
         {/* Logo Section */}
         <div className="flex justify-center items-center">
           <img 
@@ -193,7 +193,7 @@ export default function StaffDashboard() {
           </button>
         </div>
 
-        <ul className="mt-8 space-y-4">
+        <ul className="mt-8 space-y-2">
           <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaClipboardList} label="Patient Records" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaCalendarCheck} label="Referral" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
@@ -202,103 +202,112 @@ export default function StaffDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="font-poppins text-black flex-1 p-8 bg-gray-100 overflow-auto ml-[5rem] md:ml-0">
-        <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold">{activeTab}</h2>
-          <div className="flex items-center gap-6">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button 
-                className="relative p-3 rounded-full hover:bg-gray-100 transition"
-                onClick={toggleNotificationPanel}
-              >
-                <FiBell size={24} className="text-gray-600" />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                    {notifications.length}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Panel */}
-              {notificationOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white shadow-md rounded-lg z-50">
-                  <div className="px-4 py-3">
-                    <h3 className="text-base font-medium text-gray-800">Notifications</h3>
-                  </div>
-                  <ul className="max-h-80 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification) => (
-                        <li 
-                          key={notification.id}
-                          className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-start gap-3"
-                          onClick={() => handleNotificationClick(notification)}
-                        >
-                          <div className="flex-shrink-0 mt-1">
-                            {notification.type === "referral" && <FaFileMedical className="text-blue-400" size={16} />}
-                            {notification.type === "update" && <FaEdit className="text-green-400" size={16} />}
-                            {notification.type === "system" && <FaExclamationTriangle className="text-yellow-400" size={16} />}
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-700 leading-tight">{notification.message}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{notification.time}</p>
-                          </div>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="px-4 py-3 text-gray-500 text-sm">No new notifications</li>
-                    )}
-                  </ul>
-                  {notifications.length > 0 && (
-                    <div className="px-4 py-2">
-                      <button 
-                        className="w-full text-sm text-blue-500 hover:text-blue-700 transition"
-                        onClick={clearNotifications}
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+      <main className={`font-poppins text-black flex-1 bg-gray-50 overflow-hidden transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"}`}>
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-20 bg-white shadow-sm border-b border-gray-200 p-6" style={{marginLeft: isSidebarOpen ? '256px' : '80px'}}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <MdDashboard className="text-green-600" size={24} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">{activeTab}</h2>
             </div>
+            <div className="flex items-center gap-6">
+              {/* Notification Bell */}
+              <div className="relative">
+                <button 
+                  className="relative p-3 rounded-full hover:bg-gray-100 transition"
+                  onClick={toggleNotificationPanel}
+                >
+                  <FiBell size={24} className="text-gray-600" />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
 
-            {/* Profile Dropdown */}
-<div className="relative">
-  <button 
-    className="flex items-center gap-3" 
-    onClick={() => {
-      setDropdownOpen(!dropdownOpen);
-      if (notificationOpen) setNotificationOpen(false); // Close notification panel if open
-    }}
-  >
-    <span className="font-semibold text-gray-700">{fullname || "Staff"}</span>
-    <FaUser className="w-12 h-12 rounded-full border p-2 text-gray-700" />
-  </button>
+                {/* Notification Panel */}
+                {notificationOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white shadow-md rounded-lg z-50">
+                    <div className="px-4 py-3">
+                      <h3 className="text-base font-medium text-gray-800">Notifications</h3>
+                    </div>
+                    <ul className="max-h-80 overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notification) => (
+                          <li 
+                            key={notification.id}
+                            className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-start gap-3"
+                            onClick={() => handleNotificationClick(notification)}
+                          >
+                            <div className="flex-shrink-0 mt-1">
+                              {notification.type === "referral" && <FaFileMedical className="text-blue-400" size={16} />}
+                              {notification.type === "update" && <FaEdit className="text-green-400" size={16} />}
+                              {notification.type === "system" && <FaExclamationTriangle className="text-yellow-400" size={16} />}
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-700 leading-tight">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{notification.time}</p>
+                            </div>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-4 py-3 text-gray-500 text-sm">No new notifications</li>
+                      )}
+                    </ul>
+                    {notifications.length > 0 && (
+                      <div className="px-4 py-2">
+                        <button 
+                          className="w-full text-sm text-blue-500 hover:text-blue-700 transition"
+                          onClick={clearNotifications}
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white shadow-md rounded-lg">
-                  <ul className="py-2">
-                    <li className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer text-gray-700">
-                      <FiUser />
-                      <span>Profile</span>
-                    </li>
-                    <li 
-                      className="flex items-center gap-3 px-4 py-2 text-red-500 hover:bg-gray-50 cursor-pointer"
-                      onClick={handleLogout}
-                    >
-                      <FiLogOut />
-                      <span>Logout</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button 
+                  className="flex items-center gap-3" 
+                  onClick={() => {
+                    setDropdownOpen(!dropdownOpen);
+                    if (notificationOpen) setNotificationOpen(false); // Close notification panel if open
+                  }}
+                >
+                  <span className="font-semibold text-gray-700">{fullname || "Staff"}</span>
+                  <FaUser className="w-12 h-12 rounded-full border p-2 text-gray-700 bg-gray-100" />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-gray-100 overflow-hidden">
+                    <ul className="py-1">
+                      <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+                        <FiUser className="text-gray-500" />
+                        <span className="text-gray-700">Profile</span>
+                      </li>
+                      <li 
+                        className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 cursor-pointer transition-colors duration-150"
+                        onClick={handleLogout}
+                      >
+                        <FiLogOut />
+                        <span>Logout</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Content Section */}
-        <div className="mt-6">
+        
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 pt-24">
+          {/* Content Section */}
           {activeTab === "Dashboard" && <Dashboard onQuickAction={setActiveTab} />}
           {activeTab === "Patient Records" && <PatientRecords />}
           {activeTab === "Referral" && <ReferralForm />}
@@ -313,13 +322,13 @@ export default function StaffDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
-        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
+      className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+        ${activeTab === label ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
-      <Icon size={28} />
-      {isSidebarOpen && <span>{label}</span>}
+      <Icon size={24} />
+      {isSidebarOpen && <span className="text-sm font-medium">{label}</span>}
     </li>
   );
 }
@@ -395,13 +404,13 @@ function Dashboard({ onQuickAction }) {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           {/* Total Patients */}
-          <div className="bg-blue-50 p-6 rounded-lg shadow-sm border border-blue-100">
+          <div className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-blue-600">Total Patients</p>
-                <p className="text-3xl font-bold text-blue-800 mt-2">{loading ? '—' : (stats.totalPatients || 0).toLocaleString()}</p>
+                <p className="text-sm font-medium text-green-600">Total Patients</p>
+                <p className="text-3xl font-bold text-green-800 mt-2">{loading ? '—' : (stats.totalPatients || 0).toLocaleString()}</p>
               </div>
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
                 <FaUsers className="text-xl" />
               </div>
             </div>
@@ -453,7 +462,7 @@ function Dashboard({ onQuickAction }) {
           <div className="flex flex-wrap gap-4">
             <button
               onClick={() => onQuickAction && onQuickAction('Patient Records')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
               aria-label="Navigate to Patient Records"
             >
               Patient Records
@@ -1302,14 +1311,14 @@ function PatientRecords() {
           </div>
           <button
             onClick={handleSortToggle}
-            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="p-1.5 sm:p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 w-full sm:w-auto"
             disabled={isLoading}
             title={sortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
           >
-            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-5 h-5" /> : <FaSortAlphaUp className="w-5 h-5" />}
+            {sortOrder === 'asc' ? <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" /> : <FaSortAlphaUp className="w-4 sm:w-5 h-4 sm:h-5" />}
           </button>
           <select
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-auto"
+            className="px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm w-full sm:w-auto"
             value={filterGender}
             onChange={(e) => {
               setFilterGender(e.target.value);
@@ -1321,17 +1330,17 @@ function PatientRecords() {
             <option value="Female">Female</option>
           </select>
           <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto text-xs sm:text-sm"
             onClick={() => setShowBhwModal(true)}
           >
-            <FaSearch className="w-5 h-5" />
+            <FaSearch className="w-3 sm:w-4 h-3 sm:h-4" />
             <span>Search BHW</span>
           </button>
           <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto text-xs sm:text-sm"
             onClick={() => setShowForm(true)}
           >
-            <FaUserPlus className="w-5 h-5" />
+            <FaUserPlus className="w-3 sm:w-4 h-3 sm:h-4" />
             <span>Add New Patient</span>
           </button>
         </div>
@@ -1385,7 +1394,7 @@ function PatientRecords() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleViewBhw(patient.id)}
-                          className="px-3 py-1 rounded-md text-sm bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+                          className="px-3 py-1 rounded-md text-sm bg-green-600 hover:bg-green-700 text-white transition-colors duration-200"
                           title="View Patient Info"
                         >
                           <FaEye className="inline-block w-4 h-4" />
@@ -1868,7 +1877,7 @@ function PatientRecords() {
               {!isEditing && (
                 <div className="mb-8">
                   <div className="flex items-center mb-4">
-                    <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
+                    <div className="h-8 w-1 bg-green-600 rounded-full mr-3"></div>
                     <h4 className="text-lg font-semibold text-gray-800">Patient's Consent</h4>
                     <span className="text-sm text-gray-500 ml-2">(Pahintulot ng pasyente)</span>
                   </div>
@@ -1943,7 +1952,7 @@ function PatientRecords() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -1964,27 +1973,27 @@ function PatientRecords() {
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-green-600 to-green-700">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Last Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   First Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Middle Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Age
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Gender
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Contact
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-white uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -2007,7 +2016,7 @@ function PatientRecords() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        patient.gender === 'Male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
+                        patient.gender === 'Male' ? 'bg-green-100 text-green-800' : 'bg-pink-100 text-pink-800'
                       }`}>
                         {patient.gender}
                       </span>
@@ -2069,7 +2078,7 @@ function PatientRecords() {
                   onClick={() => handlePageChange(page)}
                   className={`px-3 py-1 text-sm font-medium rounded-md ${
                     currentPage === page
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-green-600 text-white'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
@@ -2469,7 +2478,7 @@ function PatientRecords() {
           <button
             type="button"
             onClick={handleSaveTreatmentRecord}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
             Save Record
           </button>
@@ -2512,14 +2521,14 @@ function PatientRecords() {
           
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-green-600 to-green-700">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">Date</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">History of Present Illness</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">Physical Exam</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">Assessment/Impression</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">Treatment/Management of Care</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">Actions</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider border border-green-300">Date</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider border border-green-300">History of Present Illness</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider border border-green-300">Physical Exam</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider border border-green-300">Assessment/Impression</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider border border-green-300">Treatment/Management of Care</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider border border-green-300">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -2608,7 +2617,7 @@ function PatientRecords() {
             Close
           </button>
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
             onClick={handleSaveConsultations}
           >
             Save All Consultations

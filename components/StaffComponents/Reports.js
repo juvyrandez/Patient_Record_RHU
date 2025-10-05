@@ -1,6 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { 
   FiSearch, 
+  FiUsers, 
+  FiShield, 
+  FiActivity, 
+  FiAlertTriangle,
   FiDownload 
 } from "react-icons/fi";
 
@@ -170,6 +174,10 @@ const HealthcarePanel = () => {
   const [filterBrgy, setFilterBrgy] = useState('All');
   const [data, setData] = useState(rawData);
 
+  // Calculate Summary Statistics
+  const totalRecords = data.length;
+  const totalOfBrgy = data.reduce((sum, item) => sum + Object.values(item.brgys).reduce((s, b) => s + b.T, 0), 0);
+
   // Filtered Data Logic
   const filteredData = useMemo(() => {
     let filtered = data;
@@ -213,6 +221,21 @@ const HealthcarePanel = () => {
     link.click();
   };
 
+  // --- REPORT CARD COMPONENT ---
+  const StatCard = ({ title, value, icon: Icon, colorClass }) => (
+    <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 transition duration-300 hover:shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className={`p-3 rounded-full ${colorClass} bg-opacity-10`}>
+          <Icon className={`w-6 h-6 ${colorClass}`} />
+        </div>
+        <p className="text-sm font-medium text-gray-500">{title}</p>
+      </div>
+      <div className="mt-4">
+        <h3 className={`text-3xl font-bold ${colorClass}`}>{value}</h3>
+      </div>
+    </div>
+  );
+
   // Utility component for the header row
   const HeaderCell = ({ children, className = "" }) => (
     <th className={`px-2 py-3 font-semibold text-xs text-left border-b border-gray-200 ${className}`}>
@@ -226,6 +249,22 @@ const HealthcarePanel = () => {
         <h1 className="text-4xl font-extrabold text-blue-700">Healthcare Service Summary</h1>
         <p className="text-lg text-gray-500 mt-1">Monthly Patient & Disease Tracking by Barangay</p>
       </header>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 mb-12">
+        <StatCard 
+          title="Total Records" 
+          value={totalRecords} 
+          icon={FiActivity} 
+          colorClass="text-blue-600" 
+        />
+        <StatCard 
+          title="Total of Brgy" 
+          value={totalOfBrgy} 
+          icon={FiShield} 
+          colorClass="text-green-600" 
+        />
+      </div>
 
       {/* Report Section */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -271,20 +310,20 @@ const HealthcarePanel = () => {
         {/* Responsive Table Container */}
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-10">
               <tr>
                 {/* Primary Columns */}
-                <HeaderCell className="w-1/4 sticky left-0 bg-gray-50 z-20 rounded-tl-xl text-gray-800">Patient Name</HeaderCell>
-                <HeaderCell className="w-1/6 text-gray-800">Disease</HeaderCell>
+                <HeaderCell className="w-1/4 sticky left-0 bg-green-600 z-20 rounded-tl-xl text-white font-semibold">Patient Name</HeaderCell>
+                <HeaderCell className="w-1/6 text-white font-semibold">Disease</HeaderCell>
 
                 {/* Barangay Group Columns */}
                 {barangays.map((brgy, index) => (
                   <th key={brgy} colSpan="3" className={`px-2 py-2 border-b border-gray-200 text-center ${index < barangays.length - 1 ? 'border-r border-gray-300' : ''}`}>
-                    <span className="text-xs font-bold text-gray-700 block truncate max-w-[80px]">{brgy}</span>
+                    <span className="text-xs font-bold text-white block truncate max-w-[80px]">{brgy}</span>
                     <div className="flex justify-around mt-1">
-                      <span className="text-xs font-medium w-1/3 text-gray-600">M</span>
-                      <span className="text-xs font-medium w-1/3 text-gray-600">F</span>
-                      <span className="text-xs font-bold w-1/3 text-gray-800">T</span>
+                      <span className="text-xs font-medium w-1/3 text-white">M</span>
+                      <span className="text-xs font-medium w-1/3 text-white">F</span>
+                      <span className="text-xs font-bold w-1/3 text-white">T</span>
                     </div>
                   </th>
                 ))}
@@ -363,6 +402,11 @@ const RabiesPanel = () => {
   const [filterCategory, setFilterCategory] = useState('All');
   const [data, setData] = useState(MOCK_DATA);
 
+  // Calculate Summary Statistics
+  const totalCases = data.length;
+  const completedVaccines = data.filter(d => d.isCat2VaccineCompleted).length;
+  const highRiskCases = data.filter(d => d.exposureCategory === 'III').length;
+
   // Toggle checkbox handler
   const toggleCheckbox = (id, field) => {
     setData(prevData =>
@@ -422,6 +466,21 @@ const RabiesPanel = () => {
     link.click();
   };
 
+  // --- REPORT CARD COMPONENT ---
+  const StatCard = ({ title, value, icon: Icon, colorClass }) => (
+    <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 transition duration-300 hover:shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className={`p-3 rounded-full ${colorClass} bg-opacity-10`}>
+          <Icon className={`w-6 h-6 ${colorClass}`} />
+        </div>
+        <p className="text-sm font-medium text-gray-500">{title}</p>
+      </div>
+      <div className="mt-4">
+        <h3 className={`text-3xl font-bold ${colorClass}`}>{value}</h3>
+      </div>
+    </div>
+  );
+
   // --- MAIN TABLE COMPONENT ---
   const RegistryTable = ({ data: tableData, toggleCheckbox: tableToggle }) => {
     const headers = [
@@ -432,7 +491,7 @@ const RabiesPanel = () => {
     return (
       <div className="overflow-x-auto relative">
         <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
+          <thead className="text-xs text-white uppercase bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-10">
             <tr>
               {headers.map(header => (
                 <th key={header} scope="col" className="py-3 px-6 whitespace-nowrap">
@@ -491,6 +550,28 @@ const RabiesPanel = () => {
         <h1 className="text-4xl font-extrabold text-teal-700">Rabies Registry Report</h1>
         <p className="text-lg text-gray-500 mt-1">Snapshot of Animal Bite Exposure Cases</p>
       </header>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        <StatCard 
+          title="Total Cases" 
+          value={totalCases} 
+          icon={FiUsers} 
+          colorClass="text-teal-600" 
+        />
+        <StatCard 
+          title="Cat. II Vaccines Done" 
+          value={completedVaccines} 
+          icon={FiShield} 
+          colorClass="text-green-600" 
+        />
+        <StatCard 
+          title="High Risk (Cat. III)" 
+          value={highRiskCases} 
+          icon={FiAlertTriangle} 
+          colorClass="text-red-600" 
+        />
+      </div>
 
       {/* Report Section */}
       <div className="bg-white p-6 rounded-xl shadow-lg">

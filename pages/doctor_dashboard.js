@@ -96,10 +96,10 @@ export default function DoctorDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
+    <div className="flex min-h-screen font-poppins bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-[#027d42] text-white shadow-lg transition-all 
-        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
+      <aside className={`bg-gradient-to-b from-[#027d42] to-[#025a32] text-white shadow-xl transition-all duration-300 ease-in-out
+        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed z-30 left-0 top-0`}>
         
         {/* Logo Section */}
         <div className="flex justify-center items-center">
@@ -117,7 +117,7 @@ export default function DoctorDashboard() {
           </button>
         </div>
 
-        <ul className="mt-8 space-y-4">
+        <ul className="mt-8 space-y-2">
           <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={MdMedicalServices} label="Patient Consultations" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaFileMedical} label="Patient Records" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
@@ -126,49 +126,58 @@ export default function DoctorDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="font-poppins text-black flex-1 p-8 bg-gray-100 overflow-auto ml-[5rem] md:ml-0">
-        <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold">{activeTab}</h2>
-          <div className="flex items-center gap-6">
-            {/* Notification Bell */}
-            <button className="relative p-3 rounded-full hover:bg-gray-200 transition">
-              <FiBell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 rounded-full">3</span>
-            </button>
+      <main className={`font-poppins text-black flex-1 bg-gray-50 overflow-hidden transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"}`}>
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-20 bg-white shadow-sm border-b border-gray-200 p-6" style={{marginLeft: isSidebarOpen ? '256px' : '80px'}}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <MdDashboard className="text-green-600" size={24} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">{activeTab}</h2>
+            </div>
+            <div className="flex items-center gap-6">
+              {/* Notification Bell */}
+              <button className="relative p-3 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                <FiBell size={24} className="text-gray-600" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">3</span>
+              </button>
 
-            {/* Profile Dropdown */}
-<div className="relative">
-  <button 
-    className="flex items-center gap-3" 
-    onClick={() => setDropdownOpen(!dropdownOpen)}
-  >
-    <span className="font-semibold">{fullname || "Doctor"}</span>
-    <FaUserDoctor className="w-12 h-12 rounded-full border p-2 text-gray-700" />
-  </button>
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button 
+                  className="flex items-center gap-3" 
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                >
+                  <span className="font-semibold text-gray-700">{fullname || "Doctor"}</span>
+                  <FaUserDoctor className="w-12 h-12 rounded-full border p-2 text-gray-700 bg-gray-100" />
+                </button>
 
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg">
-                  <ul className="py-2">
-                    <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-200 cursor-pointer">
-                      <FiUser />
-                      <span>Profile</span>
-                    </li>
-                    <li 
-                      className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-gray-200 cursor-pointer"
-                      onClick={handleLogout}
-                    >
-                      <FiLogOut />
-                      <span>Logout</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-gray-100 overflow-hidden">
+                    <ul className="py-1">
+                      <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+                        <FiUser className="text-gray-500" />
+                        <span className="text-gray-700">Profile</span>
+                      </li>
+                      <li 
+                        className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 cursor-pointer transition-colors duration-150"
+                        onClick={handleLogout}
+                      >
+                        <FiLogOut />
+                        <span>Logout</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Content Section */}
-        <div className="mt-6">
+        
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 pt-24">
+          {/* Content Section */}
           {activeTab === "Dashboard" && <DoctorDashboardContent />}
           {activeTab === "Patient Consultations" && <PatientConsultations />}
           {activeTab === "Patient Records" && <PatientRecords />}
@@ -183,13 +192,13 @@ export default function DoctorDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-white 
-        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
+      className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+        ${activeTab === label ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
-      <Icon size={28} />
-      {isSidebarOpen && <span>{label}</span>}
+      <Icon size={24} />
+      {isSidebarOpen && <span className="text-sm font-medium">{label}</span>}
     </li>
   );
 }
@@ -203,8 +212,8 @@ function DoctorDashboardContent() {
     <div className="p-6 bg-white shadow-md rounded-lg">
       <h3 className="text-xl font-semibold mb-4">Doctor Dashboard Overview</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-blue-50 p-6 rounded-lg shadow">
-          <h4 className="font-medium text-blue-800">Today's Appointments</h4>
+        <div className="bg-green-50 p-6 rounded-lg shadow">
+          <h4 className="font-medium text-green-800">Today's Appointments</h4>
           <p className="text-3xl font-bold mt-2">8</p>
         </div>
         <div className="bg-green-50 p-6 rounded-lg shadow">
@@ -444,13 +453,13 @@ function PatientConsultations() {
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gradient-to-r from-green-600 to-green-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Health Concern</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Health Concern</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -488,7 +497,7 @@ function PatientConsultations() {
                       onClick={() => handleStartConsultation(patient)}
                       title="Consult"
                       aria-label="Consult"
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border ${patient.status === 'Completed' ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border ${patient.status === 'Completed' ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
                       disabled={patient.status === 'Completed'}
                     >
                       <FaStethoscope size={16} />
@@ -526,7 +535,7 @@ function PatientConsultations() {
                 onClick={() => pcHandlePageChange(page)}
                 className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
                   pcCurrentPage === page
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-green-600 text-white'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
@@ -749,7 +758,7 @@ function PatientConsultations() {
                 </button>
                 <button
                   onClick={handleCompleteConsultation}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                 >
                   Complete Consultation
                 </button>
@@ -1011,13 +1020,13 @@ function ConsultationHistory() {
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gradient-to-r from-green-600 to-green-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diagnosis</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Diagnosis</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -1038,7 +1047,7 @@ function ConsultationHistory() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button onClick={() => openView(item.id)} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                  <button onClick={() => openView(item.id)} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
                     <FiEye size={16} />
                     <span>View</span>
                   </button>
@@ -1073,7 +1082,7 @@ function ConsultationHistory() {
                 onClick={() => histHandlePageChange(page)}
                 className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
                   histPage === page
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-green-600 text-white'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >

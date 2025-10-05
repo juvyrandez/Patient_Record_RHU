@@ -223,19 +223,18 @@ function Reports() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase">Patient Name</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase">Registration Date</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase">Gender</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase">Category</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold text-white uppercase">Patient Name</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold text-white uppercase">Registration Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold text-white uppercase">Gender</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold text-white uppercase">Category</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200 max-h-[400px] overflow-y-auto">
                   {patientSummaryData.length > 0 ? (
                     patientSummaryData.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50 leading-tight">
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.date}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.gender}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.category}</td>

@@ -95,19 +95,19 @@ function LogHistory() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-green-600 to-green-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">Timestamp</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">IP Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">Device</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

@@ -119,10 +119,10 @@ export default function BHWDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen font-poppins bg-gray-100 overflow-hidden">
+    <div className="flex min-h-screen font-poppins bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-[#027d42] text-white shadow-lg transition-all 
-        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
+      <aside className={`bg-gradient-to-b from-[#027d42] to-[#025a32] text-white shadow-xl transition-all duration-300 ease-in-out
+        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed z-30 left-0 top-0`}>
         
         {/* Logo Section */}
         <div className="flex justify-center items-center">
@@ -143,7 +143,7 @@ export default function BHWDashboard() {
           </button>
         </div>
 
-        <ul className="mt-8 space-y-4">
+        <ul className="mt-8 space-y-2">
           <SidebarItem 
             icon={MdDashboard} 
             label="Dashboard" 
@@ -152,31 +152,31 @@ export default function BHWDashboard() {
             isSidebarOpen={isSidebarOpen} 
           />
           <li
-            className={`flex items-center gap-4 p-4 rounded-lg transition text-white cursor-pointer
-              ${activeTab === "Add Patients" ? "bg-green-900 font-semibold" : ""} 
+            className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+              ${activeTab === "Add Patients" ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
               ${isSidebarOpen ? "" : "justify-center"}`}
             onClick={handleAddPatientsClick}
           >
-            <FaUserPlus size={28} />
+            <FaUserPlus size={24} />
             {isSidebarOpen && (
               <div className="flex items-center justify-between w-full">
-                <span>Add Patients</span>
+                <span className="text-sm font-medium">Add Patients</span>
                 <FaChevronDown 
-                  size={16} 
-                  className={`transition-transform ${isPatientDropdownOpen ? "rotate-180" : ""}`} 
+                  size={14} 
+                  className={`transition-transform duration-200 ${isPatientDropdownOpen ? "rotate-180" : ""}`} 
                 />
               </div>
             )}
           </li>
           {isPatientDropdownOpen && isSidebarOpen && (
-            <ul className="ml-8 mt-2 space-y-2">
+            <ul className="ml-6 mt-2 space-y-1">
               <li
-                className={`flex items-center gap-4 p-2 rounded-lg transition text-white cursor-pointer
-                  ${activeTab === "Referrals" ? "bg-green-900 font-semibold" : ""}`}
+                className={`flex items-center gap-3 p-2 rounded-lg transition-all duration-200 text-white cursor-pointer
+                  ${activeTab === "Referrals" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
                 onClick={() => setActiveTab("Referrals")}
               >
-                <FaFileMedical size={20} />
-                <span>Referrals</span>
+                <FaFileMedical size={18} />
+                <span className="text-sm">Referrals</span>
               </li>
             </ul>
           )}
@@ -191,49 +191,58 @@ export default function BHWDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="font-poppins text-black flex-1 p-8 bg-gray-100 overflow-auto ml-[5rem] md:ml-0">
-        <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold">{activeTab}</h2>
-          <div className="flex items-center gap-6">
-            {/* Notification Bell */}
-            <button className="relative p-3 rounded-full hover:bg-gray-200 transition">
-              <FiBell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 rounded-full">3</span>
-            </button>
-
-            {/* Profile Dropdown */}
-            <div className="relative">
-              <button 
-                className="flex items-center gap-3" 
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-              >
-                <span className="font-semibold">{fullname || "BHW"}</span>
-                <FaUserDoctor className="w-12 h-12 rounded-full border p-2 text-gray-700" />
+      <main className={`font-poppins text-black flex-1 bg-gray-50 overflow-hidden transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"}`}>
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-20 bg-white shadow-sm border-b border-gray-200 p-6" style={{marginLeft: isSidebarOpen ? '256px' : '80px'}}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <MdDashboard className="text-green-600" size={24} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">{activeTab}</h2>
+            </div>
+            <div className="flex items-center gap-6">
+              {/* Notification Bell */}
+              <button className="relative p-3 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                <FiBell size={24} className="text-gray-600" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">3</span>
               </button>
 
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg z-50">
-                  <ul className="py-2">
-                    <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-200 cursor-pointer">
-                      <FiUser />
-                      <span>Profile</span>
-                    </li>
-                    <li 
-                      className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-gray-200 cursor-pointer"
-                      onClick={handleLogout}
-                    >
-                      <FiLogOut />
-                      <span>Logout</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button 
+                  className="flex items-center gap-3" 
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                >
+                  <span className="font-semibold text-gray-700">{fullname || "BHW"}</span>
+                  <FaUserDoctor className="w-12 h-12 rounded-full border p-2 text-gray-700 bg-gray-100" />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-gray-100 overflow-hidden z-50">
+                    <ul className="py-1">
+                      <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+                        <FiUser className="text-gray-500" />
+                        <span className="text-gray-700">Profile</span>
+                      </li>
+                      <li 
+                        className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 cursor-pointer transition-colors duration-150"
+                        onClick={handleLogout}
+                      >
+                        <FiLogOut />
+                        <span>Logout</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="mt-6">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 pt-24">
+          {/* Content Section */}
           {activeTab === "Dashboard" && <BHWDashboardContent onQuickAction={setActiveTab} />}
           {activeTab === "Add Patients" && <AddPatientRecords bhwName={fullname} bhwBarangay={barangay} />}
           {activeTab === "Referrals" && <ViewReferrals />}
@@ -248,13 +257,13 @@ export default function BHWDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-4 rounded-lg transition text-white cursor-pointer
-        ${activeTab === label ? "bg-green-900 font-semibold" : ""} 
+      className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+        ${activeTab === label ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
         ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >
-      <Icon size={28} />
-      {isSidebarOpen && <span>{label}</span>}
+      <Icon size={24} />
+      {isSidebarOpen && <span className="text-sm font-medium">{label}</span>}
     </li>
   );
 }
@@ -373,7 +382,7 @@ function ViewReferrals() {
       case 'completed': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'in progress': return 'bg-blue-100 text-blue-800';
+      case 'in progress': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -406,7 +415,7 @@ function ViewReferrals() {
           <p>Error: {error}</p>
           <button
             onClick={fetchReferrals}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
             Retry
           </button>
@@ -453,7 +462,7 @@ function ViewReferrals() {
           </select>
           <button
             onClick={fetchReferrals}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
             disabled={loading}
           >
             <FaSyncAlt className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -479,24 +488,24 @@ function ViewReferrals() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Patient
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Referred To
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Date & Time
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Referred By
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Seen
                     </th>
                   </tr>
@@ -565,7 +574,7 @@ function ViewReferrals() {
                       onClick={() => handlePageChange(page)}
                       className={`px-2 py-0.5 text-xs font-medium rounded-md ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-green-600 text-white'
                           : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                       }`}
                     >
@@ -716,7 +725,7 @@ function BHWDashboardContent({ onQuickAction }) {
           <div className="flex flex-wrap gap-4">
             <button
               onClick={() => onQuickAction && onQuickAction('Add Patients')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
               aria-label="Navigate to Add Patients"
             >
               Add Patient
@@ -906,7 +915,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
         icon: 'error',
         confirmButtonText: 'OK',
         customClass: {
-          confirmButton: 'px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700',
+          confirmButton: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700',
           popup: 'rounded-lg'
         }
       });
@@ -919,7 +928,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
         icon: 'error',
         confirmButtonText: 'OK',
         customClass: {
-          confirmButton: 'px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700',
+          confirmButton: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700',
           popup: 'rounded-lg'
         }
       });
@@ -1035,7 +1044,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
           confirmButtonText: 'OK',
           buttonsStyling: false,
           customClass: {
-            confirmButton: 'px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700',
+            confirmButton: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700',
             popup: 'rounded-lg'
           }
         });
@@ -1215,14 +1224,14 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
           />
           <button
             onClick={handleSortToggle}
-            className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="p-1.5 sm:p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 w-full sm:w-auto"
             disabled={isLoading}
             title={sortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
           >
             {sortOrder === 'asc' ? <FaSortAlphaDown className="w-4 sm:w-5 h-4 sm:h-5" /> : <FaSortAlphaUp className="w-4 sm:w-5 h-4 sm:h-5" />}
           </button>
           <select
-            className="px-2 py-1 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full sm:w-auto text-xs sm:text-sm"
+            className="px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 w-full sm:w-auto text-xs sm:text-sm"
             value={filterGender}
             onChange={(e) => {
               setFilterGender(e.target.value);
@@ -1234,11 +1243,11 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
             <option value="Female">Female</option>
           </select>
           <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto"
+            className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto text-xs sm:text-sm"
             onClick={() => setShowForm(true)}
             disabled={isLoading}
           >
-            <FaUserPlus className="w-4 sm:w-5 h-4 sm:h-5" />
+            <FaUserPlus className="w-3 sm:w-4 h-3 sm:h-4" />
             <span>Add New Patient</span>
           </button>
         </div>
@@ -1263,7 +1272,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
             <form onSubmit={handleSubmit} className="p-4 sm:p-6">
               <div className="mb-6 sm:mb-8">
                 <div className="flex items-center mb-4">
-                  <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
+                  <div className="h-8 w-1 bg-green-600 rounded-full mr-3"></div>
                   <h4 className="text-base sm:text-lg font-semibold text-gray-800">Patient Information</h4>
                   <span className="text-xs sm:text-sm text-gray-500 ml-2">(Impormasyon ng Pasyente)</span>
                 </div>
@@ -1698,7 +1707,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
 
               <div className="mb-6 sm:mb-8">
                 <div className="flex items-center mb-4">
-                  <div className="h-8 w-1 bg-blue-600 rounded-full mr-3"></div>
+                  <div className="h-8 w-1 bg-green-600 rounded-full mr-3"></div>
                   <h4 className="text-base sm:text-lg font-semibold text-gray-800">Patient's Consent</h4>
                   <span className="text-xs sm:text-sm text-gray-500 ml-2">(Pahintulot ng pasyente)</span>
                 </div>
@@ -1772,7 +1781,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-3 sm:px-4 py-1 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+                  className="px-3 sm:px-4 py-1 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -2358,7 +2367,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 sm:px-6 py-1 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center text-xs sm:text-sm"
+                    className="px-4 sm:px-6 py-1 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center text-xs sm:text-sm"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -2383,27 +2392,27 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-green-600 to-green-700">
               <tr>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Last Name
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   First Name
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Middle Name
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Age
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Gender
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Contact
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -2426,7 +2435,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        patient.gender === 'Male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
+                        patient.gender === 'Male' ? 'bg-green-100 text-green-800' : 'bg-pink-100 text-pink-800'
                       }`}>
                         {patient.gender}
                       </span>
@@ -2448,7 +2457,7 @@ function AddPatientRecords({ bhwName, bhwBarangay }) {
                         </button>
                         <button
                           onClick={() => handleCreateReferral(patient)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
                           disabled={isLoading}
                           title="Create Referral"
                           aria-label="Create Referral"
@@ -2655,7 +2664,7 @@ function Reports() {
         </div>
         <button
           onClick={fetchReports}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
         >
           <FaSyncAlt className="w-4 h-4" />
           <span>Refresh</span>
@@ -2673,13 +2682,13 @@ function Reports() {
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gradient-to-r from-green-600 to-green-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Report Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
