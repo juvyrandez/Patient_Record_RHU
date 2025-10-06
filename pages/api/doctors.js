@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       case 'PUT':
         // Update doctor
         const { fullname: updateName, username: updateUsername, 
-                email: updateEmail, specialization: updateSpecialization } = req.body;
+                email: updateEmail, specialization: updateSpecialization, password: updatePassword } = req.body;
 
         if (!updateName || !updateUsername || !updateEmail) {
           return res.status(400).json({ message: 'Missing required fields' });
@@ -77,13 +77,29 @@ export default async function handler(req, res) {
           return res.status(400).json({ message: 'Username or email already in use' });
         }
 
-        const { rows: [updatedDoctor] } = await pool.query(
-          `UPDATE doctors 
-           SET fullname = $1, username = $2, email = $3, specialization = $4
-           WHERE id = $5
-           RETURNING id, fullname, username, email, specialization`,
-          [updateName, updateUsername, updateEmail, updateSpecialization, id]
-        );
+        let updatedDoctor;
+        if (updatePassword) {
+          // Update with new password
+          const hashedPassword = await bcrypt.hash(updatePassword, 10);
+          const { rows: [doctor] } = await pool.query(
+            `UPDATE doctors 
+             SET fullname = $1, username = $2, email = $3, specialization = $4, password = $5
+             WHERE id = $6
+             RETURNING id, fullname, username, email, specialization`,
+            [updateName, updateUsername, updateEmail, updateSpecialization, hashedPassword, id]
+          );
+          updatedDoctor = doctor;
+        } else {
+          // Update without changing password
+          const { rows: [doctor] } = await pool.query(
+            `UPDATE doctors 
+             SET fullname = $1, username = $2, email = $3, specialization = $4
+             WHERE id = $5
+             RETURNING id, fullname, username, email, specialization`,
+            [updateName, updateUsername, updateEmail, updateSpecialization, id]
+          );
+          updatedDoctor = doctor;
+        }
 
         res.status(200).json(updatedDoctor);
         break;

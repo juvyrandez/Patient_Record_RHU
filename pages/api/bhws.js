@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
       case 'POST':
         // Create new BHW
-        const { fullname, username, email, password, barangay, contactNumber } = req.body;
+        const { fullname, username, email, password, barangay, contact_number } = req.body;
         
         // Validate required fields
         if (!fullname || !username || !email || !password || !barangay) {
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
           `INSERT INTO bhws (fullname, username, email, password, barangay, contact_number)
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id, fullname, username, email, barangay, contact_number`,
-          [fullname, username, email, hashedPassword, barangay, contactNumber]
+          [fullname, username, email, hashedPassword, barangay, contact_number]
         );
 
         res.status(201).json(newBhw);
@@ -65,7 +65,8 @@ export default async function handler(req, res) {
           username: updateUsername, 
           email: updateEmail, 
           barangay: updateBarangay, 
-          contactNumber: updateContact 
+          contact_number: updateContact,
+          password: updatePassword 
         } = req.body;
 
         if (!updateName || !updateUsername || !updateEmail || !updateBarangay) {
@@ -82,13 +83,29 @@ export default async function handler(req, res) {
           return res.status(400).json({ message: 'Username or email already in use' });
         }
 
-        const { rows: [updatedBhw] } = await pool.query(
-          `UPDATE bhws 
-           SET fullname = $1, username = $2, email = $3, barangay = $4, contact_number = $5
-           WHERE id = $6
-           RETURNING id, fullname, username, email, barangay, contact_number`,
-          [updateName, updateUsername, updateEmail, updateBarangay, updateContact, id]
-        );
+        let updatedBhw;
+        if (updatePassword) {
+          // Update with new password
+          const hashedPassword = await bcrypt.hash(updatePassword, 10);
+          const { rows: [bhw] } = await pool.query(
+            `UPDATE bhws 
+             SET fullname = $1, username = $2, email = $3, barangay = $4, contact_number = $5, password = $6
+             WHERE id = $7
+             RETURNING id, fullname, username, email, barangay, contact_number`,
+            [updateName, updateUsername, updateEmail, updateBarangay, updateContact, hashedPassword, id]
+          );
+          updatedBhw = bhw;
+        } else {
+          // Update without changing password
+          const { rows: [bhw] } = await pool.query(
+            `UPDATE bhws 
+             SET fullname = $1, username = $2, email = $3, barangay = $4, contact_number = $5
+             WHERE id = $6
+             RETURNING id, fullname, username, email, barangay, contact_number`,
+            [updateName, updateUsername, updateEmail, updateBarangay, updateContact, id]
+          );
+          updatedBhw = bhw;
+        }
 
         res.status(200).json(updatedBhw);
         break;

@@ -20,7 +20,9 @@ export default function StaffDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [fullname, setFullname] = useState("");
+  const [profileData, setProfileData] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -50,6 +52,7 @@ export default function StaffDashboard() {
           }
           
           setFullname(profileData.fullname);
+          setProfileData(profileData);
           
           // Fetch notifications after successful auth
           try {
@@ -198,6 +201,14 @@ export default function StaffDashboard() {
           <SidebarItem icon={FaClipboardList} label="Patient Records" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaCalendarCheck} label="Referral" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaHistory} label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <li
+            className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+              hover:bg-red-500/20 ${isSidebarOpen ? "" : "justify-center"}`}
+            onClick={handleLogout}
+          >
+            <FiLogOut size={24} />
+            {isSidebarOpen && <span className="text-sm font-medium">Logout</span>}
+          </li>
         </ul>
       </aside>
 
@@ -286,7 +297,13 @@ export default function StaffDashboard() {
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-gray-100 overflow-hidden">
                     <ul className="py-1">
-                      <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+                      <li 
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                        onClick={() => {
+                          setProfileOpen(true);
+                          setDropdownOpen(false);
+                        }}
+                      >
                         <FiUser className="text-gray-500" />
                         <span className="text-gray-700">Profile</span>
                       </li>
@@ -304,6 +321,75 @@ export default function StaffDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Enhanced Profile Modal */}
+        {profileOpen && profileData && (
+          <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white w-full max-w-sm sm:max-w-md lg:max-w-lg rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Staff Profile</h3>
+                  <button
+                    onClick={() => setProfileOpen(false)}
+                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+                  >
+                    <FaTimes size={16} />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center mb-3 sm:mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                    <FaUser className="text-green-600 text-base sm:text-lg" />
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-800">{profileData.fullname}</h4>
+                    <p className="text-green-600 font-medium text-xs sm:text-sm">RHU Staff</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Full Name</label>
+                    <p className="text-sm text-gray-800 font-medium break-words">{profileData.fullname}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Username</label>
+                    <p className="text-sm text-gray-800 font-medium break-words">{profileData.username}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Email Address</label>
+                    <p className="text-sm text-gray-800 font-medium break-words">{profileData.email}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">User Type</label>
+                    <p className="text-sm text-gray-800 font-medium capitalize">{profileData.usertype}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Staff ID</label>
+                    <p className="text-sm text-gray-800 font-medium">#{profileData.id}</p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end mt-3 sm:mt-4">
+                  <button
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-6 pt-24">

@@ -9,35 +9,39 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ message: "Method not allowed" });
 
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ message: "Username and password are required" });
+  if (!username || !password) return res.status(400).json({ message: "Username/email and password are required" });
 
   try {
     const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
+    // Check if input is email or username
+    const isEmail = username.includes('@');
+    const searchField = isEmail ? 'email' : 'username';
+
     // Users table
-    let userQuery = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    let userQuery = await pool.query(`SELECT * FROM users WHERE ${searchField} = $1`, [username]);
     let user = userQuery.rows[0];
     let userType = user?.usertype;
 
     // Doctors
     if (!user) {
-      const doctorQuery = await pool.query("SELECT * FROM doctors WHERE username = $1", [username]);
+      const doctorQuery = await pool.query(`SELECT * FROM doctors WHERE ${searchField} = $1`, [username]);
       user = doctorQuery.rows[0];
       userType = user ? "doctor" : null;
     }
 
     // BHWs
     if (!user) {
-      const bhwQuery = await pool.query("SELECT * FROM bhws WHERE username = $1", [username]);
+      const bhwQuery = await pool.query(`SELECT * FROM bhws WHERE ${searchField} = $1`, [username]);
       user = bhwQuery.rows[0];
       userType = user ? "bhw" : null;
     }
 
-    if (!user) return res.status(401).json({ message: "Invalid username or password" });
+    if (!user) return res.status(401).json({ message: "Invalid username/email or password" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid username or password" });
+    if (!isMatch) return res.status(401).json({ message: "Invalid username/email or password" });
 
     // Record login history
     await pool.query(

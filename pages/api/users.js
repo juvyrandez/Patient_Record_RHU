@@ -24,12 +24,22 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PUT") {
-      const { id, fullname, username, email } = req.body;
+      const { id, fullname, username, email, password } = req.body;
 
-      await client.query(
-        "UPDATE users SET fullname = $1, username = $2, email = $3 WHERE id = $4",
-        [fullname, username, email, id]
-      );
+      if (password) {
+        // Update with new password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await client.query(
+          "UPDATE users SET fullname = $1, username = $2, email = $3, password = $4 WHERE id = $5",
+          [fullname, username, email, hashedPassword, id]
+        );
+      } else {
+        // Update without changing password
+        await client.query(
+          "UPDATE users SET fullname = $1, username = $2, email = $3 WHERE id = $4",
+          [fullname, username, email, id]
+        );
+      }
 
       return res.status(200).json({ message: "User updated successfully" });
     }

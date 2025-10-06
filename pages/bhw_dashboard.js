@@ -6,6 +6,7 @@ import { FaUserPlus, FaChartBar, FaChevronDown } from "react-icons/fa";
 import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash, FaUsers, FaClock, FaCheckCircle } from 'react-icons/fa';
 
 import { FaSearch, FaFileMedical, FaEye, FaSpinner } from 'react-icons/fa';
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { FaUserDoctor } from "react-icons/fa6";
 import Swal from "sweetalert2";
 // Charts
@@ -27,9 +28,18 @@ export default function BHWDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [fullname, setFullname] = useState("");
   const [barangay, setBarangay] = useState("");
+  const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordChangeMode, setPasswordChangeMode] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -55,6 +65,7 @@ export default function BHWDashboard() {
           }
           
           setFullname(data.fullname);
+          setProfileData(data);
           if (data.barangay) setBarangay(data.barangay);
         } else {
           // Token is invalid or expired
@@ -116,6 +127,98 @@ export default function BHWDashboard() {
   const handleAddPatientsClick = () => {
     setActiveTab("Add Patients");
     setIsPatientDropdownOpen(!isPatientDropdownOpen);
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      Swal.fire({
+        icon: "error",
+        title: "Password Mismatch",
+        text: "New password and confirmation do not match",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      Swal.fire({
+        icon: "error",
+        title: "Password Too Short",
+        text: "Password must be at least 6 characters long",
+      });
+      return;
+    }
+
+    // Enhanced password strength validation
+    if (!/(?=.*[a-z])/.test(passwordData.newPassword)) {
+      Swal.fire({
+        icon: "error",
+        title: "Weak Password",
+        text: "Password must contain at least one lowercase letter",
+      });
+      return;
+    }
+
+    if (!/(?=.*[A-Z])/.test(passwordData.newPassword)) {
+      Swal.fire({
+        icon: "error",
+        title: "Weak Password", 
+        text: "Password must contain at least one uppercase letter",
+      });
+      return;
+    }
+
+    if (!/(?=.*\d)/.test(passwordData.newPassword)) {
+      Swal.fire({
+        icon: "error",
+        title: "Weak Password",
+        text: "Password must contain at least one number",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/bhws?id=${profileData.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          fullname: profileData.fullname,
+          username: profileData.username,
+          email: profileData.email,
+          barangay: profileData.barangay,
+          contact_number: profileData.contact_number,
+          password: passwordData.newPassword,
+        }),
+      });
+
+      if (response.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Password Updated!",
+          text: "Your password has been changed successfully.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setPasswordChangeMode(false);
+        setPasswordData({ newPassword: "", confirmPassword: "" });
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update password");
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -187,6 +290,14 @@ export default function BHWDashboard() {
             setActiveTab={setActiveTab} 
             isSidebarOpen={isSidebarOpen} 
           />
+          <li
+            className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+              hover:bg-red-500/20 ${isSidebarOpen ? "" : "justify-center"}`}
+            onClick={handleLogout}
+          >
+            <FiLogOut size={24} />
+            {isSidebarOpen && <span className="text-sm font-medium">Logout</span>}
+          </li>
         </ul>
       </aside>
 
@@ -221,7 +332,13 @@ export default function BHWDashboard() {
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-lg border border-gray-100 overflow-hidden z-50">
                     <ul className="py-1">
-                      <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+                      <li 
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                        onClick={() => {
+                          setProfileOpen(true);
+                          setDropdownOpen(false);
+                        }}
+                      >
                         <FiUser className="text-gray-500" />
                         <span className="text-gray-700">Profile</span>
                       </li>
@@ -239,6 +356,211 @@ export default function BHWDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Enhanced Profile Modal with Password Change */}
+        {profileOpen && profileData && (
+          <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white w-full max-w-sm sm:max-w-md lg:max-w-xl rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg sm:text-xl font-bold text-white">BHW Profile</h3>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      setPasswordChangeMode(false);
+                      setPasswordData({ newPassword: "", confirmPassword: "" });
+                    }}
+                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+                  >
+                    <FaTimes size={16} />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center mb-3 sm:mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                    <FaUserDoctor className="text-green-600 text-base sm:text-lg" />
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-800">{profileData.fullname}</h4>
+                    <p className="text-green-600 font-medium text-xs sm:text-sm">Barangay Health Worker</p>
+                    <p className="text-xs text-gray-600">{profileData.barangay}</p>
+                  </div>
+                </div>
+                
+                {!passwordChangeMode ? (
+                  <>
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                        <label className="text-xs font-medium text-gray-600">Full Name</label>
+                        <p className="text-sm text-gray-800 font-medium break-words">{profileData.fullname}</p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                        <label className="text-xs font-medium text-gray-600">Username</label>
+                        <p className="text-sm text-gray-800 font-medium break-words">{profileData.username}</p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                        <label className="text-xs font-medium text-gray-600">Email Address</label>
+                        <p className="text-sm text-gray-800 font-medium break-words">{profileData.email}</p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                        <label className="text-xs font-medium text-gray-600">Assigned Barangay</label>
+                        <p className="text-sm text-gray-800 font-medium">{profileData.barangay}</p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                        <label className="text-xs font-medium text-gray-600">Contact Number</label>
+                        <p className="text-sm text-gray-800 font-medium">{profileData.contact_number || "Not provided"}</p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                        <label className="text-xs font-medium text-gray-600">BHW ID</label>
+                        <p className="text-sm text-gray-800 font-medium">#{profileData.id}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row justify-between gap-2 sm:gap-0 mt-3 sm:mt-4">
+                      <button
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                        onClick={() => setPasswordChangeMode(true)}
+                      >
+                        Change Password
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <form onSubmit={handlePasswordChange} className="space-y-4">
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h5 className="font-semibold text-blue-800 mb-2">Change Password</h5>
+                        <p className="text-sm text-blue-600">Enter your new password below. Make sure it's at least 6 characters long.</p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? "text" : "password"}
+                            className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                            required
+                            minLength="6"
+                            disabled={isLoading}
+                            placeholder="Must include uppercase, lowercase, and number"
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                          >
+                            {showNewPassword ? (
+                              <AiFillEyeInvisible className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                            ) : (
+                              <AiFillEye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                            )}
+                          </button>
+                        </div>
+                        {passwordData.newPassword && (
+                          <div className="mt-2 text-xs">
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className={passwordData.newPassword.length >= 6 ? 'text-green-600' : 'text-red-600'}>
+                                ✓ 6+ characters
+                              </span>
+                              <span className={/(?=.*[a-z])/.test(passwordData.newPassword) ? 'text-green-600' : 'text-red-600'}>
+                                ✓ Lowercase letter
+                              </span>
+                              <span className={/(?=.*[A-Z])/.test(passwordData.newPassword) ? 'text-green-600' : 'text-red-600'}>
+                                ✓ Uppercase letter
+                              </span>
+                              <span className={/(?=.*\d)/.test(passwordData.newPassword) ? 'text-green-600' : 'text-red-600'}>
+                                ✓ Number
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            className={`w-full px-4 py-2 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword 
+                                ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                                : 'border-gray-300'
+                            }`}
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                            required
+                            disabled={isLoading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          >
+                            {showConfirmPassword ? (
+                              <AiFillEyeInvisible className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                            ) : (
+                              <AiFillEye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                            )}
+                          </button>
+                        </div>
+                        {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+                          <p className="text-sm text-red-600 mt-1">Passwords do not match</p>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-4 sm:mt-6">
+                        <button
+                          type="button"
+                          className="px-4 py-2 sm:px-6 sm:py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200 font-medium text-sm sm:text-base"
+                          onClick={() => {
+                            setPasswordChangeMode(false);
+                            setPasswordData({ newPassword: "", confirmPassword: "" });
+                            setShowNewPassword(false);
+                            setShowConfirmPassword(false);
+                          }}
+                          disabled={isLoading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 sm:px-6 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 text-sm sm:text-base"
+                          disabled={isLoading || passwordData.newPassword !== passwordData.confirmPassword || !passwordData.newPassword}
+                        >
+                          {isLoading ? (
+                            <span className="flex items-center justify-center">
+                              <FaSpinner className="animate-spin mr-2" />
+                              Updating...
+                            </span>
+                          ) : (
+                            "Update Password"
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-6 pt-24">

@@ -5,6 +5,7 @@ import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople, MdOut
 import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
 import { BiSolidReport } from "react-icons/bi";
 import { RiAdminFill } from "react-icons/ri";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import Swal from "sweetalert2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
@@ -210,20 +211,71 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Profile Modal */}
+        {/* Enhanced Profile Modal */}
         {profileOpen && profileData && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white w-[400px] p-6 rounded-lg shadow-lg">
-              <h3 className="text-xl font-bold mb-4">Profile Information</h3>
-              <p><strong>Fullname:</strong> {profileData.fullname}</p>
-              <p><strong>Username:</strong> {profileData.username}</p>
-              <p><strong>Email:</strong> {profileData.email}</p>
-              <button
-                className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg"
-                onClick={() => setProfileOpen(false)}
-              >
-                Close
-              </button>
+          <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white w-full max-w-sm sm:max-w-md lg:max-w-lg rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Profile Information</h3>
+                  <button
+                    onClick={() => setProfileOpen(false)}
+                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+                  >
+                    <FaTimes size={16} />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center mb-3 sm:mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                    <FiUser className="text-green-600 text-base sm:text-lg" />
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-800">{profileData.fullname}</h4>
+                    <p className="text-green-600 font-medium text-xs sm:text-sm">Administrator</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Full Name</label>
+                    <p className="text-sm text-gray-800 font-medium break-words">{profileData.fullname}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Username</label>
+                    <p className="text-sm text-gray-800 font-medium break-words">{profileData.username}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">Email Address</label>
+                    <p className="text-sm text-gray-800 font-medium break-words">{profileData.email}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">User Type</label>
+                    <p className="text-sm text-gray-800 font-medium capitalize">{profileData.usertype}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                    <label className="text-xs font-medium text-gray-600">User ID</label>
+                    <p className="text-sm text-gray-800 font-medium">#{profileData.id}</p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end mt-3 sm:mt-4">
+                  <button
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -480,6 +532,8 @@ function ManageUsers() {
     username: "",
     email: "",
     password: "",
+    newPassword: "",
+    confirmPassword: "",
     userType: "Staff",
     specialization: "",
     barangay: "",
@@ -493,6 +547,9 @@ function ManageUsers() {
   const [sortOrder, setSortOrder] = useState("newest");
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -539,11 +596,9 @@ function ManageUsers() {
 
   const fetchBarangays = async () => {
     try {
-      const res = await fetch('/api/brgy_list');
-      if (!res.ok) {
-        throw new Error('Failed to fetch barangays');
-      }
-      const data = await res.json();
+      const response = await fetch('/api/brgy_list');
+      if (!response.ok) throw new Error('Failed to fetch barangays');
+      const data = await response.json();
       setBarangays(data);
     } catch (err) {
       setError(err.message);
@@ -551,12 +606,81 @@ function ManageUsers() {
     }
   };
 
+  const getPasswordStrength = (password) => {
+    let strength = 0;
+    const checks = {
+      length: password.length >= 6,
+      lowercase: /(?=.*[a-z])/.test(password),
+      uppercase: /(?=.*[A-Z])/.test(password),
+      number: /(?=.*\d)/.test(password),
+      special: /(?=.*[@$!%*?&])/.test(password)
+    };
+    
+    Object.values(checks).forEach(check => {
+      if (check) strength++;
+    });
+    
+    return { strength, checks };
+  };
+
+  const getPasswordStrengthColor = (strength) => {
+    if (strength < 2) return 'bg-red-500';
+    if (strength < 4) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  const getPasswordStrengthText = (strength) => {
+    if (strength < 2) return 'Weak';
+    if (strength < 4) return 'Medium';
+    return 'Strong';
+  };
+
   const handleAddOrUpdateUser = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { firstName, middleName, lastName, userType, ...data } = formData;
+      // Password validation for new users
+      if (!editingUser) {
+        if (!formData.password) {
+          throw new Error('Password is required for new users');
+        }
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters long');
+        }
+        // Check for password strength
+        if (!/(?=.*[a-z])/.test(formData.password)) {
+          throw new Error('Password must contain at least one lowercase letter');
+        }
+        if (!/(?=.*[A-Z])/.test(formData.password)) {
+          throw new Error('Password must contain at least one uppercase letter');
+        }
+        if (!/(?=.*\d)/.test(formData.password)) {
+          throw new Error('Password must contain at least one number');
+        }
+      }
+      
+      // Validate password confirmation when editing and changing password
+      if (editingUser && formData.newPassword) {
+        if (formData.newPassword !== formData.confirmPassword) {
+          throw new Error('New password and confirmation do not match');
+        }
+        if (formData.newPassword.length < 6) {
+          throw new Error('New password must be at least 6 characters long');
+        }
+        // Check for password strength when changing password
+        if (!/(?=.*[a-z])/.test(formData.newPassword)) {
+          throw new Error('New password must contain at least one lowercase letter');
+        }
+        if (!/(?=.*[A-Z])/.test(formData.newPassword)) {
+          throw new Error('New password must contain at least one uppercase letter');
+        }
+        if (!/(?=.*\d)/.test(formData.newPassword)) {
+          throw new Error('New password must contain at least one number');
+        }
+      }
+
+      const { firstName, middleName, lastName, userType, newPassword, confirmPassword, ...data } = formData;
       const fullname = middleName ? `${firstName} ${middleName} ${lastName}` : `${firstName} ${lastName}`;
       let url;
       let method = editingUser ? 'PUT' : 'POST';
@@ -565,7 +689,15 @@ function ManageUsers() {
       switch (userType) {
         case 'Staff':
           url = '/api/users';
-          body = editingUser ? { ...data, id: editingUser.id, fullname } : { ...data, fullname };
+          if (editingUser) {
+            body = { ...data, id: editingUser.id, fullname };
+            // Include new password if provided
+            if (newPassword) {
+              body.password = newPassword;
+            }
+          } else {
+            body = { ...data, fullname };
+          }
           break;
         case 'Doctor':
           url = editingUser ? `/api/doctors?id=${editingUser.id}` : '/api/doctors';
@@ -576,6 +708,10 @@ function ManageUsers() {
             specialization: data.specialization,
             ...(editingUser ? {} : { password: data.password }),
           };
+          // Include new password if provided when editing
+          if (editingUser && newPassword) {
+            body.password = newPassword;
+          }
           break;
         case 'BHW':
           url = editingUser ? `/api/bhws?id=${editingUser.id}` : '/api/bhws';
@@ -587,6 +723,10 @@ function ManageUsers() {
             contact_number: data.contact_number,
             ...(editingUser ? {} : { password: data.password }),
           };
+          // Include new password if provided when editing
+          if (editingUser && newPassword) {
+            body.password = newPassword;
+          }
           break;
         default:
           throw new Error('Invalid user type');
@@ -692,6 +832,8 @@ function ManageUsers() {
         username: user.username,
         email: user.email,
         password: "",
+        newPassword: "",
+        confirmPassword: "",
         userType: user.userType,
         specialization: user.specialization || "",
         barangay: user.barangay || "",
@@ -706,6 +848,8 @@ function ManageUsers() {
         username: "",
         email: "",
         password: "",
+        newPassword: "",
+        confirmPassword: "",
         userType: "Staff",
         specialization: "",
         barangay: "",
@@ -1099,19 +1243,95 @@ function ManageUsers() {
                 </>
               )}
 
-              {!editingUser && (
+              {!editingUser ? (
                 <div className="space-y-1">
                   <label className="block text-xs sm:text-sm font-medium text-gray-700">Password</label>
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    className="block w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      className="block w-full px-2 py-1 sm:px-3 sm:py-2 pr-8 sm:pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-2 sm:pr-3 flex items-center"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <AiFillEyeInvisible className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <AiFillEye className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                      New Password <span className="text-gray-500">(leave blank to keep current password)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        placeholder="New Password"
+                        className="block w-full px-2 py-1 sm:px-3 sm:py-2 pr-8 sm:pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
+                        value={formData.newPassword}
+                        onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                        disabled={isLoading}
+                        minLength="6"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-2 sm:pr-3 flex items-center"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? (
+                          <AiFillEyeInvisible className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600" />
+                        ) : (
+                          <AiFillEye className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  {formData.newPassword && (
+                    <div className="space-y-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700">Confirm New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Confirm New Password"
+                          className={`block w-full px-2 py-1 sm:px-3 sm:py-2 pr-8 sm:pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm ${
+                            formData.confirmPassword && formData.newPassword !== formData.confirmPassword 
+                              ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                              : 'border-gray-300'
+                          }`}
+                          value={formData.confirmPassword}
+                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                          disabled={isLoading}
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-2 sm:pr-3 flex items-center"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? (
+                            <AiFillEyeInvisible className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600" />
+                          ) : (
+                            <AiFillEye className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600" />
+                          )}
+                        </button>
+                      </div>
+                      {formData.confirmPassword && formData.newPassword !== formData.confirmPassword && (
+                        <p className="text-xs text-red-600">Passwords do not match</p>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4">
