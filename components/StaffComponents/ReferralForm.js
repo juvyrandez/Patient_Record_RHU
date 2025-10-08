@@ -23,6 +23,37 @@ function ReferralForm() {
   // Save treatment record (component scope)
   const handleSaveTreatmentRecord = async () => {
     if (!treatmentPatient) return;
+    
+    // Check if patient already has an incomplete record (not yet completed by doctor)
+    try {
+      // Add a small delay to ensure any recent database updates are committed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const checkResponse = await fetch(`/api/treatment_records?patient_id=${treatmentPatientId}&check_status=true&timestamp=${Date.now()}`);
+      if (checkResponse.ok) {
+        const existingRecords = await checkResponse.json();
+        const incompleteRecord = existingRecords.find(record => 
+          record.status !== 'Complete' && record.status !== 'Completed' && record.status !== 'complete'
+        );
+        
+        if (incompleteRecord) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Record Already Sent',
+            text: 'You Already Send Record wait for the Doctor to Complete Consultation',
+            confirmButtonText: 'OK',
+            customClass: {
+              popup: 'swal-custom-popup',
+              title: 'swal-custom-title'
+            }
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing records:', error);
+    }
+
     const root = treatmentFormRef.current;
     const val = (sel) => root?.querySelector(sel)?.value?.trim() || "";
     const checkedVal = (sel) => root?.querySelector(sel)?.value?.trim() || "";
@@ -55,8 +86,8 @@ function ReferralForm() {
         referred_by: val('[data-field="referred_by"]'),
         purpose_of_visit: checkedVal('input[data-field="purpose_of_visit"]:checked'),
         chief_complaints: val('[data-field="chief_complaints"]'),
-        // Capture diagnosis fields if provided (allowed for pending)
-        diagnosis: val('[data-field="diagnosis"]') || null,
+        // Staff can fill top 3 diagnosis, but not treatment/lab fields - those are for doctors only
+        diagnosis: null,
         diagnosis_1: val('[data-field="diagnosis_1"]') || null,
         diagnosis_2: val('[data-field="diagnosis_2"]') || null,
         diagnosis_3: val('[data-field="diagnosis_3"]') || null,
@@ -64,6 +95,7 @@ function ReferralForm() {
         medication: null,
         lab_findings: null,
         lab_tests: null,
+        status: 'Pending',
       }
     };
 
@@ -992,11 +1024,11 @@ function ReferralForm() {
                 </div>
               </div>
 
-              {/* Diagnosis and Treatment */}
+              {/* Diagnosis Section */}
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-bold border-b border-gray-300 pb-1">
-                    Diagnosis and Treatment
+                    Diagnosis
                   </h4>
                   <button
                     type="button"
@@ -1013,34 +1045,6 @@ function ReferralForm() {
                     <input data-field="diagnosis_1" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 1" />
                     <input data-field="diagnosis_2" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 2" />
                     <input data-field="diagnosis_3" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 3" />
-                  </div>
-                </div>
-
-                {/* Diagnosis + Medication/Treatment */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
-                    <textarea data-field="diagnosis" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Medication / Treatment</label>
-                    <textarea data-field="medication" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
-                  </div>
-                </div>
-
-                {/* Labs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Laboratory Findings / Impression
-                    </label>
-                    <textarea data-field="lab_findings" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" defaultValue={treatmentReferral?.impression || ''}></textarea>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Performed Laboratory Test
-                    </label>
-                    <textarea data-field="lab_tests" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
                   </div>
                 </div>
               </div>

@@ -557,6 +557,8 @@ function PatientConsultations() {
   const [medicationText, setMedicationText] = useState("");
   const [labFindingsText, setLabFindingsText] = useState("");
   const [labTestsText, setLabTestsText] = useState("");
+  // Form data storage for each patient (preserves data when modal is closed)
+  const [patientFormData, setPatientFormData] = useState({});
   // Search for Patient Consultations
   const [pcSearch, setPcSearch] = useState("");
   const [pcCurrentPage, setPcCurrentPage] = useState(0);
@@ -564,13 +566,25 @@ function PatientConsultations() {
 
   const handleStartConsultation = (patient) => {
     setSelectedPatient(patient);
-    // Do not auto-select AI Suggested Diagnoses; let the doctor choose
-    setSelectedDiagnoses([]);
-    setOtherDiagnosisChecked(false);
-    setOtherDiagnosisText("");
-    setMedicationText(patient?.medication || "");
-    setLabFindingsText(patient?.lab_findings || "");
-    setLabTestsText(patient?.lab_tests || "");
+    
+    // Load saved form data if it exists, otherwise use patient data or empty values
+    const savedData = patientFormData[patient.id];
+    if (savedData) {
+      setSelectedDiagnoses(savedData.selectedDiagnoses || []);
+      setOtherDiagnosisChecked(savedData.otherDiagnosisChecked || false);
+      setOtherDiagnosisText(savedData.otherDiagnosisText || "");
+      setMedicationText(savedData.medicationText || "");
+      setLabFindingsText(savedData.labFindingsText || "");
+      setLabTestsText(savedData.labTestsText || "");
+    } else {
+      // Do not auto-select AI Suggested Diagnoses; let the doctor choose
+      setSelectedDiagnoses([]);
+      setOtherDiagnosisChecked(false);
+      setOtherDiagnosisText("");
+      setMedicationText(patient?.medication || "");
+      setLabFindingsText(patient?.lab_findings || "");
+      setLabTestsText(patient?.lab_tests || "");
+    }
   };
 
   const calcAge = (birthDate) => {
@@ -599,6 +613,7 @@ function PatientConsultations() {
           concern: r.chief_complaints || '',
           visit_type: r.visit_type || '',
           purpose_of_visit: r.purpose_of_visit || '',
+          attending_provider: r.attending_provider || '',
           consultation_date: r.consultation_date || null,
           consultation_period: r.consultation_period || null,
           consultation_time: r.consultation_time || null,
@@ -649,37 +664,118 @@ function PatientConsultations() {
     if (page >= 0 && page < pcTotalPages) setPcCurrentPage(page);
   };
 
-  const handleCompleteConsultation = () => {
-    // Build top 3 diagnoses based on selections
-    const picks = [...selectedDiagnoses];
-    if (otherDiagnosisChecked && otherDiagnosisText.trim()) {
-      picks.push(otherDiagnosisText.trim());
+  const handleCompleteConsultation = async () => {
+    // Validation: Check if required fields are filled
+    const errors = [];
+    
+    if (!medicationText || medicationText.trim() === '') {
+      errors.push('Medication / Treatment');
     }
+    
+    if (errors.length > 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Required Fields Missing',
+        html: `Please fill in the following required fields:<br/><br/>${errors.map(field => `• ${field}`).join('<br/>')}`,
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'swal-custom-popup',
+          title: 'swal-custom-title'
+        }
+      });
+      return;
+    }
+
+    // IMPORTANT: Keep AI diagnoses and Doctor's final diagnosis completely separate
+    
+    // AI Diagnoses: Only from selectedDiagnoses array (checkboxes)
+    const aiDiagnoses = [...selectedDiagnoses];
+    
+    // Doctor's Final Diagnosis: Only save if checkbox is checked AND there's text
+    const doctorFinalDiagnosis = (otherDiagnosisChecked && otherDiagnosisText.trim()) 
+      ? otherDiagnosisText.trim() 
+      : null;
+    
+    // Debug the doctor's diagnosis
+    console.log('=== DOCTOR DIAGNOSIS DEBUG ===');
+    console.log('otherDiagnosisChecked:', otherDiagnosisChecked);
+    console.log('otherDiagnosisText:', `"${otherDiagnosisText}"`);
+    console.log('doctorFinalDiagnosis result:', doctorFinalDiagnosis);
+    
+    // Ensure complete separation - NO mixing of data
     const payload = {
       id: selectedPatient?.id,
-      diagnosis_1: picks[0] || null,
-      diagnosis_2: picks[1] || null,
-      diagnosis_3: picks[2] || null,
+      
+      // Doctor's Final Diagnosis → diagnosis field (separate from AI)
+      diagnosis: doctorFinalDiagnosis,
+      
+      // AI Diagnoses → diagnosis_1, diagnosis_2, diagnosis_3 (separate from doctor's)
+      diagnosis_1: aiDiagnoses[0] || null,
+      diagnosis_2: aiDiagnoses[1] || null,
+      diagnosis_3: aiDiagnoses[2] || null,
+      
       medication: medicationText || null,
       lab_findings: labFindingsText || null,
       lab_tests: labTestsText || null,
+      status: 'Complete'
     };
 
     const persist = async () => {
       try {
         if (payload.id) {
-          await fetch('/api/treatment_records', {
+          console.log('=== FINAL PAYLOAD ===');
+          console.log('diagnosis (Doctor Final):', payload.diagnosis);
+          console.log('diagnosis_1 (AI #1):', payload.diagnosis_1);
+          console.log('diagnosis_2 (AI #2):', payload.diagnosis_2);
+          console.log('diagnosis_3 (AI #3):', payload.diagnosis_3);
+          console.log('Full payload:', payload);
+          
+          const response = await fetch(`/api/treatment_records?id=${payload.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+              diagnosis: payload.diagnosis,           // Doctor's final diagnosis
+              diagnosis_1: payload.diagnosis_1,       // 1st checked AI diagnosis
+              diagnosis_2: payload.diagnosis_2,       // 2nd checked AI diagnosis  
+              diagnosis_3: payload.diagnosis_3,       // 3rd checked AI diagnosis
+              medication: payload.medication,
+              lab_findings: payload.lab_findings,
+              lab_tests: payload.lab_tests,
+              status: payload.status
+            }),
           });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`Failed to update record: ${response.status} - ${errorText}`);
+          }
+          
+          const result = await response.json();
+          console.log('Update successful:', result);
+          return true;
+        } else {
+          console.error('No patient ID found:', selectedPatient);
+          throw new Error('No patient ID available');
         }
       } catch (e) {
         console.error('Failed to update diagnoses', e);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: `Failed to complete consultation: ${e.message}`,
+          confirmButtonText: 'OK'
+        });
+        return false;
       }
     };
 
-    persist();
+    // Wait for the database update to complete
+    const success = await persist();
+    
+    if (!success) {
+      return; // Don't proceed if update failed
+    }
 
     Swal.fire({
       icon: "success",
@@ -696,6 +792,15 @@ function PatientConsultations() {
       window.dispatchEvent(new CustomEvent('treatment-records-updated'));
     }
     
+    // Clear saved form data for this patient since consultation is complete
+    if (selectedPatient) {
+      setPatientFormData(prev => {
+        const newData = { ...prev };
+        delete newData[selectedPatient.id];
+        return newData;
+      });
+    }
+    
     setSelectedPatient(null);
     setConsultationNotes("");
     setFinalDiagnosis("");
@@ -709,6 +814,20 @@ function PatientConsultations() {
   };
 
   const closeModal = () => {
+    // Save current form data before closing
+    if (selectedPatient) {
+      setPatientFormData(prev => ({
+        ...prev,
+        [selectedPatient.id]: {
+          selectedDiagnoses,
+          otherDiagnosisChecked,
+          otherDiagnosisText,
+          medicationText,
+          labFindingsText,
+          labTestsText
+        }
+      }));
+    }
     setSelectedPatient(null);
   };
 
@@ -756,6 +875,7 @@ function PatientConsultations() {
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Health Concern</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Attending Provider</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date/Time Consultation</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
@@ -773,6 +893,9 @@ function PatientConsultations() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900 max-w-xs truncate">{patient.concern}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{patient.attending_provider || 'Not specified'}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
@@ -899,6 +1022,32 @@ function PatientConsultations() {
               <div className="border border-gray-400">
                 <div className="bg-gray-200 px-4 py-2 font-bold">Patient Information</div>
                 <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {/* Visit Information Row */}
+                  <div className="col-span-2 grid grid-cols-3 gap-x-4 gap-y-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center">
+                      <label className="min-w-[80px] font-semibold text-blue-800">Visit Type:</label>
+                      <div className="flex-1 border-b border-blue-300 px-2 bg-white rounded">
+                        {selectedPatient.visit_type === 'walk_in' ? 'Walk-in' : 
+                         selectedPatient.visit_type === 'visited' ? 'Visited' : 
+                         selectedPatient.visit_type === 'referral' ? 'Referral' : 
+                         selectedPatient.visit_type || 'Not specified'}
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <label className="min-w-[80px] font-semibold text-blue-800">Referred by:</label>
+                      <div className="flex-1 border-b border-blue-300 px-2 bg-white rounded">{selectedPatient.attending_provider || 'Not specified'}</div>
+                    </div>
+                    <div className="flex items-center">
+                      <label className="min-w-[100px] font-semibold text-blue-800">Type of Consultation:</label>
+                      <div className="flex-1 border-b border-blue-300 px-2 bg-white rounded">
+                        {selectedPatient.purpose_of_visit === 'new_consultation' ? 'New Consultation/Case' : 
+                         selectedPatient.purpose_of_visit === 'new_admission' ? 'New Admission' : 
+                         selectedPatient.purpose_of_visit === 'follow_up' ? 'Follow-up visit' : 
+                         selectedPatient.purpose_of_visit || 'Not specified'}
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="col-span-2 md:col-span-1 flex items-center">
                     <label className="min-w-[80px] font-semibold">Name:</label>
                     <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.name}</div>
@@ -967,7 +1116,12 @@ function PatientConsultations() {
               
               {/* Diagnoses Section */}
               <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">AI Suggested Diagnoses(Check if Approved)</div>
+                <div className="bg-blue-100 px-4 py-2 font-bold text-blue-800 border-b border-blue-200">
+                  AI Suggested Diagnoses (Check to Approve & Save)
+                  <div className="text-xs font-normal text-blue-600 mt-1">
+                    ✓ Only checked diagnoses will be saved
+                  </div>
+                </div>
                 <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-y-2 text-sm">
                   {(selectedPatient?.possibleDiagnosis || []).map((d, idx) => {
                     const label = typeof d === 'string' ? d : (d?.condition || '');
@@ -981,11 +1135,12 @@ function PatientConsultations() {
                           onChange={(e) => {
                             setSelectedDiagnoses((prev) => {
                               if (e.target.checked) {
-                                // limit to 3 selections
-                                if (prev.length >= 3) return prev;
+                                // Add AI diagnosis to selectedDiagnoses array
                                 return [...prev, label];
+                              } else {
+                                // Remove AI diagnosis from selectedDiagnoses array
+                                return prev.filter((x) => x !== label);
                               }
-                              return prev.filter((x) => x !== label);
                             });
                           }}
                         />
@@ -998,15 +1153,24 @@ function PatientConsultations() {
                       type="checkbox"
                       className="mr-2"
                       checked={otherDiagnosisChecked}
-                      onChange={(e) => setOtherDiagnosisChecked(e.target.checked)}
+                      onChange={(e) => {
+                        setOtherDiagnosisChecked(e.target.checked);
+                        if (!e.target.checked) {
+                          setOtherDiagnosisText("");
+                        }
+                      }}
                     />
-                    <label>Other: </label>
+                    <label>Doctor's Final Diagnosis: </label>
                     <input
                       type="text"
-                      className="ml-2 flex-1 border-b border-gray-400 outline-none focus:border-blue-500"
+                      className="ml-2 flex-1 border-b border-gray-400 outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
                       value={otherDiagnosisText}
-                      onChange={(e) => setOtherDiagnosisText(e.target.value)}
+                      onChange={(e) => {
+                        console.log('Doctor diagnosis text changed:', e.target.value);
+                        setOtherDiagnosisText(e.target.value);
+                      }}
                       disabled={!otherDiagnosisChecked}
+                      placeholder="Enter doctor's final diagnosis..."
                     />
                   </div>
                 </div>
@@ -1048,29 +1212,6 @@ function PatientConsultations() {
                     value={labTestsText}
                     onChange={(e) => setLabTestsText(e.target.value)}
                   ></textarea>
-                </div>
-              </div>
-              
-              {/* Final Action Section */}
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Final Action</div>
-                <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-y-2 text-sm">
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2"/>
-                    <label>Prescription Given</label>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2"/>
-                    <label>Laboratory Request</label>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2"/>
-                    <label>Follow-up</label>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2"/>
-                    <label>Referral</label>
-                  </div>
                 </div>
               </div>
 
@@ -1189,6 +1330,7 @@ function PatientRecords() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [filterGender, setFilterGender] = useState("All");
+  const [filterType, setFilterType] = useState("All"); // New filter for RHU/BHW
   const [currentPage, setCurrentPage] = useState(0);
   const [viewPatient, setViewPatient] = useState(null);
   const itemsPerPage = 10;
@@ -1200,13 +1342,35 @@ function PatientRecords() {
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/patients?type=staff_data');
-      if (response.ok) {
-        const data = await response.json();
-        setPatients(data);
-      } else {
-        console.error('Failed to fetch patients');
+      // Fetch both staff_data (RHU) and bhw_data (BHW)
+      const [staffResponse, bhwResponse] = await Promise.all([
+        fetch('/api/patients?type=staff_data'),
+        fetch('/api/patients?type=bhw_data')
+      ]);
+      
+      let allPatients = [];
+      
+      if (staffResponse.ok) {
+        const staffData = await staffResponse.json();
+        // Add type identifier to staff data
+        const staffPatients = staffData.map(patient => ({
+          ...patient,
+          data_type: 'RHU'
+        }));
+        allPatients = [...allPatients, ...staffPatients];
       }
+      
+      if (bhwResponse.ok) {
+        const bhwData = await bhwResponse.json();
+        // Add type identifier to BHW data
+        const bhwPatients = bhwData.map(patient => ({
+          ...patient,
+          data_type: 'BHW'
+        }));
+        allPatients = [...allPatients, ...bhwPatients];
+      }
+      
+      setPatients(allPatients);
     } catch (error) {
       console.error('Error fetching patients:', error);
     } finally {
@@ -1242,7 +1406,8 @@ function PatientRecords() {
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
       const matchesGender = filterGender === 'All' || patient.gender === filterGender;
-      return matchesSearch && matchesGender;
+      const matchesType = filterType === 'All' || patient.data_type === filterType;
+      return matchesSearch && matchesGender && matchesType;
     })
     .sort((a, b) => {
       const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
@@ -1328,6 +1493,18 @@ function PatientRecords() {
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
+          <select
+            className="px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+            value={filterType}
+            onChange={(e) => {
+              setFilterType(e.target.value);
+              setCurrentPage(0);
+            }}
+          >
+            <option value="All">All Sources</option>
+            <option value="RHU">RHU Data</option>
+            <option value="BHW">BHW Data</option>
+          </select>
         </div>
       </div>
 
@@ -1341,7 +1518,7 @@ function PatientRecords() {
         {currentPatients.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">
-              {searchQuery || filterGender !== 'All' ? 'No patients found matching your criteria' : 'No patient records available'}
+              {searchQuery || filterGender !== 'All' || filterType !== 'All' ? 'No patients found matching your criteria' : 'No patient records available'}
             </p>
           </div>
         ) : (
@@ -1353,6 +1530,7 @@ function PatientRecords() {
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Gender</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Source</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Contact</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
@@ -1372,6 +1550,15 @@ function PatientRecords() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{patient.gender}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          patient.data_type === 'RHU' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {patient.data_type}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{patient.contact_number || '-'}</div>
@@ -1395,7 +1582,7 @@ function PatientRecords() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {totalPages > 0 && (
               <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
                 <span className="text-xs sm:text-sm text-gray-600">{showingText}</span>
                 <div className="flex items-center gap-2">
@@ -1581,7 +1768,19 @@ function ConsultationHistory() {
         patient: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
         date: r.consultation_date ? new Date(r.consultation_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString(),
         rawDate: r.consultation_date ? new Date(r.consultation_date) : new Date(r.created_at),
-        diagnosis: r.diagnosis_1 || r.diagnosis_2 || r.diagnosis_3 || r.diagnosis || '-',
+        diagnosis: (() => {
+          const checkedDiagnoses = [r.diagnosis_1, r.diagnosis_2, r.diagnosis_3].filter(Boolean);
+          const finalDiagnosis = r.diagnosis;
+          
+          if (checkedDiagnoses.length > 0) {
+            const summary = checkedDiagnoses.length > 1 
+              ? `${checkedDiagnoses[0]} (+${checkedDiagnoses.length - 1} more)`
+              : checkedDiagnoses[0];
+            return finalDiagnosis ? `${summary} | Final: ${finalDiagnosis}` : summary;
+          }
+          
+          return finalDiagnosis || '-';
+        })(),
         status: 'Completed',
       }));
       setHistory(mapped);
@@ -2084,20 +2283,26 @@ function ConsultationHistory() {
                       <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
                       <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[120px] whitespace-pre-wrap">
                         {(() => {
-                          const diagnoses = [
+                          const checkedDiagnoses = [
                             viewRecord.diagnosis_1,
                             viewRecord.diagnosis_2,
                             viewRecord.diagnosis_3
                           ].filter(Boolean);
                           
-                          const mainDiagnosis = viewRecord.diagnosis || '';
+                          const finalDiagnosis = viewRecord.diagnosis || '';
                           
-                          if (diagnoses.length > 0) {
-                            const topDiagnoses = diagnoses.map((d, i) => `${i + 1}. ${d}`).join('\n');
-                            return mainDiagnosis ? `${topDiagnoses}\n\nAdditional Notes:\n${mainDiagnosis}` : topDiagnoses;
+                          let result = '';
+                          
+                          if (checkedDiagnoses.length > 0) {
+                            result += checkedDiagnoses.map((d, i) => `${i + 1}. ${d}`).join('\n');
                           }
                           
-                          return mainDiagnosis || '-';
+                          if (finalDiagnosis) {
+                            if (result) result += '\n';
+                            result += finalDiagnosis;
+                          }
+                          
+                          return result || '-';
                         })()}
                       </div>
                     </div>

@@ -2,12 +2,12 @@
 CREATE DATABASE rhu_patient_record;
 
 CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   fullname VARCHAR(255) NOT NULL,
   username VARCHAR(255) NOT NULL UNIQUE,
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  usertype VARCHAR(20) CHECK (usertype IN ('admin', 'staff')) NOT NULL
+  usertype ENUM('admin', 'staff') NOT NULL
 );
 
 
@@ -211,6 +211,7 @@ CREATE TABLE referrals (
   license_number VARCHAR(50) NOT NULL,
   status VARCHAR(20) DEFAULT 'Pending',
   seen BOOLEAN DEFAULT FALSE,
+  created_by INTEGER REFERENCES bhws(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -257,7 +258,6 @@ FOR EACH ROW
 EXECUTE FUNCTION update_notification_timestamp();
 
 ------------------------------------------------------------------------------------------
--- Individual Treatment Records (for CHU/RHU Individual Treatment Record modal)
 CREATE TABLE IF NOT EXISTS individual_treatment_records (
   id SERIAL PRIMARY KEY,
   patient_id INTEGER REFERENCES patients(id) ON DELETE SET NULL,
@@ -296,6 +296,9 @@ CREATE TABLE IF NOT EXISTS individual_treatment_records (
   lab_tests TEXT,
 
   referral_id INTEGER REFERENCES referrals(id) ON DELETE SET NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  data_type VARCHAR(50),
+  bhw_id INTEGER REFERENCES bhws(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -308,7 +311,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_itr_timestamp_trg
+CREATE TRIGGER update_itr_timestamp
 BEFORE UPDATE ON individual_treatment_records
 FOR EACH ROW
 EXECUTE FUNCTION update_itr_timestamp();
+
+-- Add missing columns for BHW treatment records (if they don't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'individual_treatment_records' AND column_name = 'status') THEN
+        ALTER TABLE individual_treatment_records ADD COLUMN status VARCHAR(20) DEFAULT 'pending';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'individual_treatment_records' AND column_name = 'data_type') THEN
+        ALTER TABLE individual_treatment_records ADD COLUMN data_type VARCHAR(50);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'individual_treatment_records' AND column_name = 'bhw_id') THEN
+        ALTER TABLE individual_treatment_records ADD COLUMN bhw_id INTEGER REFERENCES bhws(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+-- Add created_by column to referrals table (if it doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'referrals' AND column_name = 'created_by') THEN
+        ALTER TABLE referrals ADD COLUMN created_by INTEGER REFERENCES bhws(id) ON DELETE SET NULL;
+    END IF;
+END $$;

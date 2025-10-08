@@ -562,42 +562,15 @@ const RabiesPanel = () => {
 };
 
 // --- MAIN APP COMPONENT ---
-export default function App() {
-  const [currentView, setCurrentView] = useState('rabies'); // Default to Rabies
-
+export default function App({ currentView = 'rabies' }) {
   return (
     <div className="min-h-screen">
       <script src="https://cdn.tailwindcss.com"></script>
-      {/* Navigation Tabs */}
-      <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center space-x-1 py-4">
-            <button
-              onClick={() => setCurrentView('rabies')}
-              className={`py-3 px-6 text-sm font-medium rounded-t-lg transition duration-200 ${
-                currentView === 'rabies'
-                  ? 'bg-teal-600 text-white shadow-md'
-                  : 'text-gray-500 hover:text-teal-600 hover:bg-teal-50 border-b-2 border-transparent'
-              }`}
-            >
-              Rabies Registry
-            </button>
-            <button
-              onClick={() => setCurrentView('healthcare')}
-              className={`py-3 px-6 text-sm font-medium rounded-t-lg transition duration-200 ${
-                currentView === 'healthcare'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 border-b-2 border-transparent'
-              }`}
-            >
-              Healthcare Summary
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Render Selected Panel */}
       {currentView === 'rabies' ? <RabiesPanel /> : <HealthcarePanel />}
     </div>
   );
 }
+
+// Export individual components for direct use
+export { RabiesPanel, HealthcarePanel };

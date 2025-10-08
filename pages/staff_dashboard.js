@@ -3,13 +3,13 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
-import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp  } from 'react-icons/fa';
+import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight  } from 'react-icons/fa';
 import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import ReferralForm from '/components/StaffComponents/ReferralForm';
-import Reports from '/components/StaffComponents/Reports';
+import Reports, { RabiesPanel, HealthcarePanel } from '/components/StaffComponents/Reports';
 import Swal from "sweetalert2";
 
 // Register ChartJS components
@@ -21,11 +21,19 @@ export default function StaffDashboard() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [reportsDropdownOpen, setReportsDropdownOpen] = useState(false);
   const [fullname, setFullname] = useState("");
   const [profileData, setProfileData] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Auto-open reports dropdown when a reports tab is selected
+  useEffect(() => {
+    if (activeTab.startsWith("Reports")) {
+      setReportsDropdownOpen(true);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchProfileAndNotifications = async () => {
@@ -200,7 +208,48 @@ export default function StaffDashboard() {
           <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaClipboardList} label="Patient Records" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaCalendarCheck} label="Referral" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FaHistory} label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          {/* Reports Dropdown */}
+          <li>
+            <div
+              className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
+                ${activeTab.startsWith("Reports") ? "bg-white/20 font-semibold shadow-lg" : "hover:bg-white/10"} 
+                ${isSidebarOpen ? "" : "justify-center"}`}
+              onClick={() => setReportsDropdownOpen(!reportsDropdownOpen)}
+            >
+              <FaHistory size={24} />
+              {isSidebarOpen && (
+                <>
+                  <span className="text-sm font-medium flex-1">Reports</span>
+                  {reportsDropdownOpen ? <FaChevronDown size={16} /> : <FaChevronRight size={16} />}
+                </>
+              )}
+            </div>
+            {reportsDropdownOpen && isSidebarOpen && (
+              <ul className="ml-8 mt-2 space-y-1">
+                <li
+                  className={`flex items-center gap-2 p-2 rounded-md transition-all duration-200 text-white cursor-pointer text-sm
+                    ${activeTab === "Reports - Rabies Registry" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
+                  onClick={() => setActiveTab("Reports - Rabies Registry")}
+                >
+                  <span>Rabies Registry</span>
+                </li>
+                <li
+                  className={`flex items-center gap-2 p-2 rounded-md transition-all duration-200 text-white cursor-pointer text-sm
+                    ${activeTab === "Reports - Health Summary" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
+                  onClick={() => setActiveTab("Reports - Health Summary")}
+                >
+                  <span>Health Summary</span>
+                </li>
+                <li
+                  className={`flex items-center gap-2 p-2 rounded-md transition-all duration-200 text-white cursor-pointer text-sm
+                    ${activeTab === "Reports - Referral Reports" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
+                  onClick={() => setActiveTab("Reports - Referral Reports")}
+                >
+                  <span>Referral Reports</span>
+                </li>
+              </ul>
+            )}
+          </li>
           <li
             className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 text-white cursor-pointer
               hover:bg-red-500/20 ${isSidebarOpen ? "" : "justify-center"}`}
@@ -397,7 +446,9 @@ export default function StaffDashboard() {
           {activeTab === "Dashboard" && <Dashboard onQuickAction={setActiveTab} />}
           {activeTab === "Patient Records" && <PatientRecords />}
           {activeTab === "Referral" && <ReferralForm />}
-          {activeTab === "Reports" && <Reports />}
+          {activeTab === "Reports - Rabies Registry" && <RabiesPanel />}
+          {activeTab === "Reports - Health Summary" && <HealthcarePanel />}
+          {activeTab === "Reports - Referral Reports" && <ReferralReports />}
         </div>
       </main>
     </div>
@@ -561,7 +612,7 @@ function Dashboard({ onQuickAction }) {
               Referral
             </button>
             <button
-              onClick={() => onQuickAction && onQuickAction('Reports')}
+              onClick={() => onQuickAction && onQuickAction('Reports - Rabies Registry')}
               className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
               aria-label="Navigate to Reports"
             >
@@ -626,6 +677,15 @@ function PatientRecords() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [currentPatientId, setCurrentPatientId] = useState(null);
+
+  // Helpers for consistent name casing
+  const toTitleCase = (str = "") =>
+    str
+      .toLowerCase()
+      .replace(/(^|\s|-|\')([a-z])/g, (_, p1, p2) => `${p1}${p2.toUpperCase()}`)
+      .replace(/\s+/g, " ")
+      .trim();
+  const isTitleCase = (str = "") => str === toTitleCase(str);
   const [viewPatient, setViewPatient] = useState(null);
   const [referralData, setReferralData] = useState({
     referralType: "",
@@ -669,6 +729,9 @@ function PatientRecords() {
   const [bhwSearchQuery, setBhwSearchQuery] = useState("");
   const [bhwResults, setBhwResults] = useState([]);
   const [showBhwModal, setShowBhwModal] = useState(false);
+  const [showMedicalCertificate, setShowMedicalCertificate] = useState(false);
+  const [certificatePatient, setCertificatePatient] = useState(null);
+  const [treatmentRecord, setTreatmentRecord] = useState(null);
   const treatmentFormRef = useRef(null);
 
   useEffect(() => {
@@ -756,6 +819,37 @@ function PatientRecords() {
 
   const handleSaveTreatmentRecord = async () => {
     if (!selectedPatient) return;
+    
+    // Check if patient already has an incomplete record (not yet completed by doctor)
+    try {
+      // Add a small delay to ensure any recent database updates are committed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const checkResponse = await fetch(`/api/treatment_records?patient_id=${selectedPatient.id}&check_status=true&timestamp=${Date.now()}`);
+      if (checkResponse.ok) {
+        const existingRecords = await checkResponse.json();
+        const incompleteRecord = existingRecords.find(record => 
+          record.status !== 'Complete' && record.status !== 'Completed' && record.status !== 'complete'
+        );
+        
+        if (incompleteRecord) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Record Already Sent',
+            text: 'You Already Send Record wait for the Doctor to Complete Consultation',
+            confirmButtonText: 'OK',
+            customClass: {
+              popup: 'swal-custom-popup',
+              title: 'swal-custom-title'
+            }
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing records:', error);
+    }
+
     const root = treatmentFormRef.current;
     const val = (sel) => root?.querySelector(sel)?.value?.trim() || "";
     const checkedVal = (sel) => root?.querySelector(sel)?.value?.trim() || "";
@@ -787,14 +881,15 @@ function PatientRecords() {
         referred_by: val('[data-field="referred_by"]'),
         purpose_of_visit: checkedVal('input[data-field="purpose_of_visit"]:checked'),
         chief_complaints: val('[data-field="chief_complaints"]'),
-        // Capture diagnosis fields if provided
-        diagnosis: val('[data-field="diagnosis"]') || null,
+        // Staff can fill top 3 diagnosis, but not treatment/lab fields - those are for doctors only
+        diagnosis: null,
         diagnosis_1: val('[data-field="diagnosis_1"]') || null,
         diagnosis_2: val('[data-field="diagnosis_2"]') || null,
         diagnosis_3: val('[data-field="diagnosis_3"]') || null,
         medication: null,
         lab_findings: null,
         lab_tests: null,
+        status: 'Pending',
       },
     };
 
@@ -948,9 +1043,20 @@ function PatientRecords() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    // numeric-only for contact number (max 11)
+    if (name === 'contact_number') {
+      if (/^\d{0,11}$/.test(value)) {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      }
+      return;
+    }
+    const nameFields = new Set([
+      'last_name','first_name','middle_name','maiden_name','suffix','spouse_name','mothers_name'
+    ]);
+    const nextVal = nameFields.has(name) ? toTitleCase(value) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: nextVal
     }));
   };
 
@@ -964,17 +1070,50 @@ function PatientRecords() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.birth_date && !isEditing) {
+    // Normalize middle name to N/A if empty
+    const middle = (formData.middle_name || '').trim();
+    if (!middle) {
+      setFormData(prev => ({ ...prev, middle_name: 'N/A' }));
+    }
+
+    // Validate required fields
+    const errors = [];
+    if (!formData.last_name?.trim()) errors.push('Last Name');
+    if (!formData.first_name?.trim()) errors.push('First Name');
+    if (!formData.gender?.trim()) errors.push('Gender');
+    if (!formData.birth_date?.trim() && !isEditing) errors.push('Birth Date');
+    if (!formData.residential_address?.trim()) errors.push('Residential Address');
+    if (!formData.contact_number?.trim()) errors.push('Contact Number');
+
+    // Title-case enforcement on names
+    const isTitleCase = (s = '') => s === (s.toLowerCase().replace(/(^|\s|-|\')([a-z])/g, (_, p1, p2) => `${p1}${p2.toUpperCase()}`).replace(/\s+/g,' ').trim());
+    if (formData.last_name && !isTitleCase(formData.last_name)) errors.push('Last Name must be Title Case');
+    if (formData.first_name && !isTitleCase(formData.first_name)) errors.push('First Name must be Title Case');
+
+    // Conditional requirements
+    if (formData.dswd_nhts === 'Yes' && !formData.facility_household_no?.trim()) {
+      errors.push('Facility Household No (required when DSWD NHTS is Yes)');
+    }
+    if (formData.pps_member === 'Yes' && !formData.pps_household_no?.trim()) {
+      errors.push('PPS Household No (required when PPS Member is Yes)');
+    }
+    if (formData.philhealth_member === 'Yes' && !formData.philhealth_number?.trim()) {
+      errors.push('PhilHealth Number (required when PhilHealth Member is Yes)');
+    }
+
+    if (formData.contact_number && formData.contact_number.length !== 11) {
+      errors.push('Contact number must be exactly 11 digits');
+    }
+
+    if (errors.length > 0) {
       Swal.fire({
-        title: 'Error',
-        text: 'Birth date is required.',
         icon: 'error',
-        timer: 1500,
-        showConfirmButton: false,
+        title: 'Please complete the form',
+        html: `<div class="text-left">${errors.map(e => `• ${e}`).join('<br/>')}</div>`,
+        confirmButtonText: 'OK',
         customClass: {
           popup: 'swal-custom-popup swal-error-popup',
-          title: 'swal-custom-title',
-          content: 'swal-custom-content'
+          title: 'swal-custom-title'
         }
       });
       return;
@@ -1190,6 +1329,51 @@ function PatientRecords() {
       age--;
     }
     return age;
+  };
+
+  const handlePrintMedicalCertificate = async (patient) => {
+    try {
+      // Fetch treatment record for this patient
+      const response = await fetch(`/api/treatment_records?patient_id=${patient.id}`);
+      
+      if (response.ok) {
+        const treatmentRecords = await response.json();
+        
+        if (treatmentRecords && treatmentRecords.length > 0) {
+          // Use the most recent treatment record
+          const latestRecord = treatmentRecords[0];
+          setCertificatePatient(patient);
+          setTreatmentRecord(latestRecord);
+          setShowMedicalCertificate(true);
+        } else {
+          // No treatment record found
+          Swal.fire({
+            title: 'No Treatment Record Yet',
+            text: 'This patient does not have any treatment records yet. Please create a treatment record first.',
+            icon: 'warning',
+            confirmButtonText: 'OK',
+            customClass: {
+              popup: 'swal-custom-popup',
+              title: 'swal-custom-title'
+            }
+          });
+        }
+      } else {
+        throw new Error('Failed to fetch treatment records');
+      }
+    } catch (error) {
+      console.error('Error fetching treatment records:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Unable to fetch treatment records.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'swal-custom-popup swal-error-popup',
+          title: 'swal-custom-title'
+        }
+      });
+    }
   };
 
   const handlePrint = () => {
@@ -2133,6 +2317,13 @@ function PatientRecords() {
                         >
                           <FaFileMedical className="w-5 h-5" />
                         </button>
+                        <button 
+                          onClick={() => handlePrintMedicalCertificate(patient)}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="Print Medical Certificate"
+                        >
+                          <FaPrint className="w-5 h-5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -2211,21 +2402,6 @@ function PatientRecords() {
             <div>
               <h4 className="font-medium">Individual Treatment Record</h4>
               <p className="text-sm text-gray-500">For patient consultations and treatments</p>
-            </div>
-          </button>
-          
-          {/* Consultation History */}
-          <button
-            onClick={() => {
-              setSelectedFormType('consultation');
-              setShowFormSelection(false);
-            }}
-            className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
-          >
-            <FaNotesMedical className="text-green-500 mr-3 text-xl" />
-            <div>
-              <h4 className="font-medium">Consultation History</h4>
-              <p className="text-sm text-gray-500">For illness/well check-up records</p>
             </div>
           </button>
           
@@ -2382,37 +2558,37 @@ function PatientRecords() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="blood_pressure" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Temperature</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="temperature" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="height_cm" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="weight_kg" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="heart_rate" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="respiratory_rate" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" data-field="attending_provider" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
               </div>
             </div>
@@ -2427,19 +2603,19 @@ function PatientRecords() {
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">REFERRED FROM</label>
-                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      <input type="text" data-field="referred_from" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">REFERRED TO</label>
-                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      <input type="text" data-field="referred_to" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Reason(s) for Referral</label>
-                      <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" placeholder="List reasons here..."></textarea>
+                      <textarea data-field="referral_reasons" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3" placeholder="List reasons here..."></textarea>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Referred By</label>
-                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      <input type="text" data-field="referred_by" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                     </div>
                   </div>
                 </div>
@@ -2499,11 +2675,11 @@ function PatientRecords() {
           </div>
         </div>
 
-        {/* Diagnosis and Treatment */}
+        {/* Diagnosis Section */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
             <h4 className="font-bold border-b border-gray-300 pb-1">
-              Diagnosis and Treatment
+              Diagnosis
             </h4>
             <button
               type="button"
@@ -2520,34 +2696,6 @@ function PatientRecords() {
               <input data-field="diagnosis_1" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 1" />
               <input data-field="diagnosis_2" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 2" />
               <input data-field="diagnosis_3" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 3" />
-            </div>
-          </div>
-
-          {/* Diagnosis + Medication/Treatment */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
-              <textarea data-field="diagnosis" className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Medication / Treatment</label>
-              <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
-            </div>
-          </div>
-
-          {/* Labs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Laboratory Findings / Impression
-              </label>
-              <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Performed Laboratory Test
-              </label>
-              <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
             </div>
           </div>
         </div>
@@ -3331,6 +3479,486 @@ function PatientRecords() {
     </div>
   </div>
 )}
+
+      {/* Medical Certificate Modal */}
+      {showMedicalCertificate && certificatePatient && treatmentRecord && (
+        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Medical Certificate</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                >
+                  <FaPrint className="w-4 h-4" />
+                  Print
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMedicalCertificate(false);
+                    setCertificatePatient(null);
+                    setTreatmentRecord(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="certificate-container p-8">
+              <style jsx>{`
+                .certificate-container {
+                  font-family: 'Times New Roman', serif;
+                  color: #333;
+                  background-color: white;
+                  min-height: 11in;
+                  width: 8.5in;
+                  margin: 0 auto;
+                }
+                .header-line {
+                  height: 1px;
+                  background-color: #333;
+                  margin: 10px 0 20px 0;
+                  border-bottom: 2px solid black;
+                }
+                .data-field {
+                  display: inline-block;
+                  min-width: 150px;
+                  padding: 0 5px;
+                  font-weight: 700;
+                  border-bottom: 1px solid #333;
+                }
+                .data-label {
+                  font-weight: 500;
+                }
+                @media print {
+                  body { background-color: white; }
+                  .certificate-container {
+                    box-shadow: none;
+                    margin: 0;
+                    width: 100%;
+                    min-height: auto;
+                    padding: 1in;
+                  }
+                }
+              `}</style>
+
+              {/* HEADER / LETTERHEAD SECTION */}
+              <header className="flex justify-between items-start text-center text-sm mb-4">
+                {/* Left Logo: DOH */}
+                <div className="w-24">
+                  <img 
+                    src="/images/rhulogo.jpg" 
+                    alt="RHU Logo" 
+                    className="mx-auto w-20 h-20 object-contain"
+                  />
+                </div>
+
+                {/* Central Text */}
+                <div className="flex-grow text-center mt-2">
+                  <p className="text-xs">Republic of the Philippines</p>
+                  <p className="text-xs">Province of Misamis Oriental</p>
+                  <p className="text-xs">Municipality of Balingasag</p>
+                  <p className="mt-1 font-semibold text-sm">MUNICIPALITY HEALTH OFFICE</p>
+                </div>
+
+                {/* Right Logo: Municipal Seal */}
+                <div className="w-24">
+                  <img 
+                    src="/images/rhulogo.jpg" 
+                    alt="Municipal Seal" 
+                    className="mx-auto w-20 h-20 object-contain"
+                  />
+                </div>
+              </header>
+
+              {/* Divider Line */}
+              <div className="header-line"></div>
+
+              {/* MEDICAL CERTIFICATE TITLE */}
+              <div className="text-center font-bold text-lg mb-6">
+                MEDICAL CERTIFICATE
+              </div>
+
+              {/* DATE */}
+              <div className="flex justify-end text-sm mb-6">
+                <span className="font-medium">Date:</span> 
+                <span className="data-field text-left border-none w-auto pl-1">
+                  {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </span>
+              </div>
+
+              {/* SALUTATION AND CERTIFICATION */}
+              <div className="text-sm leading-relaxed mb-6">
+                <p className="font-bold mb-3">TO WHOM IT MAY CONCERN</p>
+                <p className="indent-10">
+                  <span className="font-bold">THIS IS TO CERTIFY</span> THAT THE PERSON HEREUNDER HAS THE FOLLOWING RECORD OF CONSULTATION IN THIS OFFICE
+                </p>
+              </div>
+
+              {/* PATIENT DETAILS SECTION */}
+              <section className="text-sm mb-8">
+                <div className="grid grid-cols-2 gap-y-4">
+                  <div>
+                    <span className="data-label">NAME:</span>
+                    <span className="data-field">
+                      {certificatePatient.last_name}, {certificatePatient.first_name} {certificatePatient.middle_name || ''}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="data-label">AGE:</span>
+                    <span className="data-field">{calculateAge(certificatePatient.birth_date)}</span>
+                  </div>
+
+                  <div>
+                    <span className="data-label">SEX:</span>
+                    <span className="data-field">{certificatePatient.gender}</span>
+                  </div>
+                  <div>
+                    <span className="data-label">STATUS:</span>
+                    <span className="data-field">{certificatePatient.civil_status}</span>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <span className="data-label">ADDRESS:</span>
+                    <span className="data-field min-w-[300px]">{certificatePatient.residential_address}</span>
+                  </div>
+
+                  <div>
+                    <span className="data-label">DOB:</span>
+                    <span className="data-field">
+                      {new Date(certificatePatient.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <span className="data-label">DATE OF CONSULTATION:</span>
+                    <span className="data-field min-w-[200px]">
+                      {new Date(treatmentRecord.consultation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* ASSESSMENT SECTION */}
+              <section className="text-sm mb-8">
+                <p className="font-bold mb-2">ASSESSMENT</p>
+                <div className="grid grid-cols-2 gap-y-4 pl-10">
+                  <div>
+                    <span className="data-label">BP:</span>
+                    <span className="data-field">{treatmentRecord.blood_pressure || ''}</span> 
+                    <span className="font-bold ml-1">mmHg</span>
+                  </div>
+                  <div>
+                    <span className="data-label">HR:</span>
+                    <span className="data-field">{treatmentRecord.heart_rate || ''}</span> 
+                    <span className="font-bold ml-1">bpm</span>
+                  </div>
+
+                  <div>
+                    <span className="data-label">TEMP:</span>
+                    <span className="data-field">{treatmentRecord.temperature || ''}</span> 
+                    <span className="font-bold ml-1">°C</span>
+                  </div>
+                  <div>
+                    <span className="data-label">RR:</span>
+                    <span className="data-field">{treatmentRecord.respiratory_rate || ''}</span> 
+                    <span className="font-bold ml-1">cpm</span>
+                  </div>
+
+                  <div>
+                    <span className="data-label">Weight:</span>
+                    <span className="data-field">{treatmentRecord.weight_kg || ''}</span> 
+                    <span className="font-bold ml-1">kg</span>
+                  </div>
+                  <div>
+                    <span className="data-label">O2Sat:</span>
+                    <span className="data-field">{treatmentRecord.oxygen_saturation || ''}</span> 
+                    <span className="font-bold ml-1">%</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* FINDINGS, IMPRESSION, REMARKS */}
+              <section className="text-sm mb-6">
+                <p className="font-bold mb-2">FINDINGS</p>
+                <div className="pl-10 leading-relaxed mb-6 min-h-[5rem] border-b border-gray-300 pb-2">
+                  {treatmentRecord.physical_examination || ''}
+                </div>
+                
+                <p className="font-bold mb-2">IMPRESSION:</p>
+                <div className="pl-10 leading-relaxed mb-6 min-h-[1.5rem] border-b border-gray-300 pb-2">
+                  {treatmentRecord.diagnosis || ''}
+                </div>
+
+                <p className="font-bold mb-2">REMARKS:</p>
+                <div className="pl-10 leading-relaxed mb-8 min-h-[1.5rem] border-b border-gray-300 pb-2">
+                  {treatmentRecord.treatment_plan || ''}
+                </div>
+              </section>
+
+              {/* CERTIFICATION FOOTER */}
+              <div className="text-xs text-center border-t pt-6">
+                THIS CERTIFICATION IS ISSUED UPON THE REQUEST FOR ANY LEGAL PURPOSES CERTIFIED CORRECT AS PER RECORDS
+              </div>
+
+              {/* SIGNATURE BLOCK */}
+              <footer className="mt-16 text-center text-sm">
+                <div className="border-t border-black inline-block pt-1 px-4">
+                  <span className="font-bold block uppercase">MARIA HELEN MACARAYAN ROMUALDO, MD.</span>
+                </div>
+                <p className="text-xs mt-1">Municipal Health Officer</p>
+                <p className="text-xs">PRC#.0154215</p>
+              </footer>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Referral Reports Component
+function ReferralReports() {
+  const [referrals, setReferrals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchReferrals();
+  }, []);
+
+  const fetchReferrals = async () => {
+    try {
+      setLoading(true);
+      // Fetch treatment records that have referral information
+      const response = await fetch('/api/treatment_records?limit=200');
+      if (response.ok) {
+        const data = await response.json();
+        // Filter only records that have referral information
+        const referralData = data.filter(record => 
+          record.referred_to || record.referred_from || record.referral_reasons
+        ).map(record => ({
+          id: record.id,
+          date: record.consultation_date || record.created_at,
+          patientName: `${record.patient_first_name || ''} ${record.patient_last_name || ''}`.trim(),
+          age: calculateAge(record.patient_birth_date),
+          sex: record.patient_gender || 'N/A',
+          address: record.patient_address || 'N/A',
+          reasonOfReferral: Array.isArray(record.referral_reasons) 
+            ? record.referral_reasons.join(', ') 
+            : record.referral_reasons || 'N/A',
+          referredTo: record.referred_to || 'N/A',
+          referredBy: record.referred_by || record.attending_provider || 'N/A'
+        }));
+        setReferrals(referralData);
+      }
+    } catch (error) {
+      console.error('Error fetching referrals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return 'N/A';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Filter referrals
+  const filteredReferrals = referrals.filter((referral) => {
+    const matchesSearch = referral.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         referral.referredTo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         referral.referredBy.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesDate = !dateFilter || 
+                       (referral.date && new Date(referral.date).toISOString().split('T')[0] === dateFilter);
+    
+    return matchesSearch && matchesDate;
+  });
+
+  // Pagination
+  const totalItems = filteredReferrals.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentReferrals = filteredReferrals.slice(startIndex, endIndex);
+  const showingText = `Showing ${totalItems ? startIndex + 1 : 0} to ${endIndex} of ${totalItems} entries`;
+
+  const handlePageChange = (page) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const pageNumbers = [];
+  for (let i = 0; i < totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading referral reports...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h3 className="text-2xl font-bold text-gray-800">Referral Reports</h3>
+          <p className="text-sm text-gray-600">View and manage patient referral records</p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className="relative max-w-md w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search referrals..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(0);
+              }}
+            />
+          </div>
+          <input
+            type="date"
+            className="px-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            value={dateFilter}
+            onChange={(e) => {
+              setDateFilter(e.target.value);
+              setCurrentPage(0);
+            }}
+          />
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2"
+          >
+            <FaPrint size={16} />
+            Print Report
+          </button>
+        </div>
+      </div>
+
+      {/* Results Count */}
+      <div className="mb-4">
+        <p className="text-sm text-gray-600">{showingText}</p>
+      </div>
+
+      {/* Referrals Table */}
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        {currentReferrals.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">
+              {searchQuery || dateFilter ? 'No referrals found matching your criteria' : 'No referral records available'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason of Referral</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred to</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred by</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentReferrals.map((referral) => (
+                    <tr key={referral.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {referral.date ? new Date(referral.date).toLocaleDateString() : 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{referral.patientName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{referral.age}/{referral.sex}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs truncate">{referral.address}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs truncate">{referral.reasonOfReferral}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{referral.referredTo}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{referral.referredBy}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
+                <span className="text-xs sm:text-sm text-gray-600">{showingText}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowLeft className="w-3 sm:w-4 h-3 sm:h-4" />
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-green-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaArrowRight className="w-3 sm:w-4 h-3 sm:h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

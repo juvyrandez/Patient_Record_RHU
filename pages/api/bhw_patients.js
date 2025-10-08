@@ -1,21 +1,36 @@
 import pool from '@/lib/db';
 
 export default async function handler(req, res) {
-  const { id, type } = req.query;
+  const { id, type, createdBy } = req.query;
 
   try {
+    // Ensure tracking column exists (safe no-op if already present)
+    await pool.query('ALTER TABLE patients ADD COLUMN IF NOT EXISTS created_by_bhw_id INTEGER');
+
     switch (req.method) {
       case 'GET':
         if (id) {
           // Get single patient with type = 'bhw_data'
-          const { rows } = await pool.query('SELECT * FROM patients WHERE id = $1 AND type = $2', [id, 'bhw_data']);
+          // If createdBy provided, also ensure it matches
+          const params = createdBy ? [id, 'bhw_data', createdBy] : [id, 'bhw_data'];
+          const query = createdBy
+            ? 'SELECT * FROM patients WHERE id = $1 AND type = $2 AND created_by_bhw_id = $3'
+            : 'SELECT * FROM patients WHERE id = $1 AND type = $2';
+          const { rows } = await pool.query(query, params);
           if (rows.length === 0) {
             return res.status(404).json({ message: 'Patient not found' });
           }
           res.status(200).json(rows[0]);
         } else {
-          // Get all patients with type = 'bhw_data'
-          const { rows } = await pool.query('SELECT * FROM patients WHERE type = $1 ORDER BY last_name, first_name', ['bhw_data']);
+          // Get all patients with type = 'bhw_data' for this BHW
+          if (!createdBy) {
+            // For safety, if no creator is provided, return empty list (prevent cross-visibility)
+            return res.status(200).json([]);
+          }
+          const { rows } = await pool.query(
+            'SELECT * FROM patients WHERE type = $1 AND created_by_bhw_id = $2 ORDER BY last_name, first_name',
+            ['bhw_data', createdBy]
+          );
           res.status(200).json(rows);
         }
         break;
@@ -49,7 +64,8 @@ export default async function handler(req, res) {
           philhealth_number,
           philhealth_category,
           pcb_member,
-          status
+          status,
+          created_by_bhw_id
         } = req.body;
 
         const { rows: [newPatient] } = await pool.query(
@@ -60,10 +76,10 @@ export default async function handler(req, res) {
             residential_address, contact_number, mothers_name, dswd_nhts,
             facility_household_no, pps_member, pps_household_no,
             philhealth_member, philhealth_status, philhealth_number,
-            philhealth_category, pcb_member, status, type
+            philhealth_category, pcb_member, status, type, created_by_bhw_id
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
+            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
           ) RETURNING *`,
           [
             last_name,
@@ -93,7 +109,8 @@ export default async function handler(req, res) {
             philhealth_category,
             pcb_member,
             status,
-            'bhw_data'
+            'bhw_data',
+            created_by_bhw_id || null
           ]
         );
         res.status(201).json(newPatient);

@@ -62,7 +62,8 @@ export default async function handler(req, res) {
           referralReason,
           otherReason,
           referredByName,
-          licenseNumber
+          licenseNumber,
+          createdBy
         } = req.body;
 
         // Validate required fields
@@ -92,11 +93,12 @@ export default async function handler(req, res) {
             surgical_procedure, drug_allergy, allergy_type, last_meal_time,
             blood_pressure, heart_rate, respiratory_rate, weight,
             impression, action_taken, health_insurance, insurance_type,
-            referral_reasons, other_reason, referred_by_name, license_number
+            referral_reasons, other_reason, referred_by_name, license_number,
+            created_by
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-            $21, $22, $23, $24, $25, $26, $27, $28, $29
+            $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
           ) RETURNING *`,
           [
             patientId,
@@ -127,7 +129,8 @@ export default async function handler(req, res) {
             referralReason,
             otherReason,
             referredByName,
-            licenseNumber
+            licenseNumber,
+            createdBy
           ]
         );
 
@@ -164,7 +167,7 @@ export default async function handler(req, res) {
           drugAllergy: updateDrugAllergy,
           allergyType: updateAllergyType,
           lastMealTime: updateLastMealTime,
-          blood_pressure: updateBloodPressure,
+          bloodPressure: updateBloodPressure,
           heartRate: updateHeartRate,
           respiratoryRate: updateRespiratoryRate,
           weight: updateWeight,
@@ -175,7 +178,8 @@ export default async function handler(req, res) {
           referralReason: updateReferralReason,
           otherReason: updateOtherReason,
           referredByName: updateReferredByName,
-          licenseNumber: updateLicenseNumber
+          licenseNumber: updateLicenseNumber,
+          seen: updateSeen
         } = req.body;
 
         const { rows: [updatedReferral] } = await pool.query(
@@ -208,8 +212,9 @@ export default async function handler(req, res) {
             other_reason = $26,
             referred_by_name = $27,
             license_number = $28,
+            seen = $29,
             updated_at = NOW()
-          WHERE id = $29
+          WHERE id = $30
           RETURNING *`,
           [
             updateReferralType,
@@ -240,6 +245,7 @@ export default async function handler(req, res) {
             updateOtherReason,
             updateReferredByName,
             updateLicenseNumber,
+            updateSeen,
             id
           ]
         );
@@ -247,6 +253,17 @@ export default async function handler(req, res) {
         if (!updatedReferral) {
           return res.status(404).json({ message: 'Referral not found' });
         }
+
+        // Insert notification for the updated referral
+        await pool.query(
+          `INSERT INTO notifications (referral_id, message, type, created_at)
+           VALUES ($1, $2, $3, NOW())`,
+          [
+            updatedReferral.id,
+            `Referral updated for ${updatePatientFirstName} ${updatePatientLastName} to ${updateReferredTo}`,
+            'referral_update'
+          ]
+        );
 
         res.status(200).json(updatedReferral);
         break;

@@ -5,12 +5,14 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const client = await pool.connect();
     try {
-      const { limit = 50, patient_id, id, status } = req.query;
+      const { limit = 50, patient_id, id, status, data_type, bhw_id } = req.query;
       const lim = Math.min(parseInt(limit, 10) || 50, 200);
       const where = [];
       const params = [];
       if (id) { params.push(parseInt(id, 10)); where.push(`id = $${params.length}`); }
       if (patient_id) { params.push(parseInt(patient_id, 10)); where.push(`patient_id = $${params.length}`); }
+      if (data_type) { params.push(data_type); where.push(`data_type = $${params.length}`); }
+      if (bhw_id) { params.push(parseInt(bhw_id, 10)); where.push(`bhw_id = $${params.length}`); }
       if (status === 'pending') {
         // Pending: allow suggested diagnoses to exist; consider pending until any treatment/lab fields are filled
         where.push(`COALESCE(medication,'') = '' AND COALESCE(lab_findings,'') = '' AND COALESCE(lab_tests,'') = ''`);
@@ -26,6 +28,8 @@ export default async function handler(req, res) {
                patient_id,
                patient_first_name,
                patient_last_name,
+               patient_middle_name,
+               patient_suffix,
                patient_birth_date,
                visit_type,
                consultation_date,
@@ -51,6 +55,9 @@ export default async function handler(req, res) {
                medication,
                lab_findings,
                lab_tests,
+               status,
+               data_type,
+               bhw_id,
                created_at
         FROM individual_treatment_records
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
@@ -71,20 +78,38 @@ export default async function handler(req, res) {
     if (req.method === "PUT") {
       const client = await pool.connect();
       try {
-        const { id, diagnosis_1 = null, diagnosis_2 = null, diagnosis_3 = null, medication = null, lab_findings = null, lab_tests = null } = req.body || {};
+        const { id } = req.query;
+        const { diagnosis = null, diagnosis_1 = null, diagnosis_2 = null, diagnosis_3 = null, medication = null, lab_findings = null, lab_tests = null, status = null } = req.body || {};
+        
         if (!id) return res.status(400).json({ error: "Missing id" });
+        
+        // Build dynamic update query based on provided fields
+        const updates = [];
+        const values = [parseInt(id, 10)];
+        let paramCount = 1;
+        
+        if (diagnosis !== null) { paramCount++; updates.push(`diagnosis = $${paramCount}`); values.push(diagnosis); }
+        if (diagnosis_1 !== null) { paramCount++; updates.push(`diagnosis_1 = $${paramCount}`); values.push(diagnosis_1); }
+        if (diagnosis_2 !== null) { paramCount++; updates.push(`diagnosis_2 = $${paramCount}`); values.push(diagnosis_2); }
+        if (diagnosis_3 !== null) { paramCount++; updates.push(`diagnosis_3 = $${paramCount}`); values.push(diagnosis_3); }
+        if (medication !== null) { paramCount++; updates.push(`medication = $${paramCount}`); values.push(medication); }
+        if (lab_findings !== null) { paramCount++; updates.push(`lab_findings = $${paramCount}`); values.push(lab_findings); }
+        if (lab_tests !== null) { paramCount++; updates.push(`lab_tests = $${paramCount}`); values.push(lab_tests); }
+        if (status !== null) { paramCount++; updates.push(`status = $${paramCount}`); values.push(status); }
+        
+        if (updates.length === 0) {
+          return res.status(400).json({ error: "No fields to update" });
+        }
+        
+        updates.push('updated_at = NOW()');
+        
         const sql = `
           UPDATE individual_treatment_records
-          SET diagnosis_1 = $2,
-              diagnosis_2 = $3,
-              diagnosis_3 = $4,
-              medication = $5,
-              lab_findings = $6,
-              lab_tests = $7,
-              updated_at = NOW()
+          SET ${updates.join(', ')}
           WHERE id = $1
           RETURNING *`;
-        const { rows } = await client.query(sql, [id, diagnosis_1, diagnosis_2, diagnosis_3, medication, lab_findings, lab_tests]);
+          
+        const { rows } = await client.query(sql, values);
         if (!rows.length) return res.status(404).json({ error: "Record not found" });
         return res.status(200).json(rows[0]);
       } catch (err) {
@@ -188,7 +213,7 @@ export default async function handler(req, res) {
         referred_from, referred_to, referral_reasons, referred_by,
         purpose_of_visit,
         chief_complaints, diagnosis, diagnosis_1, diagnosis_2, diagnosis_3, medication, lab_findings, lab_tests,
-        referral_id
+        referral_id, status, data_type, bhw_id
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
@@ -197,7 +222,7 @@ export default async function handler(req, res) {
         $18, $19, $20, $21,
         $22,
         $23, $24, $25, $26, $27, $28, $29, $30,
-        $31
+        $31, $32, $33, $34
       ) RETURNING *`;
 
     const values = [
@@ -228,6 +253,9 @@ export default async function handler(req, res) {
       lab_findings || null,
       lab_tests || null,
       referral?.id || null,
+      record.status || 'pending',
+      record.data_type || null,
+      record.bhw_id || null,
     ];
 
     const result = await client.query(insertSql, values);

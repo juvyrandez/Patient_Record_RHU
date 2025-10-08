@@ -6,7 +6,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const query = `
+    const { bhw_id } = req.query;
+    
+    let query = `
       SELECT 
         id,
         patient_id,
@@ -41,12 +43,20 @@ export default async function handler(req, res) {
         status,
         seen,
         created_at,
-        updated_at
-      FROM referrals 
-      ORDER BY created_at DESC
-    `;
+        updated_at,
+        created_by
+      FROM referrals`;
+    
+    const params = [];
+    
+    if (bhw_id) {
+      query += ` WHERE created_by = $1`;
+      params.push(parseInt(bhw_id, 10));
+    }
+    
+    query += ` ORDER BY created_at DESC`;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching referrals:', error);
