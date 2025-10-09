@@ -47,7 +47,7 @@ export default async function handler(req, res) {
         }
 
         // Validate status value
-        if (!['Pending', 'In Progress', 'Completed'].includes(status)) {
+        if (!['Pending', 'In Laboratory', 'Complete'].includes(status)) {
           return res.status(400).json({ message: 'Invalid status value' });
         }
 

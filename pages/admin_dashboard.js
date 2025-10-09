@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiUser, FiLogOut, FiBell, FiUsers, FiMapPin } from "react-icons/fi";
 import { MdDashboard, MdLocalHospital, MdOutlineHealthAndSafety, MdPeople, MdOutlineAccessTimeFilled } from "react-icons/md";
-import { FaUsers, FaEdit, FaTrash, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
+import { FaUsers, FaEdit, FaTimes, FaEye, FaChevronDown, FaUserTie, FaUserMd, FaUserNurse, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp } from "react-icons/fa";
 import { BiSolidReport } from "react-icons/bi";
 import { RiAdminFill } from "react-icons/ri";
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
@@ -398,19 +398,34 @@ function Dashboard({ setActiveTab }) {
 
       {/* Metrics Cards (Single Row) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {metrics.map((metric, index) => (
-          <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">{metric.title}</p>
-                <p className="text-2xl font-bold mt-1">{metric.value}</p>
-              </div>
-              <div className="p-2 bg-gray-50 rounded-lg">
-                {metric.icon}
+        {metrics.map((metric, index) => {
+          // Determine which tab to navigate to based on metric title
+          const getNavigationTab = (title) => {
+            if (title === "Staff Patients" || title === "BHW Patients") return "Manage Users";
+            if (title === "Doctors") return "Doctor";
+            if (title === "BHW Workers") return "BHW";
+            if (title === "RHU Staff") return "Staff";
+            return "Dashboard";
+          };
+
+          return (
+            <div 
+              key={index} 
+              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200"
+              onClick={() => setActiveTab(getNavigationTab(metric.title))}
+            >
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">{metric.title}</p>
+                  <p className="text-2xl font-bold mt-1">{metric.value}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded-lg">
+                  {metric.icon}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Quick Actions */}
@@ -760,63 +775,6 @@ function ManageUsers() {
     }
   };
 
-  const handleDeleteUser = async (id, userType) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          setIsLoading(true);
-          let url;
-          let options = {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-          };
-
-          switch (userType) {
-            case 'Staff':
-              url = '/api/users';
-              options.body = JSON.stringify({ id });
-              break;
-            case 'Doctor':
-              url = `/api/doctors?id=${id}`;
-              break;
-            case 'BHW':
-              url = `/api/bhws?id=${id}`;
-              break;
-            default:
-              throw new Error('Invalid user type');
-          }
-
-          const res = await fetch(url, options);
-
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.message || 'Failed to delete user');
-          }
-
-          Swal.fire({
-            icon: "success",
-            title: "Deleted!",
-            text: "The user has been deleted successfully.",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-          fetchUsers();
-        } catch (err) {
-          Swal.fire('Error', err.message, 'error');
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    });
-  };
 
   const openModal = (user = null) => {
     if (user) {
@@ -1035,14 +993,6 @@ function ManageUsers() {
                             title="Edit User"
                           >
                             <FaEdit className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteUser(user.id, user.userType)}
-                            className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors duration-150"
-                            disabled={isLoading}
-                            title="Delete User"
-                          >
-                            <FaTrash className="w-4 h-4" />
                           </button>
                         </div>
                       </td>

@@ -408,3 +408,46 @@ CREATE TRIGGER update_consultation_decisions_timestamp
 BEFORE UPDATE ON consultation_decisions
 FOR EACH ROW
 EXECUTE FUNCTION update_consultation_decisions_timestamp();
+
+
+
+
+
+
+
+
+CREATE TABLE IF NOT EXISTS rabies_registry (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  patient_name VARCHAR(255) NOT NULL,
+  age_sex VARCHAR(50) NOT NULL,
+  address TEXT NOT NULL,
+  exposure_category VARCHAR(50), -- Cat I, Cat II, Cat III
+  animal VARCHAR(100), -- Dog, Cat, etc.
+  cat_ii_date DATE,
+  cat_ii_vac BOOLEAN DEFAULT FALSE, -- Category II Vaccine completed
+  cat_iii_date DATE,
+  cat_iii_vac BOOLEAN DEFAULT FALSE, -- Category III Vaccine completed
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(patient_id) -- Prevent duplicate entries for same patient
+);
+
+-- Create trigger for updated_at timestamp
+CREATE OR REPLACE FUNCTION update_rabies_registry_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_rabies_registry_timestamp
+BEFORE UPDATE ON rabies_registry
+FOR EACH ROW
+EXECUTE FUNCTION update_rabies_registry_timestamp();
+
+-- Create index for better performance
+CREATE INDEX IF NOT EXISTS idx_rabies_registry_patient_id ON rabies_registry(patient_id);
+CREATE INDEX IF NOT EXISTS idx_rabies_registry_created_at ON rabies_registry(created_at);

@@ -24,20 +24,14 @@ export default async function handler(req, res) {
       ORDER BY DATE_TRUNC('month', consultation_date)
     `);
 
-    // Top diagnoses aggregated from diagnosis_1..3 and diagnosis notes
+    // Top diagnoses from approved_diagnoses table
     const diseasesResult = await pool.query(`
-      WITH diagnoses AS (
-        SELECT TRIM(diagnosis_1) AS dx FROM individual_treatment_records WHERE COALESCE(TRIM(diagnosis_1), '') <> ''
-        UNION ALL
-        SELECT TRIM(diagnosis_2) FROM individual_treatment_records WHERE COALESCE(TRIM(diagnosis_2), '') <> ''
-        UNION ALL
-        SELECT TRIM(diagnosis_3) FROM individual_treatment_records WHERE COALESCE(TRIM(diagnosis_3), '') <> ''
-        UNION ALL
-        SELECT TRIM(diagnosis) FROM individual_treatment_records WHERE COALESCE(TRIM(diagnosis), '') <> ''
-      )
-      SELECT dx AS diagnosis, COUNT(*)::int AS count
-      FROM diagnoses
-      GROUP BY dx
+      SELECT 
+        TRIM(diagnosis_text) AS diagnosis, 
+        COUNT(*)::int AS count
+      FROM approved_diagnoses
+      WHERE COALESCE(TRIM(diagnosis_text), '') <> ''
+      GROUP BY TRIM(diagnosis_text)
       ORDER BY count DESC
       LIMIT 10
     `);
@@ -52,20 +46,15 @@ export default async function handler(req, res) {
       ORDER BY count DESC
     `);
 
-    // Recent consultations from individual_treatment_records joined with patients
-    const recentConsultationsResult = await pool.query(`
+    // Analytics data - diagnosis type distribution from approved_diagnoses
+    const analyticsResult = await pool.query(`
       SELECT 
-        itr.id,
-        itr.patient_id,
-        COALESCE(itr.patient_first_name, p.first_name) AS first_name,
-        COALESCE(itr.patient_last_name, p.last_name) AS last_name,
-        itr.consultation_date,
-        COALESCE(NULLIF(itr.diagnosis, ''), itr.diagnosis_1, itr.diagnosis_2, itr.diagnosis_3) AS diagnosis,
-        COALESCE(itr.visit_type, 'Completed') AS status
-      FROM individual_treatment_records itr
-      LEFT JOIN patients p ON itr.patient_id = p.id
-      ORDER BY COALESCE(itr.consultation_date, DATE_TRUNC('day', NOW())) DESC, itr.id DESC
-      LIMIT 5
+        diagnosis_type,
+        COUNT(*)::int AS count,
+        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS percentage
+      FROM approved_diagnoses
+      GROUP BY diagnosis_type
+      ORDER BY count DESC
     `);
 
     // Total patients count
@@ -102,7 +91,7 @@ export default async function handler(req, res) {
       monthlyConsultations: monthlyConsultationsResult.rows || [],
       topDiseases: diseasesResult.rows || [],
       statusDistribution: statusResult.rows || [],
-      recentConsultations: recentConsultationsResult.rows || []
+      diagnosisAnalytics: analyticsResult.rows || []
     };
 
     res.status(200).json(analytics);

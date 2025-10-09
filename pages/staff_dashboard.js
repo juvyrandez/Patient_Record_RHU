@@ -540,7 +540,10 @@ function Dashboard({ onQuickAction }) {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           {/* Total Patients */}
-          <div className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100">
+          <div 
+            className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100 cursor-pointer hover:shadow-md hover:border-green-300 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Patient Records')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-green-600">Total Patients</p>
@@ -553,7 +556,10 @@ function Dashboard({ onQuickAction }) {
           </div>
 
           {/* Total Referrals */}
-          <div className="bg-purple-50 p-6 rounded-lg shadow-sm border border-purple-100">
+          <div 
+            className="bg-purple-50 p-6 rounded-lg shadow-sm border border-purple-100 cursor-pointer hover:shadow-md hover:border-purple-300 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Referral')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-purple-600">Total Referrals</p>
@@ -566,7 +572,10 @@ function Dashboard({ onQuickAction }) {
           </div>
 
           {/* Completed Referrals */}
-          <div className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100">
+          <div 
+            className="bg-green-50 p-6 rounded-lg shadow-sm border border-green-100 cursor-pointer hover:shadow-md hover:border-green-300 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Referral')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-green-600">Completed Referrals</p>
@@ -579,7 +588,10 @@ function Dashboard({ onQuickAction }) {
           </div>
 
           {/* Diagnosed Records */}
-          <div className="bg-amber-50 p-6 rounded-lg shadow-sm border border-amber-100">
+          <div 
+            className="bg-amber-50 p-6 rounded-lg shadow-sm border border-amber-100 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Patient Records')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-amber-600">Diagnosed Records</p>
@@ -4025,13 +4037,15 @@ function HealthcarePanel() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-4 sm:p-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-extrabold text-blue-700">Healthcare Service Summary</h1>
-        <p className="text-lg text-gray-500 mt-1">Disease Distribution by Barangay (Male, Female, Total)</p>
-      </header>
+    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Healthcare Service Summary</h1>
+          <p className="text-gray-600">Disease Distribution by Barangay (Male, Female, Total)</p>
+        </div>
+      </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-lg">
+      <div className="bg-white p-6 rounded-xl shadow-md">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">Service Details</h2>
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
@@ -4129,71 +4143,208 @@ function HealthcarePanel() {
         )}
       </div>
 
-      <footer className="mt-8 text-center text-sm text-gray-400">
+      <div className="mt-6 text-center text-sm text-gray-500">
         Healthcare Service Summary Report - Generated {new Date().toLocaleDateString()}
-      </footer>
+      </div>
     </div>
   );
 }
 
 // --- RABIES REGISTRY PANEL ---
 function RabiesPanel() {
-  const MOCK_DATA = [
-    { id: 1, dateRegistered: '10/01/2024', fullName: 'Dela Cruz, Juan M.', age: 45, sex: 'M', address: 'Sampaloc St., Manila', exposureCategory: 'II', animalType: 'Dog', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: false },
-    { id: 2, dateRegistered: '10/01/2024', fullName: 'Santos, Maria C.', age: 22, sex: 'F', address: 'Quezon Ave, QC', exposureCategory: 'III', animalType: 'Cat', isCat2VaccineCompleted: false, isCat3ImmunoglobulinGiven: true },
-    { id: 3, dateRegistered: '10/02/2024', fullName: 'Lim, Alex J.', age: 8, sex: 'M', address: 'Makati Central, Makati', exposureCategory: 'II', animalType: 'Others', isCat2VaccineCompleted: false, isCat3ImmunoglobulinGiven: false },
-    { id: 4, dateRegistered: '10/02/2024', fullName: 'Garcia, Lisa R.', age: 67, sex: 'F', address: 'Tondo, Manila', exposureCategory: 'I', animalType: 'Dog', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: false },
-    { id: 5, dateRegistered: '10/03/2024', fullName: 'Ramos, Ben D.', age: 31, sex: 'M', address: 'BGC, Taguig', exposureCategory: 'III', animalType: 'Dog', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: true },
-    { id: 6, dateRegistered: '10/03/2024', fullName: 'Tan, Evelyn A.', age: 14, sex: 'F', address: 'Pasig City', exposureCategory: 'II', animalType: 'Cat', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: false },
-    { id: 7, dateRegistered: '10/04/2024', fullName: 'Chua, Michael K.', age: 50, sex: 'M', address: 'Mandaluyong City', exposureCategory: 'II', animalType: 'Dog', isCat2VaccineCompleted: false, isCat3ImmunoglobulinGiven: false },
-    { id: 8, dateRegistered: '10/04/2024', fullName: 'Dizon, Sofia P.', age: 7, sex: 'F', address: 'Paranaque', exposureCategory: 'III', animalType: 'Others', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: true },
-    { id: 9, dateRegistered: '10/05/2024', fullName: 'Reyes, Carlo V.', age: 29, sex: 'M', address: 'Malate, Manila', exposureCategory: 'I', animalType: 'Dog', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: false },
-    { id: 10, dateRegistered: '10/05/2024', fullName: 'Gomez, Patricia L.', age: 38, sex: 'F', address: 'San Juan City', exposureCategory: 'II', animalType: 'Cat', isCat2VaccineCompleted: true, isCat3ImmunoglobulinGiven: false },
-  ];
-
+  // State management
+  const [registryData, setRegistryData] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
-  const [data, setData] = useState(MOCK_DATA);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [formData, setFormData] = useState({
+    exposure_category: '',
+    animal: '',
+    cat_ii_date: '',
+    cat_ii_vac: false,
+    cat_iii_date: '',
+    cat_iii_vac: false,
+    notes: ''
+  });
 
-  const toggleCheckbox = (id, field) => {
-    setData(prevData =>
-      prevData.map(item =>
-        item.id === id ? { ...item, [field]: !item[field] } : item
-      )
-    );
+  // Load data on component mount
+  useEffect(() => {
+    loadRegistryData();
+    loadPatients();
+  }, []);
+
+  const loadRegistryData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/rabies_registry');
+      if (response.ok) {
+        const data = await response.json();
+        setRegistryData(data);
+      }
+    } catch (error) {
+      console.error('Error loading registry data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const loadPatients = async () => {
+    try {
+      const response = await fetch('/api/patients');
+      if (response.ok) {
+        const data = await response.json();
+        setPatients(data);
+      }
+    } catch (error) {
+      console.error('Error loading patients:', error);
+    }
+  };
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return 'N/A';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleAddPatient = (patient) => {
+    const age = calculateAge(patient.birth_date);
+    const ageSex = `${age}/${patient.gender || 'N/A'}`;
+    const fullName = `${patient.last_name}, ${patient.first_name} ${patient.middle_name || ''}`.trim();
+    
+    setSelectedPatient({
+      ...patient,
+      age_sex: ageSex,
+      patient_name: fullName,
+      address: patient.residential_address || 'N/A'
+    });
+    setShowAddModal(true);
+    setPatientSearchTerm('');
+  };
+
+  const handleSaveRegistry = async () => {
+    if (!selectedPatient) return;
+
+    try {
+      const payload = {
+        patient_id: selectedPatient.id,
+        patient_name: selectedPatient.patient_name,
+        age_sex: selectedPatient.age_sex,
+        address: selectedPatient.address,
+        ...formData
+      };
+
+      const response = await fetch('/api/rabies_registry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: 'Patient registry updated successfully',
+          confirmButtonText: 'OK'
+        });
+        loadRegistryData();
+        setShowAddModal(false);
+        setSelectedPatient(null);
+        setFormData({
+          exposure_category: '',
+          animal: '',
+          cat_ii_date: '',
+          cat_ii_vac: false,
+          cat_iii_date: '',
+          cat_iii_vac: false,
+          notes: ''
+        });
+      } else {
+        const error = await response.json();
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || 'Failed to add patient to registry',
+          confirmButtonText: 'OK'
+        });
+      }
+    } catch (error) {
+      console.error('Error saving registry:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'An error occurred while saving',
+        confirmButtonText: 'OK'
+      });
+    }
+  };
+
+  const handleUpdateField = async (id, field, value) => {
+    try {
+      const response = await fetch(`/api/rabies_registry?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value })
+      });
+
+      if (response.ok) {
+        loadRegistryData();
+      }
+    } catch (error) {
+      console.error('Error updating field:', error);
+    }
+  };
+
+  // Filter data
   const filteredData = useMemo(() => {
-    let filtered = data;
+    let filtered = registryData;
     if (filterCategory !== 'All') {
-      filtered = filtered.filter(item => item.exposureCategory === filterCategory);
+      filtered = filtered.filter(item => item.exposure_category === filterCategory);
     }
     if (searchTerm) {
       const lowerCaseSearch = searchTerm.toLowerCase();
       filtered = filtered.filter(item =>
-        item.fullName.toLowerCase().includes(lowerCaseSearch) ||
+        item.patient_name.toLowerCase().includes(lowerCaseSearch) ||
         item.address.toLowerCase().includes(lowerCaseSearch) ||
-        item.animalType.toLowerCase().includes(lowerCaseSearch)
+        (item.animal && item.animal.toLowerCase().includes(lowerCaseSearch))
       );
     }
     return filtered;
-  }, [searchTerm, filterCategory, data]);
+  }, [searchTerm, filterCategory, registryData]);
+
+  // Filter patients for search
+  const filteredPatients = patients.filter(patient => {
+    if (!patientSearchTerm) return false;
+    const searchLower = patientSearchTerm.toLowerCase();
+    const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
+    return fullName.includes(searchLower) || 
+           (patient.last_name && patient.last_name.toLowerCase().includes(searchLower));
+  });
 
   const convertToCSV = (objArray) => {
     const headers = [
-      'Date Registered', 'Full Name', 'Age', 'Sex', 'Address', 
-      'Exposure Category', 'Animal Type', 'Cat. II Vaccine Completed', 'Cat. III Immunoglobulin Given'
+      'Patient Name', 'Age/Sex', 'Address', 'Exposure Category', 'Animal',
+      'Cat II Date', 'Cat. II Vac', 'Cat III Date', 'Cat. III Vac'
     ];
     const rows = objArray.map(row => [
-      row.dateRegistered,
-      `"${row.fullName.replace(/"/g, '""')}"`,
-      row.age,
-      row.sex,
+      `"${row.patient_name.replace(/"/g, '""')}"`,
+      row.age_sex,
       `"${row.address.replace(/"/g, '""')}"`,
-      row.exposureCategory,
-      row.animalType,
-      row.isCat2VaccineCompleted ? 'Yes' : 'No',
-      row.isCat3ImmunoglobulinGiven ? 'Yes' : 'No',
+      row.exposure_category || '',
+      row.animal || '',
+      row.cat_ii_date || '',
+      row.cat_ii_vac ? 'Yes' : 'No',
+      row.cat_iii_date || '',
+      row.cat_iii_vac ? 'Yes' : 'No'
     ]);
     return [headers, ...rows].map(r => r.join(',')).join('\r\n');
   };
@@ -4209,10 +4360,10 @@ function RabiesPanel() {
     link.click();
   };
 
-  const RegistryTable = ({ data: tableData, toggleCheckbox: tableToggle }) => {
+  const RegistryTable = ({ data: tableData }) => {
     const headers = [
-      'Reg. Date', 'Patient Name', 'Age/Sex', 'Address', 
-      'Exposure Cat.', 'Animal', 'Cat. II Vax Comp.', 'Cat. III RIG'
+      'Patient Name', 'Age/Sex', 'Address', 'Exposure Category', 'Animal',
+      'Cat II Date', 'Cat. II Vac', 'Cat III Date', 'Cat. III Vac'
     ];
 
     return (
@@ -4230,34 +4381,52 @@ function RabiesPanel() {
           <tbody>
             {tableData.map((item) => (
               <tr key={item.id} className="bg-white border-b hover:bg-teal-50/50">
-                <td className="py-4 px-6 font-medium text-gray-900 whitespace-nowrap">{item.dateRegistered}</td>
-                <td className="py-4 px-6">{item.fullName}</td>
-                <td className="py-4 px-6">{item.age} / {item.sex}</td>
+                <td className="py-4 px-6 font-medium text-gray-900">{item.patient_name}</td>
+                <td className="py-4 px-6">{item.age_sex}</td>
                 <td className="py-4 px-6 max-w-xs truncate">{item.address}</td>
                 <td className="py-4 px-6">
                   <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                    item.exposureCategory === 'III' ? 'bg-red-100 text-red-800' :
-                    item.exposureCategory === 'II' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
+                    item.exposure_category === 'III' ? 'bg-red-100 text-red-800' :
+                    item.exposure_category === 'II' ? 'bg-yellow-100 text-yellow-800' :
+                    item.exposure_category === 'I' ? 'bg-green-100 text-green-800' :
+                    'bg-gray-100 text-gray-800'
                   }`}>
-                    {item.exposureCategory}
+                    {item.exposure_category || 'Not Set'}
                   </span>
                 </td>
-                <td className="py-4 px-6">{item.animalType}</td>
-                <td className="py-4 px-6 text-center">
+                <td className="py-4 px-6">{item.animal || 'Not Set'}</td>
+                <td className="py-4 px-6">
                   <input
-                    type="checkbox"
-                    checked={item.isCat2VaccineCompleted}
-                    onChange={() => tableToggle(item.id, 'isCat2VaccineCompleted')}
-                    className="w-5 h-5 text-green-600 rounded focus:ring-teal-500"
+                    type="date"
+                    value={item.cat_ii_date ? new Date(item.cat_ii_date).toISOString().split('T')[0] : ''}
+                    onChange={(e) => handleUpdateField(item.id, 'cat_ii_date', e.target.value)}
+                    className="w-full text-xs px-2 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white"
+                    placeholder="Select date"
                   />
                 </td>
                 <td className="py-4 px-6 text-center">
                   <input
                     type="checkbox"
-                    checked={item.isCat3ImmunoglobulinGiven}
-                    onChange={() => tableToggle(item.id, 'isCat3ImmunoglobulinGiven')}
-                    className="w-5 h-5 text-green-600 rounded focus:ring-teal-500"
+                    checked={item.cat_ii_vac || false}
+                    onChange={(e) => handleUpdateField(item.id, 'cat_ii_vac', e.target.checked)}
+                    className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                  />
+                </td>
+                <td className="py-4 px-6">
+                  <input
+                    type="date"
+                    value={item.cat_iii_date ? new Date(item.cat_iii_date).toISOString().split('T')[0] : ''}
+                    onChange={(e) => handleUpdateField(item.id, 'cat_iii_date', e.target.value)}
+                    className="w-full text-xs px-2 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white"
+                    placeholder="Select date"
+                  />
+                </td>
+                <td className="py-4 px-6 text-center">
+                  <input
+                    type="checkbox"
+                    checked={item.cat_iii_vac || false}
+                    onChange={(e) => handleUpdateField(item.id, 'cat_iii_vac', e.target.checked)}
+                    className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
                   />
                 </td>
               </tr>
@@ -4265,21 +4434,43 @@ function RabiesPanel() {
           </tbody>
         </table>
         {tableData.length === 0 && (
-          <p className="p-6 text-center text-gray-500">No matching reports found.</p>
+          <p className="p-6 text-center text-gray-500">No registry entries found.</p>
         )}
       </div>
     );
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans p-4 sm:p-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-extrabold text-teal-700">Rabies Registry Report</h1>
-        <p className="text-lg text-gray-500 mt-1">Snapshot of Animal Bite Exposure Cases</p>
-      </header>
+  if (loading) {
+    return (
+      <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading rabies registry...</p>
+        </div>
+      </div>
+    );
+  }
 
-      <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">Case Details</h2>
+  return (
+    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Rabies Registry Report</h1>
+          <p className="text-gray-600">Snapshot of Animal Bite Exposure Cases</p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+        >
+          <FaPlus className="w-4 h-4" />
+          Add Patient
+        </button>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-md">
+        <div className="mb-4 border-b pb-2">
+          <h2 className="text-2xl font-semibold text-gray-800">Case Details</h2>
+        </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
           <div className="relative w-full sm:w-80">
@@ -4331,13 +4522,185 @@ function RabiesPanel() {
         </div>
 
         <div className="max-h-[500px] overflow-y-auto">
-          <RegistryTable data={filteredData} toggleCheckbox={toggleCheckbox} />
+          <RegistryTable data={filteredData} />
         </div>
       </div>
 
-      <footer className="mt-8 text-center text-sm text-gray-400">
+      {/* Add Patient Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800">Add Patient to Rabies Registry</h3>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setSelectedPatient(null);
+                    setPatientSearchTerm('');
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
+
+              {!selectedPatient ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search Patient
+                  </label>
+                  <div className="relative mb-4">
+                    <input
+                      type="text"
+                      placeholder="Type patient name to search..."
+                      className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      value={patientSearchTerm}
+                      onChange={(e) => setPatientSearchTerm(e.target.value)}
+                    />
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
+
+                  {patientSearchTerm && (
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                      {filteredPatients.length > 0 ? (
+                        filteredPatients.map(patient => (
+                          <div
+                            key={patient.id}
+                            onClick={() => handleAddPatient(patient)}
+                            className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-gray-900">
+                              {patient.last_name}, {patient.first_name} {patient.middle_name || ''}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Age: {calculateAge(patient.birth_date)} | Gender: {patient.gender || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Address: {patient.residential_address || 'N/A'}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 text-center text-gray-500">
+                          No patients found matching "{patientSearchTerm}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                    <h4 className="font-medium text-gray-800 mb-2">Selected Patient</h4>
+                    <p><strong>Name:</strong> {selectedPatient.patient_name}</p>
+                    <p><strong>Age/Sex:</strong> {selectedPatient.age_sex}</p>
+                    <p><strong>Address:</strong> {selectedPatient.address}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Exposure Category
+                      </label>
+                      <select
+                        value={formData.exposure_category}
+                        onChange={(e) => setFormData({...formData, exposure_category: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="">Select Category</option>
+                        <option value="I">Category I</option>
+                        <option value="II">Category II</option>
+                        <option value="III">Category III</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Animal
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.animal}
+                        onChange={(e) => setFormData({...formData, animal: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        placeholder="e.g., Dog, Cat, etc."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cat II Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.cat_ii_date}
+                        onChange={(e) => setFormData({...formData, cat_ii_date: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cat III Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.cat_iii_date}
+                        onChange={(e) => setFormData({...formData, cat_iii_date: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      rows="3"
+                      placeholder="Additional notes..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => {
+                        setSelectedPatient(null);
+                        setFormData({
+                          exposure_category: '',
+                          animal: '',
+                          cat_ii_date: '',
+                          cat_ii_vac: false,
+                          cat_iii_date: '',
+                          cat_iii_vac: false,
+                          notes: ''
+                        });
+                      }}
+                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                    >
+                      Back to Search
+                    </button>
+                    <button
+                      onClick={handleSaveRegistry}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Save to Registry
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 text-center text-sm text-gray-500">
         Rabies Registry Data Report - Generated {new Date().toLocaleDateString()}
-      </footer>
+      </div>
     </div>
   );
 }

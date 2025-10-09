@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     switch (req.method) {
       case 'GET':
         if (id) {
-          // Get single doctor
+      
           const { rows } = await pool.query(
             'SELECT id, fullname, username, email, specialization FROM doctors WHERE id = $1',
             [id]
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
           }
           res.status(200).json(rows[0]);
         } else {
-          // Get all doctors
+   
           const { rows } = await pool.query(
             'SELECT id, fullname, username, email, specialization FROM doctors ORDER BY fullname'
           );
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         // Create new doctor
         const { fullname, username, email, password, specialization } = req.body;
         
-        // Validate required fields
+  
         if (!fullname || !username || !email || !password) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
           return res.status(400).json({ message: 'Username or email already exists' });
         }
 
-        // Hash password
+        
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const { rows: [newDoctor] } = await pool.query(
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        // Check for conflicts
+       
         const { rows: conflict } = await pool.query(
           'SELECT id FROM doctors WHERE (username = $1 OR email = $2) AND id != $3',
           [updateUsername, updateEmail, id]
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
           );
           updatedDoctor = doctor;
         } else {
-          // Update without changing password
+         
           const { rows: [doctor] } = await pool.query(
             `UPDATE doctors 
              SET fullname = $1, username = $2, email = $3, specialization = $4

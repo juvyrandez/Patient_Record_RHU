@@ -315,7 +315,7 @@ function DoctorDashboardContent({ onQuickAction }) {
     monthlyConsultations: [],
     topDiseases: [],
     statusDistribution: [],
-    recentConsultations: []
+    diagnosisAnalytics: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -394,7 +394,10 @@ function DoctorDashboardContent({ onQuickAction }) {
 
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div 
+          className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-green-200 transition-all duration-200"
+          onClick={() => onQuickAction && onQuickAction('Patient Consultations')}
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-gray-500">All Consultations</p>
@@ -405,7 +408,10 @@ function DoctorDashboardContent({ onQuickAction }) {
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div 
+          className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all duration-200"
+          onClick={() => onQuickAction && onQuickAction('Patient Records')}
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-gray-500">Total Patients</p>
@@ -416,7 +422,10 @@ function DoctorDashboardContent({ onQuickAction }) {
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div 
+          className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-purple-200 transition-all duration-200"
+          onClick={() => onQuickAction && onQuickAction('Consultation History')}
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-gray-500">Consultation History</p>
@@ -427,7 +436,10 @@ function DoctorDashboardContent({ onQuickAction }) {
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div 
+          className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-yellow-200 transition-all duration-200"
+          onClick={() => onQuickAction && onQuickAction('Patient Consultations')}
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-gray-500">Pending Consultations</p>
@@ -512,25 +524,37 @@ function DoctorDashboardContent({ onQuickAction }) {
           </div>
         </div>
 
-        {/* Recent Consultations */}
+        {/* Diagnosis Analytics */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-3">Recent Consultations</h2>
+          <h2 className="text-lg font-semibold mb-3">Diagnosis Analytics</h2>
           <div className="space-y-3">
-            {analytics.recentConsultations.length > 0 ? (
-              analytics.recentConsultations.map((consultation, index) => (
-                <div key={index} className="p-3 border rounded-lg hover:bg-gray-50">
-                  <p className="font-medium">
-                    {consultation.first_name} {consultation.last_name}
-                  </p>
-                  <p className="text-sm text-gray-600">{consultation.diagnosis || 'No diagnosis'}</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(consultation.consultation_date).toLocaleDateString()}
-                  </p>
+            {analytics.diagnosisAnalytics && analytics.diagnosisAnalytics.length > 0 ? (
+              analytics.diagnosisAnalytics.map((item, index) => (
+                <div key={index} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50">
+                  <div className="flex-1">
+                    <p className="font-medium capitalize">
+                      {item.diagnosis_type.replace('_', ' ')} Diagnoses
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {item.count} diagnoses ({item.percentage}%)
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">
+                      {item.count}
+                    </span>
+                  </div>
                 </div>
               ))
             ) : (
               <div className="text-center text-gray-500 py-8">
-                No recent consultations
+                No diagnosis analytics available
               </div>
             )}
           </div>

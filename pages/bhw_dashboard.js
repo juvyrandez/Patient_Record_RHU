@@ -1165,7 +1165,10 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div 
+            className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Add Patients')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Patients</p>
@@ -1176,7 +1179,10 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div 
+            className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-amber-200 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Referrals')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-gray-500">Pending Referrals</p>
@@ -1187,7 +1193,10 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div 
+            className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-green-200 transition-all duration-200"
+            onClick={() => onQuickAction && onQuickAction('Referrals')}
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-gray-500">Completed Referrals</p>

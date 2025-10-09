@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight, FaDownload } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
 
 function Reports() {
@@ -95,6 +95,42 @@ function Reports() {
     if (page >= 0 && page < totalPatientPages) {
       setCurrentPage(page);
     }
+  };
+
+  // CSV Download function
+  const downloadCSV = async () => {
+    try {
+      // Fetch all patient data for CSV export
+      const response = await fetch('/api/reports?export=csv', {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const csvContent = convertToCSV(data.patientSummary.patients);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Patient_Summary_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.click();
+      }
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+    }
+  };
+
+  const convertToCSV = (objArray) => {
+    const headers = ['Patient Name', 'Registration Date', 'Gender', 'Birth Date', 'Address', 'Contact Number'];
+    const rows = objArray.map(row => [
+      `"${(row.name || '').replace(/"/g, '""')}"`,
+      row.date || '',
+      row.gender || '',
+      row.birth_date || '',
+      `"${(row.address || '').replace(/"/g, '""')}"`,
+      row.contact_number || ''
+    ]);
+    return [headers, ...rows].map(r => r.join(',')).join('\r\n');
   };
 
   // Filtered Yearly Reports based on selected year
@@ -218,8 +254,15 @@ function Reports() {
           </div>
         ) : (
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
               <h2 className="text-lg font-semibold">Patient Summary</h2>
+              <button
+                onClick={downloadCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+              >
+                <FaDownload className="w-4 h-4" />
+                Download CSV
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -235,9 +278,18 @@ function Reports() {
                   {patientSummaryData.length > 0 ? (
                     patientSummaryData.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50 leading-tight">
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.date}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.gender}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.category}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {item.date || 'N/A'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {item.gender || 'N/A'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {item.category || 'N/A'}
+                        </td>
                       </tr>
                     ))
                   ) : (

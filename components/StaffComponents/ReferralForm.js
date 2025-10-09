@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { FaEye, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp, FaSpinner, FaClock, FaTasks, FaCheck,FaSearch, FaTimes, FaHandHoldingMedical } from 'react-icons/fa';
+import { FaEye, FaArrowLeft, FaArrowRight, FaSortAlphaDown, FaSortAlphaUp, FaSpinner, FaClock, FaTasks, FaCheck, FaSearch, FaTimes, FaHandHoldingMedical, FaFileMedical, FaUser, FaStethoscope, FaHeartbeat, FaHospital } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 
 function ReferralForm() {
@@ -10,6 +10,7 @@ function ReferralForm() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [barangayFilter, setBarangayFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
   const itemsPerPage = 10;
 
@@ -262,6 +263,11 @@ function ReferralForm() {
       );
     })
     .filter(referral => statusFilter === 'all' || referral.status === statusFilter)
+    .filter(referral => {
+      if (barangayFilter === 'all') return true;
+      // Filter by patient address containing the selected barangay
+      return referral.patient_address && referral.patient_address.toLowerCase().includes(barangayFilter.toLowerCase());
+    })
     .sort((a, b) => {
       if (sortOrder === 'newest') {
         return new Date(b.created_at) - new Date(a.created_at);
@@ -466,6 +472,11 @@ function ReferralForm() {
     switch (status) {
       case 'Pending':
         return 'bg-yellow-50 text-yellow-700';
+      case 'Complete':
+        return 'bg-green-50 text-green-700';
+      case 'In Laboratory':
+        return 'bg-blue-50 text-blue-700';
+      // Legacy status support
       case 'Completed':
         return 'bg-green-50 text-green-700';
       case 'In Progress':
@@ -515,16 +526,48 @@ function ReferralForm() {
           >
             <option value="all">All Statuses</option>
             <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
+            <option value="In Laboratory">In Laboratory</option>
+            <option value="Complete">Complete</option>
           </select>
           <select
+            value={barangayFilter}
+            onChange={(e) => {
+              setBarangayFilter(e.target.value);
+              setCurrentPage(0);
+            }}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-auto"
           >
             <option value="all">All Barangays</option>
-            <option value="barangay1">Barangay 1</option>
-            <option value="barangay2">Barangay 2</option>
-            <option value="barangay3">Barangay 3</option>
+            <option value="1 Poblacion">1 Poblacion</option>
+            <option value="2 Poblacion">2 Poblacion</option>
+            <option value="3 Poblacion">3 Poblacion</option>
+            <option value="4 Poblacion">4 Poblacion</option>
+            <option value="5 Poblacion">5 Poblacion</option>
+            <option value="6 Poblacion">6 Poblacion</option>
+            <option value="Balagnan">Balagnan</option>
+            <option value="Balingoan">Balingoan</option>
+            <option value="Barangay">Barangay</option>
+            <option value="Blanco">Blanco</option>
+            <option value="Calawag">Calawag</option>
+            <option value="Camuayan">Camuayan</option>
+            <option value="Cogon">Cogon</option>
+            <option value="Dansuli">Dansuli</option>
+            <option value="Dumarait">Dumarait</option>
+            <option value="Hermano">Hermano</option>
+            <option value="Kibanban">Kibanban</option>
+            <option value="Linggangao">Linggangao</option>
+            <option value="Mambayaan">Mambayaan</option>
+            <option value="Mandangoa">Mandangoa</option>
+            <option value="Napaliran">Napaliran</option>
+            <option value="Natubo">Natubo</option>
+            <option value="Quezon">Quezon</option>
+            <option value="San Alonzo">San Alonzo</option>
+            <option value="San Isidro">San Isidro</option>
+            <option value="San Juan">San Juan</option>
+            <option value="San Miguel">San Miguel</option>
+            <option value="San Victor">San Victor</option>
+            <option value="Talusan">Talusan</option>
+            <option value="Waterfall">Waterfall</option>
           </select>
           <button
             onClick={toggleSortOrder}
@@ -667,79 +710,118 @@ function ReferralForm() {
         </>
       )}
 
-      {/* Referral Details Modal */}
+      {/* Enhanced Referral Details Modal */}
       {selectedReferral && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800">Referral Details</h3>
+        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-gray-200">
+            {/* Enhanced Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 rounded-t-xl">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <FaFileMedical className="text-white text-xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Referral Details</h3>
+                    <p className="text-green-100 text-sm">Patient Medical Referral Information</p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setSelectedReferral(null)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  className="text-white hover:bg-white/20 p-2 rounded-full transition-colors duration-200"
                   disabled={isLoading}
                 >
-                  &times;
+                  <FaTimes size={20} />
                 </button>
               </div>
+            </div>
+            
+            <div className="p-6">
               
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-lg text-gray-800 border-b border-gray-100 pb-2 mb-3">
-                      Patient Information
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>Name:</strong> {selectedReferral.patient_first_name} {selectedReferral.patient_middle_name} {selectedReferral.patient_last_name}</p>
-                      <p><strong>Address:</strong> {selectedReferral.patient_address}</p>
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-2 bg-blue-500 rounded-lg">
+                        <FaUser className="text-white text-sm" />
+                      </div>
+                      <h4 className="font-semibold text-lg text-blue-900">Patient Information</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Full Name</p>
+                        <p className="text-sm font-semibold text-gray-800 mt-1">
+                          {selectedReferral.patient_first_name} {selectedReferral.patient_middle_name} {selectedReferral.patient_last_name}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Address</p>
+                        <p className="text-sm text-gray-700 mt-1">{selectedReferral.patient_address}</p>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-lg text-gray-800 border-b border-gray-100 pb-2 mb-3">
-                      Referral Information
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>Type:</strong> 
-                        <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadge(selectedReferral.referral_type)}`}>
-                          {selectedReferral.referral_type}
-                        </span>
-                      </p>
-                      <p><strong>Date/Time:</strong> {new Date(selectedReferral.referral_date).toLocaleDateString()} {new Date(`2025-01-01T${selectedReferral.referral_time}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
-                      <p><strong>Referred By:</strong> {selectedReferral.referred_by_name} (License: {selectedReferral.license_number})</p>
-                      <p><strong>Status:</strong> 
-                        <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedReferral.status)}`}>
-                          {selectedReferral.status}
-                        </span>
-                      </p>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border border-green-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-2 bg-green-500 rounded-lg">
+                        <FaFileMedical className="text-white text-sm" />
+                      </div>
+                      <h4 className="font-semibold text-lg text-green-900">Referral Information</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-white p-3 rounded-lg border border-green-100">
+                        <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Type & Status</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPriorityBadge(selectedReferral.referral_type)}`}>
+                            {selectedReferral.referral_type}
+                          </span>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(selectedReferral.status)}`}>
+                            {selectedReferral.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-green-100">
+                        <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Date & Time</p>
+                        <p className="text-sm font-medium text-gray-800 mt-1">
+                          {new Date(selectedReferral.referral_date).toLocaleDateString()} at {new Date(`2025-01-01T${selectedReferral.referral_time}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-green-100">
+                        <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Referred By</p>
+                        <p className="text-sm font-medium text-gray-800 mt-1">{selectedReferral.referred_by_name}</p>
+                        <p className="text-xs text-gray-500">License: {selectedReferral.license_number}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="font-medium text-lg text-gray-800 border-b border-gray-100 pb-2 mb-3">
-                    Medical Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p><strong>Chief Complaints:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded border border-gray-100">{selectedReferral.chief_complaints}</p>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl border border-purple-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-purple-500 rounded-lg">
+                      <FaStethoscope className="text-white text-sm" />
                     </div>
-                    <div>
-                      <p><strong>Medical History:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded border border-gray-100">{selectedReferral.medical_history || 'None provided'}</p>
+                    <h4 className="font-semibold text-lg text-purple-900">Medical Information</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white p-4 rounded-lg border border-purple-100">
+                      <p className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-2">Chief Complaints</p>
+                      <p className="text-sm text-gray-800 leading-relaxed">{selectedReferral.chief_complaints}</p>
                     </div>
-                    <div>
-                      <p><strong>Surgical History:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded border border-gray-100">
+                    <div className="bg-white p-4 rounded-lg border border-purple-100">
+                      <p className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-2">Medical History</p>
+                      <p className="text-sm text-gray-800 leading-relaxed">{selectedReferral.medical_history || 'None provided'}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-purple-100">
+                      <p className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-2">Surgical History</p>
+                      <p className="text-sm text-gray-800 leading-relaxed">
                         {selectedReferral.surgical_operations === 'YES' 
                           ? selectedReferral.surgical_procedure 
                           : 'No surgical history'}
                       </p>
                     </div>
-                    <div>
-                      <p><strong>Allergies:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded border border-gray-100">
+                    <div className="bg-white p-4 rounded-lg border border-purple-100">
+                      <p className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-2">Drug Allergies</p>
+                      <p className="text-sm text-gray-800 leading-relaxed">
                         {selectedReferral.drug_allergy === 'YES' 
                           ? selectedReferral.allergy_type 
                           : 'No known allergies'}
@@ -748,51 +830,67 @@ function ReferralForm() {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="font-medium text-lg text-gray-800 border-b border-gray-100 pb-2 mb-3">
-                    Examination Details
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p><strong>BP:</strong> {selectedReferral.blood_pressure || 'N/A'}</p>
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-5 rounded-xl border border-orange-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-orange-500 rounded-lg">
+                      <FaHeartbeat className="text-white text-sm" />
                     </div>
-                    <div>
-                      <p><strong>HR:</strong> {selectedReferral.heart_rate || 'N/A'}</p>
+                    <h4 className="font-semibold text-lg text-orange-900">Vital Signs & Examination</h4>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-3 rounded-lg border border-orange-100 text-center">
+                      <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Blood Pressure</p>
+                      <p className="text-lg font-bold text-gray-800 mt-1">{selectedReferral.blood_pressure || 'N/A'}</p>
                     </div>
-                    <div>
-                      <p><strong>RR:</strong> {selectedReferral.respiratory_rate || 'N/A'}</p>
+                    <div className="bg-white p-3 rounded-lg border border-orange-100 text-center">
+                      <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Heart Rate</p>
+                      <p className="text-lg font-bold text-gray-800 mt-1">{selectedReferral.heart_rate || 'N/A'}</p>
                     </div>
-                    <div>
-                      <p><strong>Weight:</strong> {selectedReferral.weight || 'N/A'}</p>
+                    <div className="bg-white p-3 rounded-lg border border-orange-100 text-center">
+                      <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Respiratory Rate</p>
+                      <p className="text-lg font-bold text-gray-800 mt-1">{selectedReferral.respiratory_rate || 'N/A'}</p>
                     </div>
-                    <div className="md:col-span-2">
-                      <p><strong>Last Meal:</strong> {selectedReferral.last_meal_time}</p>
+                    <div className="bg-white p-3 rounded-lg border border-orange-100 text-center">
+                      <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Weight</p>
+                      <p className="text-lg font-bold text-gray-800 mt-1">{selectedReferral.weight || 'N/A'}</p>
+                    </div>
+                    <div className="md:col-span-2 bg-white p-3 rounded-lg border border-orange-100">
+                      <p className="text-xs font-medium text-orange-600 uppercase tracking-wide mb-1">Last Meal Time</p>
+                      <p className="text-sm font-medium text-gray-800">{selectedReferral.last_meal_time || 'Not specified'}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="font-medium text-lg text-gray-800 border-b border-gray-100 pb-2 mb-3">
-                    Referral Details
-                  </h4>
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <p><strong>Referred To:</strong> {selectedReferral.referred_to}</p>
-                      <p className="text-gray-600">{selectedReferral.referred_to_address}</p>
+                <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-5 rounded-xl border border-teal-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-teal-500 rounded-lg">
+                      <FaHospital className="text-white text-sm" />
                     </div>
-                    <div>
-                      <p><strong>Impression:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded border border-gray-100">{selectedReferral.impression || 'None provided'}</p>
+                    <h4 className="font-semibold text-lg text-teal-900">Referral Details</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="bg-white p-4 rounded-lg border border-teal-100">
+                      <p className="text-xs font-medium text-teal-600 uppercase tracking-wide mb-2">Referred To</p>
+                      <p className="text-sm font-semibold text-gray-800">{selectedReferral.referred_to}</p>
+                      <p className="text-xs text-gray-600 mt-1">{selectedReferral.referred_to_address}</p>
                     </div>
-                    <div>
-                      <p><strong>Action Taken:</strong></p>
-                      <p className="mt-1 bg-white p-2 rounded border border-gray-100">{selectedReferral.action_taken || 'None provided'}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white p-4 rounded-lg border border-teal-100">
+                        <p className="text-xs font-medium text-teal-600 uppercase tracking-wide mb-2">Clinical Impression</p>
+                        <p className="text-sm text-gray-800 leading-relaxed">{selectedReferral.impression || 'None provided'}</p>
+                      </div>
+                      <div className="bg-white p-4 rounded-lg border border-teal-100">
+                        <p className="text-xs font-medium text-teal-600 uppercase tracking-wide mb-2">Action Taken</p>
+                        <p className="text-sm text-gray-800 leading-relaxed">{selectedReferral.action_taken || 'None provided'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p><strong>Referral Reasons:</strong></p>
-                      <div className="mt-1 bg-white p-2 rounded border border-gray-100">
+                    
+                    <div className="bg-white p-4 rounded-lg border border-teal-100">
+                      <p className="text-xs font-medium text-teal-600 uppercase tracking-wide mb-2">Referral Reasons</p>
+                      <div className="text-sm text-gray-800">
                         {selectedReferral.referral_reasons && selectedReferral.referral_reasons.length > 0 ? (
-                          <ul className="list-disc pl-5">
+                          <ul className="list-disc pl-5 space-y-1">
                             {selectedReferral.referral_reasons.map((reason, index) => (
                               <li key={index}>{reason}</li>
                             ))}
@@ -801,30 +899,44 @@ function ReferralForm() {
                             )}
                           </ul>
                         ) : (
-                          <p>No reasons specified</p>
+                          <p className="text-gray-500 italic">No reasons specified</p>
                         )}
                       </div>
                     </div>
-                    <div>
-                      <p><strong>Health Insurance:</strong> {selectedReferral.health_insurance}</p>
-                      {selectedReferral.health_insurance === 'YES' && (
-                        <p className="mt-1">Type: {selectedReferral.insurance_type}</p>
-                      )}
+                    
+                    <div className="bg-white p-4 rounded-lg border border-teal-100">
+                      <p className="text-xs font-medium text-teal-600 uppercase tracking-wide mb-2">Health Insurance</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          selectedReferral.health_insurance === 'YES' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {selectedReferral.health_insurance === 'YES' ? 'Insured' : 'Not Insured'}
+                        </span>
+                        {selectedReferral.health_insurance === 'YES' && selectedReferral.insurance_type && (
+                          <span className="text-sm text-gray-600">({selectedReferral.insurance_type})</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="font-medium text-lg text-gray-800 border-b border-gray-100 pb-2 mb-3">
-                    Update Referral Status
-                  </h4>
+                {/* Update Referral Status Section */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-gray-500 rounded-lg">
+                      <FaTasks className="text-white text-sm" />
+                    </div>
+                    <h4 className="font-semibold text-lg text-gray-900">Update Referral Status</h4>
+                  </div>
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => handleStatusUpdate(selectedReferral.id, 'Pending')}
-                      className={`px-4 py-2 rounded-md flex items-center text-sm ${
+                      className={`px-4 py-2 rounded-lg flex items-center text-sm font-medium transition-all duration-200 ${
                         selectedReferral.status === 'Pending' 
-                          ? 'bg-yellow-500 text-white' 
-                          : 'bg-yellow-50 text-yellow-700'
+                          ? 'bg-yellow-500 text-white shadow-md' 
+                          : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
                       }`}
                       disabled={isLoading}
                     >
@@ -836,47 +948,47 @@ function ReferralForm() {
                       Mark as Pending
                     </button>
                     <button
-                      onClick={() => handleStatusUpdate(selectedReferral.id, 'In Progress')}
-                      className={`px-4 py-2 rounded-md flex items-center text-sm ${
-                        selectedReferral.status === 'In Progress' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-blue-50 text-blue-700'
+                      onClick={() => handleStatusUpdate(selectedReferral.id, 'In Laboratory')}
+                      className={`px-4 py-2 rounded-lg flex items-center text-sm font-medium transition-all duration-200 ${
+                        selectedReferral.status === 'In Laboratory' 
+                          ? 'bg-blue-500 text-white shadow-md' 
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
                       }`}
                       disabled={isLoading}
                     >
-                      {isLoading && selectedReferral.status === 'In Progress' ? (
+                      {isLoading && selectedReferral.status === 'In Laboratory' ? (
                         <FaSpinner className="animate-spin mr-2" />
                       ) : (
                         <FaTasks className="mr-2" />
                       )}
-                      Mark as In Progress
+                      Mark as In Laboratory
                     </button>
                     <button
-                      onClick={() => handleStatusUpdate(selectedReferral.id, 'Completed')}
-                      className={`px-4 py-2 rounded-md flex items-center text-sm ${
-                        selectedReferral.status === 'Completed' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-green-50 text-green-700'
+                      onClick={() => handleStatusUpdate(selectedReferral.id, 'Complete')}
+                      className={`px-4 py-2 rounded-lg flex items-center text-sm font-medium transition-all duration-200 ${
+                        selectedReferral.status === 'Complete' 
+                          ? 'bg-green-500 text-white shadow-md' 
+                          : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
                       }`}
                       disabled={isLoading}
                     >
-                      {isLoading && selectedReferral.status === 'Completed' ? (
+                      {isLoading && selectedReferral.status === 'Complete' ? (
                         <FaSpinner className="animate-spin mr-2" />
                       ) : (
                         <FaCheck className="mr-2" />
                       )}
-                      Mark as Completed
+                      Mark as Complete
                     </button>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                   <button
                     onClick={() => setSelectedReferral(null)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
+                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md font-medium"
                     disabled={isLoading}
                   >
-                    Close
+                    Close Details
                   </button>
                 </div>
               </div>

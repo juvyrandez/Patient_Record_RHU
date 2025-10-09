@@ -4,13 +4,13 @@ export default async function handler(req, res) {
   const { id, type, createdBy } = req.query;
 
   try {
-    // Ensure tracking column exists (safe no-op if already present)
+  
     await pool.query('ALTER TABLE patients ADD COLUMN IF NOT EXISTS created_by_bhw_id INTEGER');
 
     switch (req.method) {
       case 'GET':
         if (id) {
-          // Get single patient with type = 'bhw_data'
+  
           // If createdBy provided, also ensure it matches
           const params = createdBy ? [id, 'bhw_data', createdBy] : [id, 'bhw_data'];
           const query = createdBy
@@ -22,9 +22,9 @@ export default async function handler(req, res) {
           }
           res.status(200).json(rows[0]);
         } else {
-          // Get all patients with type = 'bhw_data' for this BHW
+  
           if (!createdBy) {
-            // For safety, if no creator is provided, return empty list (prevent cross-visibility)
+     
             return res.status(200).json([]);
           }
           const { rows } = await pool.query(
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
         break;
 
       case 'POST':
-        // Create new patient with type = 'bhw_data'
+       
         const {
           last_name,
           first_name,
