@@ -257,6 +257,8 @@ BEFORE UPDATE ON notifications
 FOR EACH ROW
 EXECUTE FUNCTION update_notification_timestamp();
 
+
+
 ------------------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS individual_treatment_records (
   id SERIAL PRIMARY KEY,
@@ -339,3 +341,70 @@ BEGIN
         ALTER TABLE referrals ADD COLUMN created_by INTEGER REFERENCES bhws(id) ON DELETE SET NULL;
     END IF;
 END $$;
+
+
+
+
+
+
+------------------------------------------------------------------------------------------
+-- Table for approved diagnoses (only checked/approved by doctor)
+CREATE TABLE IF NOT EXISTS approved_diagnoses (
+  id SERIAL PRIMARY KEY,
+  treatment_record_id INTEGER REFERENCES individual_treatment_records(id) ON DELETE CASCADE,
+  diagnosis_text TEXT NOT NULL,
+  diagnosis_type VARCHAR(20) DEFAULT 'final', -- 'ai_approved', 'final', 'custom'
+  is_primary BOOLEAN DEFAULT false,
+  approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_approved_diagnoses_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_approved_diagnoses_timestamp
+BEFORE UPDATE ON approved_diagnoses
+FOR EACH ROW
+EXECUTE FUNCTION update_approved_diagnoses_timestamp();
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------
+-- Table for consultation decisions and status tracking
+CREATE TABLE IF NOT EXISTS consultation_decisions (
+  id SERIAL PRIMARY KEY,
+  treatment_record_id INTEGER REFERENCES individual_treatment_records(id) ON DELETE CASCADE,
+  doctor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'Pending', -- 'Pending', 'In Laboratory', 'Complete'
+  medication_treatment TEXT,
+  lab_findings_impression TEXT,
+  lab_tests TEXT,
+  notes TEXT,
+  is_draft BOOLEAN DEFAULT true,
+  completed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_consultation_decisions_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_consultation_decisions_timestamp
+BEFORE UPDATE ON consultation_decisions
+FOR EACH ROW
+EXECUTE FUNCTION update_consultation_decisions_timestamp();

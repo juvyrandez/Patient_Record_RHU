@@ -557,33 +557,78 @@ function PatientConsultations() {
   const [medicationText, setMedicationText] = useState("");
   const [labFindingsText, setLabFindingsText] = useState("");
   const [labTestsText, setLabTestsText] = useState("");
+  // Decision status for consultation
+  const [consultationStatus, setConsultationStatus] = useState("Pending");
   // Form data storage for each patient (preserves data when modal is closed)
   const [patientFormData, setPatientFormData] = useState({});
   // Search for Patient Consultations
   const [pcSearch, setPcSearch] = useState("");
+  const [pcStatusFilter, setPcStatusFilter] = useState("All");
   const [pcCurrentPage, setPcCurrentPage] = useState(0);
   const pcItemsPerPage = 10;
 
-  const handleStartConsultation = (patient) => {
+  const handleStartConsultation = async (patient) => {
     setSelectedPatient(patient);
     
-    // Load saved form data if it exists, otherwise use patient data or empty values
-    const savedData = patientFormData[patient.id];
-    if (savedData) {
-      setSelectedDiagnoses(savedData.selectedDiagnoses || []);
-      setOtherDiagnosisChecked(savedData.otherDiagnosisChecked || false);
-      setOtherDiagnosisText(savedData.otherDiagnosisText || "");
-      setMedicationText(savedData.medicationText || "");
-      setLabFindingsText(savedData.labFindingsText || "");
-      setLabTestsText(savedData.labTestsText || "");
-    } else {
-      // Do not auto-select AI Suggested Diagnoses; let the doctor choose
+    try {
+      // First, try to load existing consultation decision from database
+      const decisionRes = await fetch(`/api/consultation_decisions?treatment_record_id=${patient.id}`);
+      if (decisionRes.ok) {
+        const decisions = await decisionRes.json();
+        const existingDecision = decisions[0]; // Get the first (most recent) decision
+        
+        if (existingDecision) {
+          // Load data from database
+          setMedicationText(existingDecision.medication_treatment || "");
+          setLabFindingsText(existingDecision.lab_findings_impression || "");
+          setLabTestsText(existingDecision.lab_tests || "");
+          setConsultationStatus(existingDecision.status || "Pending");
+          
+          // Load approved diagnoses
+          const diagnosesRes = await fetch(`/api/approved_diagnoses?treatment_record_id=${patient.id}`);
+          if (diagnosesRes.ok) {
+            const approvedDiagnoses = await diagnosesRes.json();
+            const aiDiagnoses = approvedDiagnoses.filter(d => d.diagnosis_type === 'ai_approved').map(d => d.diagnosis_text);
+            const finalDiagnosis = approvedDiagnoses.find(d => d.diagnosis_type === 'final');
+            
+            setSelectedDiagnoses(aiDiagnoses);
+            setOtherDiagnosisChecked(!!finalDiagnosis);
+            setOtherDiagnosisText(finalDiagnosis?.diagnosis_text || "");
+          }
+          return;
+        }
+      }
+      
+      // Fallback to local storage or patient data
+      const savedData = patientFormData[patient.id];
+      if (savedData) {
+        setSelectedDiagnoses(savedData.selectedDiagnoses || []);
+        setOtherDiagnosisChecked(savedData.otherDiagnosisChecked || false);
+        setOtherDiagnosisText(savedData.otherDiagnosisText || "");
+        setMedicationText(savedData.medicationText || "");
+        setLabFindingsText(savedData.labFindingsText || "");
+        setLabTestsText(savedData.labTestsText || "");
+        setConsultationStatus(savedData.consultationStatus || "Pending");
+      } else {
+        // Initialize with empty values
+        setSelectedDiagnoses([]);
+        setOtherDiagnosisChecked(false);
+        setOtherDiagnosisText("");
+        setMedicationText(patient?.medication || "");
+        setLabFindingsText(patient?.lab_findings || "");
+        setLabTestsText(patient?.lab_tests || "");
+        setConsultationStatus("Pending");
+      }
+    } catch (error) {
+      console.error('Error loading consultation data:', error);
+      // Fallback to empty values
       setSelectedDiagnoses([]);
       setOtherDiagnosisChecked(false);
       setOtherDiagnosisText("");
       setMedicationText(patient?.medication || "");
       setLabFindingsText(patient?.lab_findings || "");
       setLabTestsText(patient?.lab_tests || "");
+      setConsultationStatus("Pending");
     }
   };
 
@@ -597,19 +642,33 @@ function PatientConsultations() {
     return age;
   };
 
-  useEffect(() => {
-    const fetchTreatments = async () => {
-      try {
-        const res = await fetch('/api/treatment_records?status=pending&limit=50');
-        if (!res.ok) throw new Error(await res.text());
-        const rows = await res.json();
-        const mapped = (rows || []).map(r => ({
+  const fetchTreatments = async () => {
+    try {
+      // Fetch treatment records that are not completed (exclude complete status)
+      const res = await fetch('/api/treatment_records?status=pending&limit=100');
+      if (!res.ok) throw new Error(await res.text());
+      const rows = await res.json();
+      
+      // Fetch consultation decisions for all treatment records
+      const recordIds = rows.map(r => r.id);
+      const decisionsPromises = recordIds.map(id => 
+        fetch(`/api/consultation_decisions?treatment_record_id=${id}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => [])
+      );
+      const allDecisions = await Promise.all(decisionsPromises);
+      
+      const mapped = (rows || []).map((r, index) => {
+        const decision = allDecisions[index]?.[0]; // Get first decision
+        const consultationStatus = decision?.status || 'Pending';
+        
+        return {
           id: r.id,
           name: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
           patientId: r.patient_id || r.id,
           age: calcAge(r.patient_birth_date),
           gender: '-',
-          status: 'Waiting',
+          status: consultationStatus,
           concern: r.chief_complaints || '',
           visit_type: r.visit_type || '',
           purpose_of_visit: r.purpose_of_visit || '',
@@ -631,26 +690,39 @@ function PatientConsultations() {
           possibleDiagnosis: [r.diagnosis_1, r.diagnosis_2, r.diagnosis_3]
             .filter(Boolean)
             .map(cond => ({ condition: cond, probability: '' })),
-        }));
-        setPatients(mapped);
-      } catch (e) {
-        console.error('Failed to load treatment records', e);
-      }
-    };
+        };
+      });
+      setPatients(mapped);
+    } catch (e) {
+      console.error('Failed to load treatment records', e);
+    }
+  };
+
+  useEffect(() => {
     fetchTreatments();
   }, []);
 
   // (filteredHistory is defined inside ConsultationHistory)
 
-  // Derived list with search only
+  // Derived list with search and status filtering (exclude completed consultations)
   const filteredPatients = patients.filter(p => {
-    if (!pcSearch.trim()) return true;
-    const q = pcSearch.toLowerCase();
-    return (
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.concern || "").toLowerCase().includes(q) ||
-      (p.purpose_of_visit || "").toLowerCase().includes(q)
-    );
+    // Exclude completed consultations (they should be in Consultation History)
+    if (p.status === 'Complete') return false;
+    
+    // Search filter
+    const searchMatch = !pcSearch.trim() || (() => {
+      const q = pcSearch.toLowerCase();
+      return (
+        (p.name || "").toLowerCase().includes(q) ||
+        (p.concern || "").toLowerCase().includes(q) ||
+        (p.purpose_of_visit || "").toLowerCase().includes(q)
+      );
+    })();
+    
+    // Status filter (only show Pending and In Laboratory)
+    const statusMatch = pcStatusFilter === 'All' || p.status === pcStatusFilter;
+    
+    return searchMatch && statusMatch;
   });
 
   // Pagination (Patient Consultations)
@@ -665,11 +737,30 @@ function PatientConsultations() {
   };
 
   const handleCompleteConsultation = async () => {
-    // Validation: Check if required fields are filled
+    // Validation: Only allow completion if status is "Complete"
+    if (consultationStatus !== 'Complete') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Cannot Complete Consultation',
+        text: 'Please set the consultation status to "Complete" before finishing the consultation.',
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'swal-custom-popup',
+          title: 'swal-custom-title'
+        }
+      });
+      return;
+    }
+
+    // Validation: Check if required fields are filled for completion
     const errors = [];
     
     if (!medicationText || medicationText.trim() === '') {
       errors.push('Medication / Treatment');
+    }
+    
+    if (!labFindingsText || labFindingsText.trim() === '') {
+      errors.push('Laboratory Findings / Impression');
     }
     
     if (errors.length > 0) {
@@ -686,80 +777,92 @@ function PatientConsultations() {
       return;
     }
 
-    // IMPORTANT: Keep AI diagnoses and Doctor's final diagnosis completely separate
-    
-    // AI Diagnoses: Only from selectedDiagnoses array (checkboxes)
-    const aiDiagnoses = [...selectedDiagnoses];
-    
-    // Doctor's Final Diagnosis: Only save if checkbox is checked AND there's text
-    const doctorFinalDiagnosis = (otherDiagnosisChecked && otherDiagnosisText.trim()) 
-      ? otherDiagnosisText.trim() 
-      : null;
-    
-    // Debug the doctor's diagnosis
-    console.log('=== DOCTOR DIAGNOSIS DEBUG ===');
-    console.log('otherDiagnosisChecked:', otherDiagnosisChecked);
-    console.log('otherDiagnosisText:', `"${otherDiagnosisText}"`);
-    console.log('doctorFinalDiagnosis result:', doctorFinalDiagnosis);
-    
-    // Ensure complete separation - NO mixing of data
-    const payload = {
-      id: selectedPatient?.id,
-      
-      // Doctor's Final Diagnosis → diagnosis field (separate from AI)
-      diagnosis: doctorFinalDiagnosis,
-      
-      // AI Diagnoses → diagnosis_1, diagnosis_2, diagnosis_3 (separate from doctor's)
-      diagnosis_1: aiDiagnoses[0] || null,
-      diagnosis_2: aiDiagnoses[1] || null,
-      diagnosis_3: aiDiagnoses[2] || null,
-      
-      medication: medicationText || null,
-      lab_findings: labFindingsText || null,
-      lab_tests: labTestsText || null,
-      status: 'Complete'
-    };
-
     const persist = async () => {
       try {
-        if (payload.id) {
-          console.log('=== FINAL PAYLOAD ===');
-          console.log('diagnosis (Doctor Final):', payload.diagnosis);
-          console.log('diagnosis_1 (AI #1):', payload.diagnosis_1);
-          console.log('diagnosis_2 (AI #2):', payload.diagnosis_2);
-          console.log('diagnosis_3 (AI #3):', payload.diagnosis_3);
-          console.log('Full payload:', payload);
-          
-          const response = await fetch(`/api/treatment_records?id=${payload.id}`, {
-            method: 'PUT',
+        if (!selectedPatient?.id) {
+          throw new Error('No patient selected');
+        }
+
+        // 1. Save approved diagnoses (only checked ones)
+        const approvedDiagnoses = [];
+        
+        // Add checked AI diagnoses
+        selectedDiagnoses.forEach(diagnosis => {
+          approvedDiagnoses.push({
+            text: diagnosis,
+            type: 'ai_approved'
+          });
+        });
+        
+        // Add doctor's final diagnosis if provided
+        if (otherDiagnosisChecked && otherDiagnosisText.trim()) {
+          approvedDiagnoses.push({
+            text: otherDiagnosisText.trim(),
+            type: 'final'
+          });
+        }
+
+        // Save approved diagnoses
+        if (approvedDiagnoses.length > 0) {
+          const diagnosesResponse = await fetch('/api/approved_diagnoses', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              diagnosis: payload.diagnosis,           // Doctor's final diagnosis
-              diagnosis_1: payload.diagnosis_1,       // 1st checked AI diagnosis
-              diagnosis_2: payload.diagnosis_2,       // 2nd checked AI diagnosis  
-              diagnosis_3: payload.diagnosis_3,       // 3rd checked AI diagnosis
-              medication: payload.medication,
-              lab_findings: payload.lab_findings,
-              lab_tests: payload.lab_tests,
-              status: payload.status
+              treatment_record_id: selectedPatient.id,
+              diagnoses: approvedDiagnoses,
+              approved_by: 1 // TODO: Get actual doctor ID from session
             }),
           });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Error Response:', errorText);
-            throw new Error(`Failed to update record: ${response.status} - ${errorText}`);
+
+          if (!diagnosesResponse.ok) {
+            throw new Error('Failed to save approved diagnoses');
           }
-          
-          const result = await response.json();
-          console.log('Update successful:', result);
-          return true;
-        } else {
-          console.error('No patient ID found:', selectedPatient);
-          throw new Error('No patient ID available');
         }
+
+        // 2. Save consultation decision
+        const decisionResponse = await fetch('/api/consultation_decisions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            treatment_record_id: selectedPatient.id,
+            doctor_id: 1, // TODO: Get actual doctor ID from session
+            status: consultationStatus,
+            medication_treatment: medicationText,
+            lab_findings_impression: labFindingsText,
+            lab_tests: labTestsText,
+            notes: '',
+            is_draft: false
+          }),
+        });
+
+        if (!decisionResponse.ok) {
+          throw new Error('Failed to save consultation decision');
+        }
+
+        // 3. Update treatment record status
+        const response = await fetch(`/api/treatment_records?id=${selectedPatient.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: consultationStatus.toLowerCase(),
+            medication: medicationText,
+            lab_findings: labFindingsText,
+            lab_tests: labTestsText
+          }),
+        });
+          
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API Error Response:', errorText);
+          throw new Error(`Failed to update record: ${response.status} - ${errorText}`);
+        }
+          
+        const result = await response.json();
+        console.log('Update successful:', result);
+        return true;
+        
       } catch (e) {
-        console.error('Failed to update diagnoses', e);
+        console.error('Failed to complete consultation', e);
         Swal.fire({
           icon: 'error',
           title: 'Error',
@@ -785,8 +888,8 @@ function PatientConsultations() {
       showConfirmButton: false,
     });
     
-    // Remove from current list (moved to history)
-    setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
+    // Refresh patient list to show updated status
+    fetchTreatments();
     // Notify history to refresh
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('treatment-records-updated'));
@@ -824,11 +927,57 @@ function PatientConsultations() {
           otherDiagnosisText,
           medicationText,
           labFindingsText,
-          labTestsText
+          labTestsText,
+          consultationStatus
         }
       }));
     }
     setSelectedPatient(null);
+  };
+
+  const handleSaveDraft = async () => {
+    if (!selectedPatient?.id) return;
+
+    try {
+      // Save consultation decision as draft
+      const decisionResponse = await fetch('/api/consultation_decisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          treatment_record_id: selectedPatient.id,
+          doctor_id: 1, // TODO: Get actual doctor ID from session
+          status: consultationStatus,
+          medication_treatment: medicationText,
+          lab_findings_impression: labFindingsText,
+          lab_tests: labTestsText,
+          notes: '',
+          is_draft: true
+        }),
+      });
+
+      if (!decisionResponse.ok) {
+        throw new Error('Failed to save draft');
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Draft Saved',
+        text: 'Your consultation data has been saved as draft.',
+        confirmButtonText: 'OK'
+      });
+
+      // Refresh patient list to show updated status
+      fetchTreatments();
+
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to save draft. Please try again.',
+        confirmButtonText: 'OK'
+      });
+    }
   };
 
   const openView = async (patient) => {
@@ -854,15 +1003,29 @@ function PatientConsultations() {
           <h3 className="text-2xl font-bold text-gray-800">Patient Consultations</h3>
           <p className="text-sm text-gray-600">Manage ongoing consultations</p>
         </div>
-        <div className="relative w-full md:w-80 ml-auto shrink-0">
-          <input
-            type="text"
-            placeholder="Search by name, concern, purpose..."
-            className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md bg-white"
-            value={pcSearch}
-            onChange={(e) => setPcSearch(e.target.value)}
-          />
-          <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto ml-auto shrink-0">
+          <select
+            className="px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={pcStatusFilter}
+            onChange={(e) => {
+              setPcStatusFilter(e.target.value);
+              setPcCurrentPage(0);
+            }}
+          >
+            <option value="All">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="In Laboratory">In Laboratory</option>
+          </select>
+          <div className="relative w-full sm:w-80">
+            <input
+              type="text"
+              placeholder="Search by name, concern, purpose..."
+              className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md bg-white"
+              value={pcSearch}
+              onChange={(e) => setPcSearch(e.target.value)}
+            />
+            <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
         </div>
       </div>
 
@@ -926,8 +1089,10 @@ function PatientConsultations() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    patient.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 
-                    'bg-green-100 text-green-800'
+                    patient.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 
+                    patient.status === 'In Laboratory' ? 'bg-blue-100 text-blue-800' :
+                    patient.status === 'Complete' ? 'bg-green-100 text-green-800' :
+                    'bg-gray-100 text-gray-800'
                   }`}>
                     {patient.status}
                   </span>
@@ -1215,6 +1380,35 @@ function PatientConsultations() {
                 </div>
               </div>
 
+              {/* Decision Status */}
+              <div className="border border-gray-400 mt-6">
+                <div className="bg-gray-200 px-4 py-2 font-bold">Consultation Decision</div>
+                <div className="p-4">
+                  <div className="flex items-center gap-4">
+                    <label className="block text-sm font-medium text-gray-700">Status:</label>
+                    <select
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={consultationStatus}
+                      onChange={(e) => setConsultationStatus(e.target.value)}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Laboratory">In Laboratory</option>
+                      <option value="Complete">Complete</option>
+                    </select>
+                    <div className="text-sm text-gray-600">
+                      {consultationStatus === 'Pending' && '• Patient consultation is pending'}
+                      {consultationStatus === 'In Laboratory' && '• Waiting for laboratory results'}
+                      {consultationStatus === 'Complete' && '• Ready to complete consultation'}
+                    </div>
+                  </div>
+                  {consultationStatus !== 'Complete' && (
+                    <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                      <strong>Note:</strong> Data will be saved as draft. You can only complete the consultation when status is set to "Complete".
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t mt-8">
                 <button
@@ -1223,9 +1417,22 @@ function PatientConsultations() {
                 >
                   Cancel
                 </button>
+                {consultationStatus !== 'Complete' && (
+                  <button
+                    onClick={handleSaveDraft}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Save Draft
+                  </button>
+                )}
                 <button
                   onClick={handleCompleteConsultation}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  className={`px-4 py-2 text-white rounded-md ${
+                    consultationStatus === 'Complete' 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                  disabled={consultationStatus !== 'Complete'}
                 >
                   Complete Consultation
                 </button>
@@ -1760,29 +1967,56 @@ function ConsultationHistory() {
   const load = async () => {
     try {
       setLoading(true);
+      
+      // Fetch completed treatment records
       const res = await fetch('/api/treatment_records?status=completed&limit=100');
       if (!res.ok) throw new Error(await res.text());
       const rows = await res.json();
-      const mapped = (rows || []).map(r => ({
-        id: r.id,
-        patient: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
-        date: r.consultation_date ? new Date(r.consultation_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString(),
-        rawDate: r.consultation_date ? new Date(r.consultation_date) : new Date(r.created_at),
-        diagnosis: (() => {
-          const checkedDiagnoses = [r.diagnosis_1, r.diagnosis_2, r.diagnosis_3].filter(Boolean);
-          const finalDiagnosis = r.diagnosis;
-          
-          if (checkedDiagnoses.length > 0) {
-            const summary = checkedDiagnoses.length > 1 
-              ? `${checkedDiagnoses[0]} (+${checkedDiagnoses.length - 1} more)`
-              : checkedDiagnoses[0];
-            return finalDiagnosis ? `${summary} | Final: ${finalDiagnosis}` : summary;
-          }
-          
-          return finalDiagnosis || '-';
-        })(),
-        status: 'Completed',
-      }));
+      
+      // Fetch approved diagnoses for all treatment records
+      const recordIds = rows.map(r => r.id);
+      const diagnosesPromises = recordIds.map(id => 
+        fetch(`/api/approved_diagnoses?treatment_record_id=${id}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => [])
+      );
+      const allDiagnoses = await Promise.all(diagnosesPromises);
+      
+      // Map treatment records with their approved diagnoses
+      const mapped = (rows || []).map((r, index) => {
+        const approvedDiagnoses = allDiagnoses[index] || [];
+        
+        return {
+          id: r.id,
+          patient: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
+          date: r.consultation_date ? new Date(r.consultation_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString(),
+          rawDate: r.consultation_date ? new Date(r.consultation_date) : new Date(r.created_at),
+          diagnosis: (() => {
+            if (approvedDiagnoses.length > 0) {
+              // Show approved diagnoses only
+              const primaryDiagnosis = approvedDiagnoses.find(d => d.is_primary);
+              const otherDiagnoses = approvedDiagnoses.filter(d => !d.is_primary);
+              
+              if (primaryDiagnosis) {
+                const summary = otherDiagnoses.length > 0 
+                  ? `${primaryDiagnosis.diagnosis_text} (+${otherDiagnoses.length} more)`
+                  : primaryDiagnosis.diagnosis_text;
+                return summary;
+              } else if (approvedDiagnoses.length === 1) {
+                return approvedDiagnoses[0].diagnosis_text;
+              } else {
+                return `${approvedDiagnoses[0].diagnosis_text} (+${approvedDiagnoses.length - 1} more)`;
+              }
+            }
+            
+            // Fallback to old diagnosis field if no approved diagnoses
+            return r.diagnosis || '-';
+          })(),
+          status: 'Completed',
+          approvedDiagnoses: approvedDiagnoses // Store for detailed view
+        };
+      });
+      
       setHistory(mapped);
     } catch (e) {
       console.error('Failed to load consultation history', e);
@@ -1844,10 +2078,60 @@ function ConsultationHistory() {
     try {
       setViewOpen(true);
       setViewRecord(null);
+      
+      // Load treatment record
       const res = await fetch(`/api/treatment_records?id=${encodeURIComponent(id)}&limit=1`);
       if (!res.ok) throw new Error(await res.text());
       const rows = await res.json();
-      setViewRecord(rows && rows[0] ? rows[0] : null);
+      const record = rows && rows[0] ? rows[0] : null;
+      
+      if (record) {
+        // Load approved diagnoses for this record
+        try {
+          const diagnosesRes = await fetch(`/api/approved_diagnoses?treatment_record_id=${id}`);
+          if (diagnosesRes.ok) {
+            const approvedDiagnoses = await diagnosesRes.json();
+            record.approvedDiagnoses = approvedDiagnoses;
+          } else {
+            record.approvedDiagnoses = [];
+          }
+        } catch (diagError) {
+          console.error('Failed to load approved diagnoses:', diagError);
+          record.approvedDiagnoses = [];
+        }
+        
+        // Load patient data if patient_id exists
+        if (record.patient_id) {
+          try {
+            const patientRes = await fetch(`/api/patients?id=${record.patient_id}&type=staff_data`);
+            if (patientRes.ok) {
+              const patientData = await patientRes.json();
+              if (patientData) {
+                record.patientData = patientData;
+              }
+            }
+          } catch (patError) {
+            console.error('Failed to load patient data:', patError);
+          }
+        }
+        
+        // Load referral data if visit_type is Referral
+        if (record.visit_type === 'Referral' && record.patient_id) {
+          try {
+            const referralRes = await fetch(`/api/bhw_referrals?patient_id=${record.patient_id}`);
+            if (referralRes.ok) {
+              const referralData = await referralRes.json();
+              if (referralData && referralData.length > 0) {
+                record.referralData = referralData[0];
+              }
+            }
+          } catch (refError) {
+            console.error('Failed to load referral data:', refError);
+          }
+        }
+      }
+      
+      setViewRecord(record);
     } catch (e) {
       console.error('Failed to load record', e);
       setViewRecord(null);
@@ -1971,16 +2255,27 @@ function ConsultationHistory() {
       <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
           <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">
-                Individual Treatment Record - View Only
-              </h3>
-              <button 
-                onClick={() => { setViewOpen(false); setViewRecord(null); }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FaTimes className="w-6 h-6" />
-              </button>
+            {/* Professional Header with Logo */}
+            <div className="flex items-start mb-6 pb-4 border-b-2 border-gray-300">
+              <div className="flex-shrink-0 mr-4">
+                <img src="/images/rhulogo.jpg" alt="RHU Logo" className="w-20 h-20 object-contain" />
+              </div>
+              <div className="flex-1 text-center">
+                <div className="text-sm font-medium text-gray-700">Republic of the Philippines</div>
+                <div className="text-xl font-bold text-gray-900 mt-1">Department of Health</div>
+                <div className="text-sm font-medium text-gray-700 italic">Kagawaran ng Kalusugan</div>
+                <div className="text-lg font-bold text-gray-800 mt-3 border-t pt-2">
+                  Individual Treatment Record
+                </div>
+              </div>
+              <div className="flex-shrink-0 ml-4 w-20">
+                <button 
+                  onClick={() => { setViewOpen(false); setViewRecord(null); }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {!viewRecord && (
@@ -1996,7 +2291,7 @@ function ConsultationHistory() {
               <>
                 {/* Patient Information */}
                 <div className="mb-6">
-                  <h4 className="font-bold border-b-2 border-blue-500 pb-2 mb-4 text-blue-800 bg-blue-50 px-3 py-2 rounded-t-lg">
+                  <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
                     I. PATIENT INFORMATION (IMPORMASYON NG PASYENTE)
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -2015,7 +2310,26 @@ function ConsultationHistory() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Age (Edad)</label>
                       <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {viewRecord.patient_age || '-'}
+                        {(() => {
+                          if (viewRecord.patient_age) return viewRecord.patient_age;
+                          if (viewRecord.patientData?.birth_date) {
+                            const birthDate = new Date(viewRecord.patientData.birth_date);
+                            const today = new Date();
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const m = today.getMonth() - birthDate.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                            return age;
+                          }
+                          if (viewRecord.patient_birth_date) {
+                            const birthDate = new Date(viewRecord.patient_birth_date);
+                            const today = new Date();
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const m = today.getMonth() - birthDate.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                            return age;
+                          }
+                          return '-';
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -2029,7 +2343,7 @@ function ConsultationHistory() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
                       <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {viewRecord.patient_address || '-'}
+                        {viewRecord.patient_address || viewRecord.patientData?.residential_address || '-'}
                       </div>
                     </div>
                   </div>
@@ -2043,7 +2357,7 @@ function ConsultationHistory() {
 
                 {/* CHU/RHU Information */}
                 <div className="mb-6">
-                  <h4 className="font-bold border-b-2 border-green-500 pb-2 mb-4 text-green-800 bg-green-50 px-3 py-2 rounded-t-lg">
+                  <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
                     II. FOR CHU/RHU PERSONNEL ONLY (PARA SA KINATAWAN NG CHU/RHU LAMANG)
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2167,28 +2481,31 @@ function ConsultationHistory() {
                             <div>
                               <label className="block text-sm font-medium text-gray-700">REFERRED FROM</label>
                               <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
-                                {viewRecord.referred_from || '-'}
+                                {viewRecord.referralData?.referred_from || viewRecord.referred_from || '-'}
                               </div>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700">REFERRED TO</label>
                               <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
-                                {viewRecord.referred_to || '-'}
+                                {viewRecord.referralData?.referred_to || viewRecord.referred_to || '-'}
                               </div>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700">Reason(s) for Referral</label>
                               <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 min-h-[72px] whitespace-pre-wrap">
-                                {Array.isArray(viewRecord.referral_reasons) 
-                                  ? viewRecord.referral_reasons.join(', ') 
-                                  : (viewRecord.referral_reasons || '-')
-                                }
+                                {(() => {
+                                  const reasons = viewRecord.referralData?.referral_reasons || viewRecord.referral_reasons;
+                                  if (Array.isArray(reasons)) {
+                                    return reasons.join(', ');
+                                  }
+                                  return reasons || '-';
+                                })()}
                               </div>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700">Referred By</label>
                               <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
-                                {viewRecord.referred_by || '-'}
+                                {viewRecord.referralData?.referred_by || viewRecord.referred_by || '-'}
                               </div>
                             </div>
                           </div>
@@ -2200,7 +2517,7 @@ function ConsultationHistory() {
 
                 {/* Nature of Visit */}
                 <div className="mb-6">
-                  <h4 className="font-bold border-b-2 border-purple-500 pb-2 mb-4 text-purple-800 bg-purple-50 px-3 py-2 rounded-t-lg">Nature of Visit</h4>
+                  <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">Nature of Visit</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                       <label className="inline-flex items-center">
@@ -2272,7 +2589,7 @@ function ConsultationHistory() {
                 {/* Diagnosis and Treatment */}
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-bold border-b-2 border-red-500 pb-2 text-red-800 bg-red-50 px-3 py-2 rounded-t-lg w-full">
+                    <h4 className="font-bold border-b-2 border-gray-400 pb-2 text-gray-800 px-3 py-2 w-full">
                       Diagnosis and Treatment
                     </h4>
                   </div>
@@ -2283,23 +2600,30 @@ function ConsultationHistory() {
                       <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
                       <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[120px] whitespace-pre-wrap">
                         {(() => {
-                          const checkedDiagnoses = [
-                            viewRecord.diagnosis_1,
-                            viewRecord.diagnosis_2,
-                            viewRecord.diagnosis_3
-                          ].filter(Boolean);
+                          // Show only approved diagnoses (doctor-checked diagnoses)
+                          const approvedDiagnoses = viewRecord.approvedDiagnoses || [];
                           
-                          const finalDiagnosis = viewRecord.diagnosis || '';
+                          if (approvedDiagnoses.length === 0) {
+                            return '-';
+                          }
+                          
+                          // Separate AI approved and final diagnoses
+                          const aiApproved = approvedDiagnoses.filter(d => d.diagnosis_type === 'ai_approved');
+                          const finalDiagnoses = approvedDiagnoses.filter(d => d.diagnosis_type === 'final');
                           
                           let result = '';
                           
-                          if (checkedDiagnoses.length > 0) {
-                            result += checkedDiagnoses.map((d, i) => `${i + 1}. ${d}`).join('\n');
+                          // Show AI approved diagnoses
+                          if (aiApproved.length > 0) {
+                            result += 'AI Suggested Diagnoses (Approved):\n';
+                            result += aiApproved.map((d, i) => `${i + 1}. ${d.diagnosis_text}`).join('\n');
                           }
                           
-                          if (finalDiagnosis) {
-                            if (result) result += '\n';
-                            result += finalDiagnosis;
+                          // Show doctor's final diagnoses
+                          if (finalDiagnoses.length > 0) {
+                            if (result) result += '\n\n';
+                            result += 'Doctor\'s Final Diagnosis:\n';
+                            result += finalDiagnoses.map(d => d.diagnosis_text).join('\n');
                           }
                           
                           return result || '-';

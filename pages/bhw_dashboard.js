@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
-import { FaUserPlus, FaChartBar, FaChevronDown } from "react-icons/fa";
+import { FaUserPlus, FaChartBar, FaChevronDown,FaPrint } from "react-icons/fa";
 import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash, FaUsers, FaClock, FaCheckCircle } from 'react-icons/fa';
 
 import { FaSearch, FaFileMedical, FaEye, FaSpinner, FaStethoscope,FaFileAlt } from 'react-icons/fa';
@@ -1256,6 +1256,7 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId }) {
   const [viewPatient, setViewPatient] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
   const [filterGender, setFilterGender] = useState('All');
+  const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage] = useState(10);
   const [existingReferrals, setExistingReferrals] = useState([]);
@@ -1927,6 +1928,11 @@ cancelButtonText: 'Cancel',
         .includes(searchQuery.toLowerCase())
     )
     .filter((patient) => filterGender === 'All' || patient.gender === filterGender)
+    .filter((patient) => {
+      if (!dateFilter) return true;
+      const patientDate = patient.created_at ? new Date(patient.created_at).toISOString().split('T')[0] : '';
+      return patientDate === dateFilter;
+    })
     .sort((a, b) => {
       const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
       const nameB = `${b.last_name} ${b.first_name}`.toLowerCase();
@@ -1958,12 +1964,31 @@ cancelButtonText: 'Cancel',
 
   return (
     <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
+      <style>
+        {`
+          @media print {
+            /* Hide everything except the patient table */
+            body * { visibility: hidden !important; }
+            #patient-records-table, #patient-records-table * { visibility: visible !important; }
+            #patient-records-table { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; }
+            
+            .no-print { display: none !important; }
+            .print-actions-column { display: none !important; }
+            body { background: white !important; }
+            .bg-gradient-to-br { background: white !important; }
+            
+            /* Remove shadows and borders for clean print */
+            .shadow-lg, .shadow-md, .shadow-sm { box-shadow: none !important; }
+            .rounded-xl, .rounded-lg { border-radius: 0 !important; }
+          }
+        `}
+      </style>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Patient Records Management</h2>
           <p className="text-xs sm:text-sm text-gray-600">Manage all patient enrollments and information</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto no-print">
           <input
             type="text"
             placeholder="Search by name"
@@ -1995,6 +2020,22 @@ cancelButtonText: 'Cancel',
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
+          <input
+            type="date"
+            className="p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm"
+            title="Filter by date"
+            onChange={(e) => {
+              setDateFilter(e.target.value);
+              setCurrentPage(0);
+            }}
+          />
+          <button 
+            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors duration-200 shadow-md"
+            onClick={() => window.print()}
+            title="Print patient records"
+          >
+            <FaPrint className="w-5 h-5" />
+          </button>
           <button 
             className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors duration-200 shadow-md w-full sm:w-auto text-xs sm:text-sm"
             onClick={() => setShowForm(true)}
@@ -2009,17 +2050,34 @@ cancelButtonText: 'Cancel',
       {showForm && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white p-4 sm:p-6 border-b flex justify-between items-center">
-              <div>
-                <h3 className="text-lg sm:text-xl font-bold text-gray-800">New Patient Enrollment</h3>
-                <p className="text-xs sm:text-sm text-gray-600">Integrated Clinic Information System (ICLINICSYS)</p>
+            {/* Professional Header */}
+            <div className="sticky top-0 bg-white p-4 sm:p-6 border-b-2 border-green-600">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <img 
+                    src="/images/rhulogo.jpg" 
+                    alt="RHU Logo" 
+                    className="w-12 h-12 sm:w-16 sm:h-16 mr-3 sm:mr-4 object-contain"
+                  />
+                  <div className="text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-700">Republic of the Philippines</p>
+                    <p className="text-sm sm:text-lg font-bold text-green-700">Department of Health</p>
+                    <p className="text-xs sm:text-sm text-gray-600 italic">Kagawaran ng Kalusugan</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowForm(false)} 
+                  className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                >
+                  <FaTimes className="w-4 sm:w-5 h-4 sm:h-5" />
+                </button>
               </div>
-              <button 
-                onClick={() => setShowForm(false)} 
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
-              >
-                <FaTimes className="w-4 sm:w-5 h-4 sm:h-5" />
-              </button>
+              <div className="text-center">
+                <h3 className="text-lg sm:text-2xl font-bold text-gray-800 uppercase tracking-wide">
+                  Patient Enrollment Record
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 mt-2">Integrated Clinic Information System (ICLINICSYS)</p>
+              </div>
             </div>
             
             <form onSubmit={handleSubmit} className="p-4 sm:p-6">
@@ -2583,17 +2641,34 @@ cancelButtonText: 'Cancel',
               `}
             </style>
             
-            <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center print:bg-transparent print:border-none">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Patient Medical Record</h3>
-                <p className="text-sm text-gray-500">Integrated Clinic Information System (ICLINICSYS)</p>
+            {/* Professional Header */}
+            <div className="sticky top-0 bg-white p-4 sm:p-6 border-b-2 border-green-600 print:bg-transparent print:border-none">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <img 
+                    src="/images/rhulogo.jpg" 
+                    alt="RHU Logo" 
+                    className="w-12 h-12 sm:w-16 sm:h-16 mr-3 sm:mr-4 object-contain"
+                  />
+                  <div className="text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-700">Republic of the Philippines</p>
+                    <p className="text-sm sm:text-lg font-bold text-green-700">Department of Health</p>
+                    <p className="text-xs sm:text-sm text-gray-600 italic">Kagawaran ng Kalusugan</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setViewPatient(null)} 
+                  className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 no-print"
+                >
+                  <FaTimes className="w-5 h-5" />
+                </button>
               </div>
-              <button 
-                onClick={() => setViewPatient(null)} 
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 no-print"
-              >
-                <FaTimes className="w-5 h-5" />
-              </button>
+              <div className="text-center">
+                <h3 className="text-lg sm:text-2xl font-bold text-gray-800 uppercase tracking-wide">
+                  Patient Medical Record
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 mt-2">Integrated Clinic Information System (ICLINICSYS)</p>
+              </div>
             </div>
             
             <div className="p-6 print-container">
@@ -3181,7 +3256,7 @@ cancelButtonText: 'Cancel',
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div id="patient-records-table" className="bg-white rounded-xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-r from-green-600 to-green-700">
@@ -3204,7 +3279,7 @@ cancelButtonText: 'Cancel',
                 <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                   Contact
                 </th>
-                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-white uppercase tracking-wider no-print">
                   Actions
                 </th>
               </tr>
@@ -3235,7 +3310,7 @@ cancelButtonText: 'Cancel',
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {patient.contact_number || "-"}
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 no-print">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleView(patient.id)}
@@ -4281,13 +4356,23 @@ function IndividualTreatmentRecords({ bhwId }) {
 
       {/* View Treatment Record Modal */}
       {viewRecord && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">
-                  Treatment Record Details
-                </h3>
+            {/* Professional Header */}
+            <div className="p-4 sm:p-6 border-b-2 border-green-600">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <img 
+                    src="/images/rhulogo.jpg" 
+                    alt="RHU Logo" 
+                    className="w-12 h-12 sm:w-16 sm:h-16 mr-3 sm:mr-4 object-contain"
+                  />
+                  <div className="text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-700">Republic of the Philippines</p>
+                    <p className="text-sm sm:text-lg font-bold text-green-700">Department of Health</p>
+                    <p className="text-xs sm:text-sm text-gray-600 italic">Kagawaran ng Kalusugan</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setViewRecord(null)}
                   className="text-gray-500 hover:text-gray-700"
@@ -4295,6 +4380,14 @@ function IndividualTreatmentRecords({ bhwId }) {
                   <FaTimes className="w-6 h-6" />
                 </button>
               </div>
+              <div className="text-center">
+                <h3 className="text-lg sm:text-2xl font-bold text-gray-800 uppercase tracking-wide">
+                  Treatment Record Details
+                </h3>
+              </div>
+            </div>
+            
+            <div className="p-6">
 
               {/* Patient Information */}
               <div className="mb-6">

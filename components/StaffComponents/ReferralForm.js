@@ -19,6 +19,11 @@ function ReferralForm() {
   const [treatmentPatientId, setTreatmentPatientId] = useState(null);
   const [treatmentReferral, setTreatmentReferral] = useState(null);
   const treatmentFormRef = useRef(null);
+  
+  // AI Diagnosis state
+  const [aiDiagnosisLoading, setAiDiagnosisLoading] = useState(false);
+  const [aiDiagnosisError, setAiDiagnosisError] = useState('');
+  const [aiDiagnosisResults, setAiDiagnosisResults] = useState([]);
 
   // Save treatment record (component scope)
   const handleSaveTreatmentRecord = async () => {
@@ -114,6 +119,92 @@ function ReferralForm() {
     } catch (e) {
       console.error('Save treatment error', e);
       Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save treatment record.' });
+    }
+  };
+
+  // AI Diagnosis function
+  const handleAIDiagnosis = async () => {
+    if (!treatmentFormRef.current) return;
+    
+    setAiDiagnosisLoading(true);
+    setAiDiagnosisError('');
+    setAiDiagnosisResults([]);
+    
+    try {
+      // Extract form data
+      const formElement = treatmentFormRef.current;
+      const chiefComplaints = formElement.querySelector('[data-field="chief_complaints"]')?.value || '';
+      const bloodPressure = formElement.querySelector('[data-field="blood_pressure"]')?.value || '';
+      const temperature = formElement.querySelector('[data-field="temperature"]')?.value || '';
+      const weightKg = formElement.querySelector('[data-field="weight_kg"]')?.value || '';
+      const heartRate = formElement.querySelector('[data-field="heart_rate"]')?.value || '';
+      const respiratoryRate = formElement.querySelector('[data-field="respiratory_rate"]')?.value || '';
+      
+      // Calculate patient age
+      const patientAge = treatmentPatient ? calculateAge(treatmentPatient.birth_date) : '';
+      
+      // Parse blood pressure
+      let systolicBp = '';
+      let diastolicBp = '';
+      if (bloodPressure) {
+        const bpMatch = bloodPressure.match(/(\d+)\/(\d+)/);
+        if (bpMatch) {
+          systolicBp = bpMatch[1];
+          diastolicBp = bpMatch[2];
+        }
+      }
+      
+      // Check if we have enough data
+      const hasData = chiefComplaints.trim() || bloodPressure || temperature || weightKg || heartRate || respiratoryRate;
+      if (!hasData) {
+        setAiDiagnosisError('Please enter chief complaints and/or vital signs before diagnosing.');
+        return;
+      }
+      
+      // Call AI API
+      const response = await fetch('/api/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          complaint: chiefComplaints,
+          age: patientAge || undefined,
+          systolic_bp: systolicBp || undefined,
+          diastolic_bp: diastolicBp || undefined,
+          temperature_c: temperature || undefined,
+          weight_kg: weightKg || undefined,
+          heart_rate_bpm: heartRate || undefined,
+          resp_rate_cpm: respiratoryRate || undefined,
+        }),
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Request failed');
+      
+      const results = data.top3 || [];
+      setAiDiagnosisResults(results);
+      
+      // Auto-fill the diagnosis fields
+      if (results.length > 0) {
+        const diagnosis1Input = formElement.querySelector('[data-field="diagnosis_1"]');
+        const diagnosis2Input = formElement.querySelector('[data-field="diagnosis_2"]');
+        const diagnosis3Input = formElement.querySelector('[data-field="diagnosis_3"]');
+        
+        if (diagnosis1Input && results[0]) {
+          diagnosis1Input.value = `${results[0].diagnosis} (${(results[0].probability * 100).toFixed(1)}%)`;
+        }
+        if (diagnosis2Input && results[1]) {
+          diagnosis2Input.value = `${results[1].diagnosis} (${(results[1].probability * 100).toFixed(1)}%)`;
+        }
+        if (diagnosis3Input && results[2]) {
+          diagnosis3Input.value = `${results[2].diagnosis} (${(results[2].probability * 100).toFixed(1)}%)`;
+        }
+      }
+      
+    } catch (error) {
+      console.error('AI Diagnosis error:', error);
+      setAiDiagnosisError(error.message || 'Something went wrong with AI diagnosis');
+    } finally {
+      setAiDiagnosisLoading(false);
     }
   };
 
@@ -282,15 +373,41 @@ function ReferralForm() {
       return;
     }
 
-    setShowTreatmentModal(true);
-    setTreatmentPatient({
+    // Fetch full patient data from patients table to get birth_date and residential_address
+    let patientData = {
       first_name: referral.patient_first_name,
       middle_name: referral.patient_middle_name,
       last_name: referral.patient_last_name,
       suffix: referral.patient_suffix,
       birth_date: referral.patient_birth_date,
       residential_address: referral.patient_address,
-    });
+    };
+
+    if (matchedPatient?.id) {
+      try {
+        const patientRes = await fetch(`/api/patients?id=${matchedPatient.id}&type=staff_data`);
+        if (patientRes.ok) {
+          const fullPatientData = await patientRes.json();
+          if (fullPatientData) {
+            // Use data from patients table (more complete)
+            patientData = {
+              first_name: fullPatientData.first_name || patientData.first_name,
+              middle_name: fullPatientData.middle_name || patientData.middle_name,
+              last_name: fullPatientData.last_name || patientData.last_name,
+              suffix: fullPatientData.suffix || patientData.suffix,
+              birth_date: fullPatientData.birth_date || patientData.birth_date,
+              residential_address: fullPatientData.residential_address || patientData.residential_address,
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load full patient data:', error);
+        // Continue with referral data as fallback
+      }
+    }
+
+    setShowTreatmentModal(true);
+    setTreatmentPatient(patientData);
     setTreatmentPatientId(matchedPatient?.id || null);
     setTreatmentReferral(referral);
   };
@@ -773,16 +890,33 @@ function ReferralForm() {
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <div className="p-6" ref={treatmentFormRef}>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">
-                  Individual Treatment Record
-                </h3>
-                <button 
-                  onClick={() => { setShowTreatmentModal(false); setTreatmentPatient(null); setTreatmentReferral(null); }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <FaTimes className="w-6 h-6" />
-                </button>
+              {/* Professional Header */}
+              <div className="mb-6 border-b-2 border-green-600 pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <img 
+                      src="/images/rhulogo.jpg" 
+                      alt="RHU Logo" 
+                      className="w-16 h-16 mr-4 object-contain"
+                    />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-gray-700">Republic of the Philippines</p>
+                      <p className="text-lg font-bold text-green-700">Department of Health</p>
+                      <p className="text-sm text-gray-600 italic">Kagawaran ng Kalusugan</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => { setShowTreatmentModal(false); setTreatmentPatient(null); setTreatmentReferral(null); }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <FaTimes className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="text-center mt-4">
+                  <h3 className="text-2xl font-bold text-gray-800 uppercase tracking-wide">
+                    Individual Treatment Record
+                  </h3>
+                </div>
               </div>
 
               {/* Patient Information */}
@@ -1032,20 +1166,55 @@ function ReferralForm() {
                   </h4>
                   <button
                     type="button"
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    onClick={handleAIDiagnosis}
+                    disabled={aiDiagnosisLoading}
+                    className={`px-4 py-2 text-white rounded-md transition-colors ${
+                      aiDiagnosisLoading 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-green-600 hover:bg-green-700'
+                    }`}
                   >
-                    Diagnose
+                    {aiDiagnosisLoading ? (
+                      <div className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Diagnosing...
+                      </div>
+                    ) : (
+                      'AI Diagnose'
+                    )}
                   </button>
                 </div>
 
+                {/* AI Error Display */}
+                {aiDiagnosisError && (
+                  <div className="mb-4 p-3 border border-red-200 rounded-md bg-red-50">
+                    <p className="text-sm text-red-600">{aiDiagnosisError}</p>
+                  </div>
+                )}
+
                 {/* Top 3 Diagnosis */}
                 <div className="mb-4 p-3 border border-gray-200 rounded-md bg-gray-50">
-                  <h5 className="text-sm font-semibold text-gray-700 mb-2">Top 3 Diagnosis</h5>
+                  <h5 className="text-sm font-semibold text-gray-700 mb-2">
+                    Top 3 AI Diagnosis
+                    {aiDiagnosisResults.length > 0 && (
+                      <span className="ml-2 text-xs text-green-600 font-normal">
+                        ✓ AI Analysis Complete
+                      </span>
+                    )}
+                  </h5>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <input data-field="diagnosis_1" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 1" />
                     <input data-field="diagnosis_2" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 2" />
                     <input data-field="diagnosis_3" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Diagnosis 3" />
                   </div>
+                  {aiDiagnosisResults.length > 0 && (
+                    <div className="mt-3 text-xs text-gray-600">
+                      <p><strong>Note:</strong> AI suggestions have been automatically filled above. You can edit them as needed.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
