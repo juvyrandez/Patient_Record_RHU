@@ -9,6 +9,7 @@
 
 
  npm install pg
+ npm install fs
 
  npm audit fix --force
 
