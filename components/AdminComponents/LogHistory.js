@@ -106,7 +106,6 @@ function LogHistory() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">User</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">Timestamp</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">IP Address</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">Device</th>
                 </tr>
               </thead>
@@ -131,9 +130,6 @@ function LogHistory() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(log.login_time).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {log.ip_address || 'N/A'}
-                      </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {log.user_agent ? log.user_agent.substring(0, 50) + (log.user_agent.length > 50 ? '...' : '') : 'N/A'}
                       </td>
@@ -141,7 +137,7 @@ function LogHistory() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
                       No login records found
                     </td>
                   </tr>

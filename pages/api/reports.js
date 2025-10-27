@@ -5,24 +5,84 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, barangay = '', startDate = '', endDate = '' } = req.query;
   const patientOffset = (parseInt(page) - 1) * parseInt(limit);
 
   try {
     const client = await pool.connect();
     try {
-      // Fetch Patient Summary with pagination
+      // Build WHERE clause for filtering
+      let whereConditions = [];
+      let queryParams = [];
+      let paramIndex = 1;
+
+      // Add barangay filter
+      if (barangay && barangay !== '') {
+        whereConditions.push(`residential_address ILIKE $${paramIndex}`);
+        queryParams.push(`%${barangay}%`);
+        paramIndex++;
+      }
+
+      // Add date range filter
+      if (startDate && startDate !== '') {
+        whereConditions.push(`created_at >= $${paramIndex}::date`);
+        queryParams.push(startDate);
+        paramIndex++;
+      }
+
+      if (endDate && endDate !== '') {
+        whereConditions.push(`created_at <= $${paramIndex}::date + INTERVAL '1 day'`);
+        queryParams.push(endDate);
+        paramIndex++;
+      }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+      // Fetch Patient Summary with pagination and filters
       const patientsRes = await client.query(`
-        SELECT id, first_name, last_name, gender, type, created_at
+        SELECT id, first_name, last_name, gender, type, residential_address, created_at
         FROM patients
+        ${whereClause}
         ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2
-      `, [parseInt(limit), patientOffset]);
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `, [...queryParams, parseInt(limit), patientOffset]);
 
       const totalPatientsRes = await client.query(`
         SELECT COUNT(*) AS total
         FROM patients
-      `);
+        ${whereClause}
+      `, queryParams);
+
+      // Helper function to extract barangay from residential address
+      const extractBarangay = (address) => {
+        if (!address) return 'N/A';
+        
+        const barangays = [
+          "1 Poblacion", "2 Poblacion", "3 Poblacion", "4 Poblacion", "5 Poblacion", "6 Poblacion",
+          "Balagnan", "Balingoan", "Blanco", "Calawag", "Camuayan", "Cogon", "Dansuli", "Dumarait",
+          "Hermano", "Kibanban", "Linggangao", "Mambayaan", "Mandangoa", "Napaliran",
+          "Natubo", "Quezon", "San Alonzo", "San Isidro", "San Juan", "San Miguel", "San Victor",
+          "Talusan", "Waterfall", "Barangay"
+        ];
+        
+        const addressLower = address.toLowerCase();
+        
+        for (const brgy of barangays) {
+          const brgyLower = brgy.toLowerCase();
+          const regex = new RegExp(`\\b${brgyLower.replace(/\s+/g, '\\s+')}\\b`, 'i');
+          if (regex.test(addressLower)) {
+            return brgy;
+          }
+        }
+        
+        for (const brgy of barangays) {
+          if (addressLower.includes(brgy.toLowerCase())) {
+            return brgy;
+          }
+        }
+        
+        return 'N/A';
+      };
 
       const patients = patientsRes.rows.map(row => ({
         id: row.id,
@@ -35,11 +95,12 @@ export default async function handler(req, res) {
         }).split('/').reverse().join('-'),
         gender: row.gender,
         category: row.type === 'staff_data' ? 'Staff' : 'BHW',
+        barangay: extractBarangay(row.residential_address),
+        address: row.residential_address || 'N/A',
       }));
 
       const totalPatients = parseInt(totalPatientsRes.rows[0].total);
 
-      // Fetch Daily Reports (last 7 days including today) - Fixed timezone issue
       const dailyRes = await client.query(`
         SELECT DATE(created_at AT TIME ZONE 'Asia/Manila') AS date,
                COUNT(*) AS count

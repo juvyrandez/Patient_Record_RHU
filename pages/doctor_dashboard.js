@@ -1556,12 +1556,21 @@ function PatientConsultations() {
 
 
 function PatientRecords() {
+  const balingasagBarangays = [
+    "1 Poblacion", "2 Poblacion", "3 Poblacion", "4 Poblacion", "5 Poblacion", "6 Poblacion",
+    "Balagnan", "Balingoan", "Barangay", "Blanco", "Calawag", "Camuayan", "Cogon", "Dansuli",
+    "Dumarait", "Hermano", "Kibanban", "Linggangao", "Mambayaan", "Mandangoa", "Napaliran",
+    "Natubo", "Quezon", "San Alonzo", "San Isidro", "San Juan", "San Miguel", "San Victor",
+    "Talusan", "Waterfall"
+  ];
+
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [filterGender, setFilterGender] = useState("All");
   const [filterType, setFilterType] = useState("All"); // New filter for RHU/BHW
+  const [filterBarangay, setFilterBarangay] = useState("All"); // New barangay filter
   const [currentPage, setCurrentPage] = useState(0);
   const [viewPatient, setViewPatient] = useState(null);
   const itemsPerPage = 10;
@@ -1638,7 +1647,9 @@ function PatientRecords() {
         .includes(searchQuery.toLowerCase());
       const matchesGender = filterGender === 'All' || patient.gender === filterGender;
       const matchesType = filterType === 'All' || patient.data_type === filterType;
-      return matchesSearch && matchesGender && matchesType;
+      const matchesBarangay = filterBarangay === 'All' || 
+        (patient.residential_address && patient.residential_address.toLowerCase().includes(filterBarangay.toLowerCase()));
+      return matchesSearch && matchesGender && matchesType && matchesBarangay;
     })
     .sort((a, b) => {
       const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
@@ -1736,6 +1747,19 @@ function PatientRecords() {
             <option value="RHU">RHU Data</option>
             <option value="BHW">BHW Data</option>
           </select>
+          <select
+            className="px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm w-full sm:w-auto"
+            value={filterBarangay}
+            onChange={(e) => {
+              setFilterBarangay(e.target.value);
+              setCurrentPage(0);
+            }}
+          >
+            <option value="All">All Barangays</option>
+            {balingasagBarangays.map((brgy) => (
+              <option key={brgy} value={brgy}>{brgy}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -1749,7 +1773,7 @@ function PatientRecords() {
         {currentPatients.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">
-              {searchQuery || filterGender !== 'All' || filterType !== 'All' ? 'No patients found matching your criteria' : 'No patient records available'}
+              {searchQuery || filterGender !== 'All' || filterType !== 'All' || filterBarangay !== 'All' ? 'No patients found matching your criteria' : 'No patient records available'}
             </p>
           </div>
         ) : (
@@ -1854,7 +1878,7 @@ function PatientRecords() {
       {/* View Patient Modal */}
       {viewPatient && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
               <div>
                 <h3 className="text-xl font-bold text-gray-800">Patient Information</h3>
@@ -1869,95 +1893,168 @@ function PatientRecords() {
             </div>
             
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                    Personal Information
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Full Name</p>
-                      <p className="text-sm text-gray-900">
-                        {viewPatient.last_name}, {viewPatient.first_name} {viewPatient.middle_name || ''} {viewPatient.suffix || ''}
-                      </p>
+              {/* Professional Header with Logo */}
+              <div className="flex items-start mb-6 pb-4 border-b-2 border-gray-300">
+                <div className="flex-shrink-0 mr-4">
+                  <img src="/images/rhulogo.jpg" alt="RHU Logo" className="w-20 h-20 object-contain" />
+                </div>
+                <div className="flex-1 text-center">
+                  <div className="text-sm font-medium text-gray-700">Republic of the Philippines</div>
+                  <div className="text-xl font-bold text-gray-900 mt-1">Department of Health</div>
+                  <div className="text-sm font-medium text-gray-700 italic">Kagawaran ng Kalusugan</div>
+                  <div className="text-lg font-bold text-gray-800 mt-3 border-t pt-2">
+                    Patient Information Record
+                  </div>
+                </div>
+                <div className="flex-shrink-0 ml-4 w-20">
+                  {/* Spacer for alignment */}
+                </div>
+              </div>
+
+              {/* Patient Information Section */}
+              <div className="mb-6">
+                <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
+                  I. PATIENT INFORMATION (IMPORMASYON NG PASYENTE)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Last Name (Apelyido)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.last_name || '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Gender</p>
-                      <p className="text-sm text-gray-900">{viewPatient.gender}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Suffix (e.g Jr., Sr., II, III)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.suffix || '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Birth Date</p>
-                      <p className="text-sm text-gray-900">
-                        {viewPatient.birth_date ? new Date(viewPatient.birth_date).toLocaleDateString() : '-'}
-                        {' '}(Age: {calculateAge(viewPatient.birth_date)})
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Birth Place</p>
-                      <p className="text-sm text-gray-900">{viewPatient.birth_place || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Blood Type</p>
-                      <p className="text-sm text-gray-900">{viewPatient.blood_type || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Civil Status</p>
-                      <p className="text-sm text-gray-900">{viewPatient.civil_status}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Contact Number</p>
-                      <p className="text-sm text-gray-900">{viewPatient.contact_number || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Address</p>
-                      <p className="text-sm text-gray-900">{viewPatient.residential_address || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Age (Edad)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {calculateAge(viewPatient.birth_date)} years
                     </div>
                   </div>
                 </div>
-                
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                    Medical & Insurance Information
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Educational Attainment</p>
-                      <p className="text-sm text-gray-900">{viewPatient.educational_attainment}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">First Name (Pangalan)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.first_name || '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Employment Status</p>
-                      <p className="text-sm text-gray-900">{viewPatient.employment_status}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.residential_address || '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">PhilHealth Member</p>
-                      <p className="text-sm text-gray-900">
-                        {viewPatient.philhealth_member ? 'Yes' : 'No'}
-                        {viewPatient.philhealth_member && viewPatient.philhealth_number && 
-                          ` (${viewPatient.philhealth_number})`
-                        }
-                      </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Middle Name (Gitnang Pangalan)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.middle_name || '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">4Ps Member</p>
-                      <p className="text-sm text-gray-900">
-                        {viewPatient.pps_member ? 'Yes' : 'No'}
-                        {viewPatient.pps_member && viewPatient.pps_household_no && 
-                          ` (Household: ${viewPatient.pps_household_no})`
-                        }
-                      </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Gender (Kasarian)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.gender || '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">DSWD NHTS</p>
-                      <p className="text-sm text-gray-900">
-                        {viewPatient.dswd_nhts ? 'Yes' : 'No'}
-                        {viewPatient.dswd_nhts && viewPatient.facility_household_no && 
-                          ` (Facility: ${viewPatient.facility_household_no})`
-                        }
-                      </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Birth Date (Petsa ng Kapanganakan)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.birth_date ? new Date(viewPatient.birth_date).toLocaleDateString() : '-'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">PCB Member</p>
-                      <p className="text-sm text-gray-900">{viewPatient.pcb_member ? 'Yes' : 'No'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Birth Place (Lugar ng Kapanganakan)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.birth_place || '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Civil Status (Katayuang Sibil)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.civil_status || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Contact Number</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.contact_number || '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Blood Type</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.blood_type || '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Medical & Insurance Information Section */}
+              <div className="mb-6">
+                <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
+                  II. MEDICAL & INSURANCE INFORMATION
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Educational Attainment</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.educational_attainment || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Employment Status</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.employment_status || '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">PhilHealth Member</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.philhealth_member ? 'Yes' : 'No'}
+                      {viewPatient.philhealth_member && viewPatient.philhealth_number && 
+                        ` - ${viewPatient.philhealth_number}`
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">4Ps Member</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.pps_member ? 'Yes' : 'No'}
+                      {viewPatient.pps_member && viewPatient.pps_household_no && 
+                        ` - Household: ${viewPatient.pps_household_no}`
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">DSWD NHTS</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.dswd_nhts ? 'Yes' : 'No'}
+                      {viewPatient.dswd_nhts && viewPatient.facility_household_no && 
+                        ` - Facility: ${viewPatient.facility_household_no}`
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">PCB Member</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewPatient.pcb_member ? 'Yes' : 'No'}
                     </div>
                   </div>
                 </div>

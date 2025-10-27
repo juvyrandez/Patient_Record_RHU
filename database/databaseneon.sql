@@ -451,3 +451,198 @@ EXECUTE FUNCTION update_rabies_registry_timestamp();
 -- Create index for better performance
 CREATE INDEX IF NOT EXISTS idx_rabies_registry_patient_id ON rabies_registry(patient_id);
 CREATE INDEX IF NOT EXISTS idx_rabies_registry_created_at ON rabies_registry(created_at);
+
+
+
+
+
+
+
+-- ==========================================================
+-- PHILPEN Risk Assessment Records Table
+
+CREATE TABLE IF NOT EXISTS philpen_records (
+    id SERIAL PRIMARY KEY,
+    
+    -- Basic Information
+    patient_id INTEGER REFERENCES patients(id),
+    health_facility VARCHAR(255) DEFAULT 'RHU BALINGASAG',
+    assessment_date DATE NOT NULL,
+    
+    -- I. PATIENT'S INFORMATION (auto-filled from patients table)
+    patient_name VARCHAR(255),
+    age INTEGER,
+    sex VARCHAR(10),
+    birthdate DATE,
+    civil_status VARCHAR(50),
+    contact_no VARCHAR(20),
+    patient_address TEXT,
+    employment_status VARCHAR(100),
+    ethnicity VARCHAR(100),
+    
+    -- II. ASSESS FOR RED FLAGS (JSON for Yes/No checkboxes)
+    red_flags JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "chest_pain": true/false,
+    --   "difficulty_breathing": true/false,
+    --   "loss_consciousness": true/false,
+    --   "slurred_speech": true/false,
+    --   "facial_asymmetry": true/false,
+    --   "weakness_numbness": true/false,
+    --   "persistent_headache": true/false,
+    --   "chest_retractions": true/false,
+    --   "seizure_convulsion": true/false,
+    --   "self_harm": true/false,
+    --   "agitated_behavior": true/false,
+    --   "eye_injury": true/false,
+    --   "severe_injuries": true/false
+    -- }
+    
+    -- III. PAST MEDICAL HISTORY (JSON for Yes/No checkboxes)
+    past_medical_history JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "hypertension": true/false,
+    --   "heart_diseases": true/false,
+    --   "diabetes": true/false,
+    --   "cancer": true/false,
+    --   "stroke": true/false,
+    --   "asthma": true/false,
+    --   "allergies": true/false,
+    --   "mental_neurological": true/false,
+    --   "substance_abuse": true/false,
+    --   "previous_surgical": true/false,
+    --   "thyroid_disorders": true/false,
+    --   "kidney_disorders": true/false
+    -- }
+    
+    -- IV. FAMILY HISTORY (JSON for Yes/No checkboxes)
+    family_history JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "hypertension": true/false,
+    --   "stroke": true/false,
+    --   "heart_disease": true/false,
+    --   "diabetes_mellitus": true/false,
+    --   "asthma": true/false,
+    --   "cancer": true/false,
+    --   "kidney_disease": true/false,
+    --   "mental_neurological": true/false,
+    --   "tb_5years": true/false,
+    --   "substance_abuse": true/false,
+    --   "copd": true/false
+    -- }
+    
+    -- V. NCD RISK FACTORS
+    -- 5.1 Tobacco Use (JSON for multiple choice)
+    tobacco_use JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "q1_never_used": true/false,
+    --   "q2_exposure_secondhand": true/false,
+    --   "q3_former_user": true/false,
+    --   "q4_current_user": true/false
+    -- }
+    tobacco_cessation_advice TEXT,
+    
+    -- 5.2 Alcohol Intake (JSON for multiple choice)
+    alcohol_intake JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "q1_never_consumed": true/false,
+    --   "q2_drinks_alcohol": true/false
+    -- }
+    alcohol_screening_advice TEXT,
+    
+    -- 5.3 Physical Activity
+    physical_activity_hours TEXT, -- stores "yes" or "no" answers
+    physical_activity_advice TEXT,
+    
+    -- 5.4 Nutrition and Dietary Assessment (JSON for multiple choice)
+    nutrition_assessment JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "salt_intake_high": true/false,
+    --   "processed_foods": true/false,
+    --   "fruits_vegetables": true/false,
+    --   "sugary_drinks": true/false
+    -- }
+    nutrition_advice TEXT,
+    
+    -- 5.5-5.9 Measurements
+    weight_kg DECIMAL(5,2),
+    height_cm DECIMAL(5,2),
+    bmi DECIMAL(4,2),
+    waist_circumference_cm DECIMAL(5,2),
+    blood_pressure_systolic INTEGER,
+    blood_pressure_diastolic INTEGER,
+    
+    -- VI. RISK SCREENING
+    fbs_result VARCHAR(50),
+    fbs_date DATE,
+    rbs_result VARCHAR(50),
+    rbs_date DATE,
+    lipid_profile JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "cholesterol": "value",
+    --   "hdl": "value",
+    --   "ldl": "value",
+    --   "triglycerides": "value"
+    -- }
+    lipid_profile_date DATE,
+    urinalysis_protein VARCHAR(50),
+    urinalysis_ketones VARCHAR(50),
+    urinalysis_date DATE,
+    
+    -- 6.2 Chronic Respiratory Diseases (JSON for symptoms)
+    respiratory_symptoms JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "chronic_cough": true/false,
+    --   "sputum_production": true/false,
+    --   "chest_tightness": true/false,
+    --   "wheezing": true/false
+    -- }
+    respiratory_screening_advice TEXT,
+    
+    -- VII. MANAGEMENT
+    lifestyle_modification BOOLEAN DEFAULT FALSE,
+    medications JSONB DEFAULT '{}',
+    -- Structure: {
+    --   "anti_hypertensives": true/false,
+    --   "oral_hypoglycemic": true/false
+    -- }
+    
+    date_of_followup DATE,
+    remarks TEXT,
+    
+    -- Assessment Results and Recommendations
+    risk_level VARCHAR(50), -- Low, Moderate, High
+    recommendations TEXT,
+    referral_needed BOOLEAN DEFAULT FALSE,
+    referral_facility VARCHAR(255),
+    
+    -- System fields
+    created_by VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==========================================================
+-- Indexes
+-- ==========================================================
+CREATE INDEX IF NOT EXISTS idx_philpen_patient_id ON philpen_records(patient_id);
+CREATE INDEX IF NOT EXISTS idx_philpen_assessment_date ON philpen_records(assessment_date);
+CREATE INDEX IF NOT EXISTS idx_philpen_created_at ON philpen_records(created_at);
+CREATE INDEX IF NOT EXISTS idx_philpen_risk_level ON philpen_records(risk_level);
+
+-- ==========================================================
+-- Trigger to auto-update updated_at on record modification
+-- ==========================================================
+CREATE OR REPLACE FUNCTION update_philpen_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
+
+CREATE TRIGGER update_philpen_updated_at 
+    BEFORE UPDATE ON philpen_records 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_philpen_updated_at_column();
+

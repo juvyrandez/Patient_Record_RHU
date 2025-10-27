@@ -3,12 +3,13 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut, FiSearch, FiDownload } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
-import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight  } from 'react-icons/fa';
+import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaChartBar, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight, FaHeartbeat, FaCalculator  } from 'react-icons/fa';
 import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import ReferralForm from '/components/StaffComponents/ReferralForm';
+import PhilpenRiskAssessmentForm from '/components/StaffComponents/PhilpenRiskAssessmentForm';
 import Swal from "sweetalert2";
 
 // Register ChartJS components
@@ -1483,6 +1484,216 @@ function PatientRecords() {
     window.print();
   };
 
+  const handlePrintCertificate = () => {
+    // Hide all elements except the certificate
+    const originalContents = document.body.innerHTML;
+    const certificateContent = document.querySelector('.certificate-container');
+    
+    if (certificateContent) {
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Medical Certificate</title>
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+            body {
+              font-family: 'Times New Roman', serif;
+              color: #333;
+              background-color: white;
+              margin: 0;
+              padding: 0.5in;
+              font-size: 12px;
+              line-height: 1.3;
+            }
+            .certificate-container {
+              font-family: 'Times New Roman', serif;
+              color: #333;
+              background-color: white;
+              width: 100%;
+              max-width: 7.5in;
+              margin: 0 auto;
+              font-size: 12px;
+              line-height: 1.3;
+            }
+            
+            /* Header Layout - Match Original */
+            header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              text-align: center;
+              font-size: 11px;
+              margin-bottom: 15px;
+            }
+            .w-24 {
+              width: 80px;
+              flex-shrink: 0;
+            }
+            .w-24 img {
+              width: 60px !important;
+              height: 60px !important;
+              margin: 0 auto;
+              display: block;
+              object-fit: contain;
+            }
+            .flex-grow {
+              flex-grow: 1;
+              text-align: center;
+              margin-top: 8px;
+            }
+            .flex-grow p {
+              margin: 1px 0;
+              font-size: 10px;
+            }
+            .flex-grow .font-semibold {
+              font-size: 12px;
+              font-weight: bold;
+              margin-top: 4px;
+            }
+            
+            .header-line {
+              height: 2px;
+              background-color: #333;
+              margin: 10px 0 20px 0;
+              border: none;
+            }
+            
+            .certificate-title {
+              font-size: 20px;
+              font-weight: bold;
+              letter-spacing: 2px;
+              margin: 20px 0;
+              text-align: center;
+            }
+            
+            /* Date Section */
+            .flex.justify-end {
+              display: flex;
+              justify-content: flex-end;
+              align-items: center;
+              margin-bottom: 15px;
+            }
+            
+            /* Salutation */
+            .leading-relaxed {
+              line-height: 1.4;
+              margin-bottom: 15px;
+            }
+            .indent-10 {
+              text-indent: 40px;
+            }
+            
+            /* Patient Info Grid */
+            .grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+              margin: 15px 0;
+            }
+            .col-span-2 {
+              grid-column: span 2;
+            }
+            
+            .data-field {
+              display: inline-block;
+              min-width: 120px;
+              padding: 2px 6px;
+              font-weight: 700;
+              border-bottom: 1px solid #333;
+              margin-left: 5px;
+              font-size: 12px;
+            }
+            .data-label {
+              font-weight: 600;
+              font-size: 12px;
+            }
+            
+            /* Assessment Grid */
+            .assessment-grid {
+              margin: 15px 0;
+              padding-left: 40px;
+            }
+            .assessment-grid .grid {
+              gap: 8px;
+            }
+            
+            .section-title {
+              font-size: 14px;
+              font-weight: bold;
+              margin: 15px 0 8px 0;
+            }
+            
+            /* Findings Section */
+            .findings-section {
+              margin: 20px 0;
+            }
+            .pl-10 {
+              padding-left: 40px;
+              min-height: 40px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 8px;
+              margin-bottom: 15px;
+              line-height: 1.4;
+            }
+            
+            /* Signature Section */
+            .signature-section {
+              margin-top: 40px;
+              text-align: center;
+              page-break-inside: avoid;
+            }
+            .border-t {
+              border-top: 1px solid #333;
+              display: inline-block;
+              padding-top: 3px;
+              padding-left: 20px;
+              padding-right: 20px;
+            }
+            
+            /* Utility Classes */
+            .text-center { text-align: center; }
+            .text-sm { font-size: 12px; }
+            .text-xs { font-size: 10px; }
+            .font-bold { font-weight: bold; }
+            .font-medium { font-weight: 600; }
+            .font-semibold { font-weight: 600; }
+            .mb-3 { margin-bottom: 10px; }
+            .mb-4 { margin-bottom: 12px; }
+            .mb-6 { margin-bottom: 15px; }
+            .mb-8 { margin-bottom: 20px; }
+            .mt-1 { margin-top: 4px; }
+            .mt-2 { margin-top: 8px; }
+            .uppercase { text-transform: uppercase; }
+            .block { display: block; }
+            
+            @page {
+              margin: 0.4in;
+              size: letter;
+            }
+          </style>
+        </head>
+        <body>
+          ${certificateContent.innerHTML}
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // Wait for content to load then print
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
+  };
+
   const handleSortToggle = () => {
     setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     setCurrentPage(0);
@@ -2477,13 +2688,6 @@ function PatientRecords() {
                         >
                           <FaFileMedical className="w-5 h-5" />
                         </button>
-                        <button 
-                          onClick={() => handlePrintMedicalCertificate(patient)}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Print Medical Certificate"
-                        >
-                          <FaPrint className="w-5 h-5" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -2550,6 +2754,21 @@ function PatientRecords() {
         </div>
         
         <div className="grid grid-cols-1 gap-4">
+          {/* PHILPEN Risk Assessment Form */}
+          <button
+            onClick={() => {
+              setSelectedFormType('philpen');
+              setShowFormSelection(false);
+            }}
+            className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
+          >
+            <FaHeartbeat className="text-red-500 mr-3 text-xl" />
+            <div>
+              <h4 className="font-medium">PHILPEN Risk Assessment Form</h4>
+              <p className="text-sm text-gray-500">For NCD risk assessment and screening</p>
+            </div>
+          </button>
+
           {/* Individual Treatment Record */}
           <button
             onClick={() => {
@@ -2579,7 +2798,23 @@ function PatientRecords() {
               <p className="text-sm text-gray-500">For referring patients to other facilities</p>
             </div>
           </button>
+          
+          {/* Medical Certificate */}
+          <button
+            onClick={() => {
+              setShowFormSelection(false);
+              handlePrintMedicalCertificate(selectedPatient);
+            }}
+            className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
+          >
+            <FaPrint className="text-green-500 mr-3 text-xl" />
+            <div>
+              <h4 className="font-medium">Medical Certificate</h4>
+              <p className="text-sm text-gray-500">Print medical certificate for this patient</p>
+            </div>
+          </button>
         </div>
+        
         
         <div className="flex justify-end mt-6">
           <button
@@ -2592,6 +2827,22 @@ function PatientRecords() {
       </div>
     </div>
   </div>
+)}
+
+{/* PHILPEN Risk Assessment Form Modal */}
+{selectedPatient && selectedFormType === 'philpen' && (
+  <PhilpenRiskAssessmentForm 
+    patient={selectedPatient}
+    onClose={() => {
+      setSelectedPatient(null);
+      setSelectedFormType(null);
+    }}
+    onSave={() => {
+      setSelectedPatient(null);
+      setSelectedFormType(null);
+      // Refresh data if needed
+    }}
+  />
 )}
 
 {/* Individual Treatment Record Modal */}
@@ -3509,50 +3760,126 @@ function PatientRecords() {
       {/* View Patient Modal */}
 {viewPatient && (
   <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none print-root">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto print:max-w-none print:h-auto print:shadow-none print-root">
       <style>
         {`
-          @page { size: A4; margin: 12mm; }
+          @page { 
+            size: A4; 
+            margin: 10mm;
+          }
           @media print {
-            html, body { background: #fff !important; }
-            /* Show only the modal content */
+            html, body { 
+              background: #fff !important; 
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            /* Hide everything except print content */
             body * { visibility: hidden !important; }
             .print-root, .print-root * { visibility: visible !important; }
-            .print-root { position: static !important; box-shadow: none !important; }
+            .print-root { 
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              background: white !important;
+              box-shadow: none !important;
+              border-radius: 0 !important;
+              max-width: none !important;
+              max-height: none !important;
+            }
             .no-print { display: none !important; }
+            .backdrop-blur-3xl, .backdrop-blur-sm { 
+              backdrop-filter: none !important;
+              background: white !important;
+            }
             /* Container tuned for single page */
             .print-container {
               width: 100%;
-              max-width: 190mm; /* slightly smaller than A4 for safe margins */
+              max-width: 190mm;
               margin: 0 auto;
               padding: 0;
-              font-size: 10.5pt;
-              line-height: 1.35;
-            }
-            .print-container h3 {
-              font-size: 13pt;
-              margin-bottom: 5pt;
-            }
-            .print-container h4 {
               font-size: 12pt;
-              margin-top: 6pt;
-              margin-bottom: 5pt;
+              line-height: 1.4;
+              background: white !important;
             }
-            .print-container p {
-              font-size: 10.5pt;
-              margin-bottom: 2pt;
+            .print-container h3 { 
+              font-size: 20pt; 
+              margin-bottom: 12pt; 
+              text-align: center;
+              font-weight: 700;
+              letter-spacing: 0.5pt;
             }
+            .print-container h4 { font-size: 14pt; margin: 7pt 0 6pt; }
+            
+            /* Force 3 columns per row in print */
             .print-container .grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 4mm;
+              display: grid !important;
+              grid-template-columns: repeat(3, 1fr) !important;
+              gap: 4mm 6mm !important;
             }
-            .print-container .border-b {
-              border-bottom: 1pt solid #000;
-              margin-bottom: 5pt;
+            
+            .print-container .mb-6, 
+            .print-container .mb-8 { 
+              margin-bottom: 5mm !important; 
             }
-            .print-container .text-sm { font-size: 10.5pt; }
-            .print-container .text-base { font-size: 11.5pt; }
+            
+            /* Vertical layout - label above, value below */
+            .print-container .space-y-1,
+            .print-container .space-y-2 {
+              display: block !important;
+            }
+            
+            .print-container .space-y-1 > *,
+            .print-container .space-y-2 > * {
+              display: block !important;
+            }
+            
+            .print-container label { 
+              font-size: 10pt !important; 
+              font-weight: 500 !important;
+              color: #666 !important;
+              display: block !important;
+              margin-bottom: 2pt !important;
+              text-transform: none !important;
+            }
+            
+            .print-container p { 
+              font-size: 12pt !important; 
+              font-weight: 500 !important;
+              color: #000 !important;
+              display: block !important;
+              margin: 0 !important;
+              padding: 0 0 2pt 0 !important;
+              border: none !important;
+              border-bottom: 1pt solid #e0e0e0 !important;
+              min-height: 17pt !important;
+            }
+            
+            .print-container input[type="radio"], 
+            .print-container input[type="checkbox"] {
+              width: 13pt !important;
+              height: 13pt !important;
+              margin: 0 5pt 0 0 !important;
+              vertical-align: middle !important;
+            }
+            
+            .print-container .flex {
+              display: flex !important;
+              gap: 10pt !important;
+              align-items: center !important;
+              margin-top: 2pt !important;
+            }
+            
+            .print-container .inline-flex {
+              display: inline-flex !important;
+              align-items: center !important;
+              margin-right: 10pt !important;
+            }
+            
+            .bg-gray-50 { background: white !important; }
+            .border-green-600 { border-color: #000 !important; }
+            .border-b { border: none !important; }
+            .border-opacity-50 { border: none !important; }
           }
         `}
       </style>
@@ -3587,104 +3914,261 @@ function PatientRecords() {
       </div>
       
       <div className="p-6 print-container">
-        <div className="mb-6">
-          <h4 className="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-            Patient Information
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Full Name</p>
-              <p className="text-sm text-gray-900">
-                {viewPatient.last_name}, {viewPatient.first_name} {viewPatient.middle_name || ''} {viewPatient.suffix || ''}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Maiden Name</p>
-              <p className="text-sm text-gray-900">{viewPatient.maiden_name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Mother's Name</p>
-              <p className="text-sm text-gray-900">{viewPatient.mothers_name || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Gender</p>
-              <p className="text-sm text-gray-900">{viewPatient.gender}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Birth Date</p>
-              <p className="text-sm text-gray-900">
-                {(viewPatient.birth_date ? viewPatient.birth_date.toString().split('T')[0] : '-')}
-                {' '} (Age: {calculateAge(viewPatient.birth_date)})
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Birthplace</p>
-              <p className="text-sm text-gray-900">{viewPatient.birth_place || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Blood Type</p>
-              <p className="text-sm text-gray-900">{viewPatient.blood_type || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Residential Address</p>
-              <p className="text-sm text-gray-900">{viewPatient.residential_address || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Contact Number</p>
-              <p className="text-sm text-gray-900">{viewPatient.contact_number || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Civil Status</p>
-              <p className="text-sm text-gray-900">{viewPatient.civil_status}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Spouse Name</p>
-              <p className="text-sm text-gray-900">{viewPatient.spouse_name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Educational Attainment</p>
-              <p className="text-sm text-gray-900">{viewPatient.educational_attainment}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Employment Status</p>
-              <p className="text-sm text-gray-900">{viewPatient.employment_status}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Family Member Role</p>
-              <p className="text-sm text-gray-900">{viewPatient.family_member_role || '-'}</p>
-            </div>
+        {/* Name Section */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Last Name (Apelyido)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.last_name || '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">First Name (Pangalan)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.first_name || '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Middle Name (Gitnang Pangalan)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.middle_name || 'N/A'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Suffix</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.suffix || '-'}
+            </p>
           </div>
         </div>
 
-        <div className="mb-6">
-          <h4 className="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-            Program Membership
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">DSWD NHTS</p>
-              <p className="text-sm text-gray-900">
-                {viewPatient.dswd_nhts ? `Yes (Household No: ${viewPatient.facility_household_no || '-'})` : 'No'}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Maiden Name (Dalaga)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.maiden_name || 'N/A'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Mother's Name (Pangalan ng Ina)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.mothers_name || '-'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Sex (Kasarian)</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="gender_view"
+                  checked={viewPatient.gender === "Female"}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">Female (Babae)</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="gender_view"
+                  checked={viewPatient.gender === "Male"}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">Male (Lalaki)</span>
+              </label>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Birth Date (Kapanganakan)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.birth_date ? viewPatient.birth_date.toString().split('T')[0] : '-'} (Age: {calculateAge(viewPatient.birth_date)})
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Birthplace (Lugar ng Kapanganakan)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.birth_place || '-'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Blood Type</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.blood_type || '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.residential_address || '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Contact Number</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.contact_number || '-'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Civil Status (Katayuan Sibil)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.civil_status || '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Spouse Name (Asawa)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.spouse_name || 'N/A'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">DSWD NHTS?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={viewPatient.dswd_nhts}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!viewPatient.dswd_nhts}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">No</span>
+              </label>
+            </div>
+            {viewPatient.dswd_nhts && (
+              <p className="text-sm text-gray-900 font-medium mt-2 pb-1 border-b border-gray-200 border-opacity-50">
+                Household No: {viewPatient.facility_household_no || '-'}
               </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Educational Attainment (Pang-edukasyong Katayuan)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.educational_attainment || '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">4Ps Member?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={viewPatient.pps_member}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!viewPatient.pps_member}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">No</span>
+              </label>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">4Ps Member</p>
-              <p className="text-sm text-gray-900">
-                {viewPatient.pps_member ? `Yes (Household No: ${viewPatient.pps_household_no || '-'})` : 'No'}
+            {viewPatient.pps_member && (
+              <p className="text-sm text-gray-900 font-medium mt-2 pb-1 border-b border-gray-200 border-opacity-50">
+                Household No: {viewPatient.pps_household_no || '-'}
               </p>
+            )}
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Employment Status (Katayuan sa Trabaho)</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.employment_status || '-'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">PhilHealth Member?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={viewPatient.philhealth_member}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!viewPatient.philhealth_member}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">No</span>
+              </label>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">PhilHealth Member</p>
-              <p className="text-sm text-gray-900">
-                {viewPatient.philhealth_member 
-                  ? `Yes (${viewPatient.philhealth_status}, Number: ${viewPatient.philhealth_number || '-'}, Category: ${viewPatient.philhealth_category})`
-                  : 'No'}
-              </p>
+            {viewPatient.philhealth_member && (
+              <div className="space-y-1 mt-2">
+                <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+                  Status: {viewPatient.philhealth_status || '-'}
+                </p>
+                <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+                  Number: {viewPatient.philhealth_number || '-'}
+                </p>
+                <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+                  Category: {viewPatient.philhealth_category || '-'}
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Primary Care Benefit (PCB) Member?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={viewPatient.pcb_member}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!viewPatient.pcb_member}
+                  readOnly
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-gray-700 text-xs sm:text-sm">No</span>
+              </label>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Primary Care Benefit (PCB) Member</p>
-              <p className="text-sm text-gray-900">{viewPatient.pcb_member ? 'Yes' : 'No'}</p>
-            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700">Family Member Role</label>
+            <p className="text-sm text-gray-900 font-medium pb-1 border-b border-gray-200 border-opacity-50">
+              {viewPatient.family_member_role || '-'}
+            </p>
           </div>
         </div>
       </div>
@@ -3713,27 +4197,18 @@ function PatientRecords() {
       {showMedicalCertificate && certificatePatient && treatmentRecord && (
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center no-print">
               <h3 className="text-lg font-semibold text-gray-900">Medical Certificate</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
-                >
-                  <FaPrint className="w-4 h-4" />
-                  Print
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMedicalCertificate(false);
-                    setCertificatePatient(null);
-                    setTreatmentRecord(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <FaTimes className="w-6 h-6" />
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  setShowMedicalCertificate(false);
+                  setCertificatePatient(null);
+                  setTreatmentRecord(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FaTimes className="w-6 h-6" />
+              </button>
             </div>
             
             <div className="certificate-container p-8">
@@ -3745,31 +4220,88 @@ function PatientRecords() {
                   min-height: 11in;
                   width: 8.5in;
                   margin: 0 auto;
+                  line-height: 1.4;
                 }
                 .header-line {
-                  height: 1px;
+                  height: 2px;
                   background-color: #333;
-                  margin: 10px 0 20px 0;
-                  border-bottom: 2px solid black;
+                  margin: 15px 0 25px 0;
+                  border: none;
                 }
                 .data-field {
                   display: inline-block;
                   min-width: 150px;
-                  padding: 0 5px;
+                  padding: 2px 8px;
                   font-weight: 700;
                   border-bottom: 1px solid #333;
+                  margin-left: 5px;
                 }
                 .data-label {
-                  font-weight: 500;
+                  font-weight: 600;
+                  font-size: 14px;
+                }
+                .certificate-title {
+                  font-size: 24px;
+                  font-weight: bold;
+                  letter-spacing: 2px;
+                  margin: 30px 0;
+                }
+                .section-title {
+                  font-size: 16px;
+                  font-weight: bold;
+                  margin: 20px 0 10px 0;
+                }
+                .patient-info-grid {
+                  margin: 20px 0;
+                }
+                .assessment-grid {
+                  margin: 15px 0;
+                  padding-left: 40px;
+                }
+                .findings-section {
+                  margin: 25px 0;
+                }
+                .signature-section {
+                  margin-top: 60px;
+                  page-break-inside: avoid;
                 }
                 @media print {
-                  body { background-color: white; }
+                  * {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                  }
+                  body { 
+                    background-color: white !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                  }
                   .certificate-container {
-                    box-shadow: none;
-                    margin: 0;
-                    width: 100%;
-                    min-height: auto;
-                    padding: 1in;
+                    box-shadow: none !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                    min-height: auto !important;
+                    padding: 0.75in !important;
+                    font-size: 12px !important;
+                  }
+                  .header-line {
+                    background-color: #000 !important;
+                    height: 2px !important;
+                  }
+                  .data-field {
+                    border-bottom: 1px solid #000 !important;
+                  }
+                  .certificate-title {
+                    font-size: 20px !important;
+                  }
+                  .section-title {
+                    font-size: 14px !important;
+                  }
+                  .no-print {
+                    display: none !important;
+                  }
+                  @page {
+                    margin: 0.5in;
+                    size: letter;
                   }
                 }
               `}</style>
@@ -3807,7 +4339,7 @@ function PatientRecords() {
               <div className="header-line"></div>
 
               {/* MEDICAL CERTIFICATE TITLE */}
-              <div className="text-center font-bold text-lg mb-6">
+              <div className="text-center certificate-title">
                 MEDICAL CERTIFICATE
               </div>
 
@@ -3829,7 +4361,7 @@ function PatientRecords() {
 
               {/* PATIENT DETAILS SECTION */}
               <section className="text-sm mb-8">
-                <div className="grid grid-cols-2 gap-y-4">
+                <div className="grid grid-cols-2 gap-y-4 patient-info-grid">
                   <div>
                     <span className="data-label">NAME:</span>
                     <span className="data-field">
@@ -3873,8 +4405,8 @@ function PatientRecords() {
 
               {/* ASSESSMENT SECTION */}
               <section className="text-sm mb-8">
-                <p className="font-bold mb-2">ASSESSMENT</p>
-                <div className="grid grid-cols-2 gap-y-4 pl-10">
+                <p className="section-title">ASSESSMENT</p>
+                <div className="grid grid-cols-2 gap-y-4 assessment-grid">
                   <div>
                     <span className="data-label">BP:</span>
                     <span className="data-field">{treatmentRecord.blood_pressure || ''}</span> 
@@ -3911,18 +4443,18 @@ function PatientRecords() {
               </section>
 
               {/* FINDINGS, IMPRESSION, REMARKS */}
-              <section className="text-sm mb-6">
-                <p className="font-bold mb-2">FINDINGS</p>
+              <section className="findings-section text-sm mb-6">
+                <p className="section-title">FINDINGS</p>
                 <div className="pl-10 leading-relaxed mb-6 min-h-[5rem] border-b border-gray-300 pb-2">
                   {treatmentRecord.physical_examination || ''}
                 </div>
                 
-                <p className="font-bold mb-2">IMPRESSION:</p>
+                <p className="section-title">IMPRESSION:</p>
                 <div className="pl-10 leading-relaxed mb-6 min-h-[1.5rem] border-b border-gray-300 pb-2">
                   {treatmentRecord.diagnosis || ''}
                 </div>
 
-                <p className="font-bold mb-2">REMARKS:</p>
+                <p className="section-title">REMARKS:</p>
                 <div className="pl-10 leading-relaxed mb-8 min-h-[1.5rem] border-b border-gray-300 pb-2">
                   {treatmentRecord.treatment_plan || ''}
                 </div>
@@ -3934,13 +4466,26 @@ function PatientRecords() {
               </div>
 
               {/* SIGNATURE BLOCK */}
-              <footer className="mt-16 text-center text-sm">
+              <footer className="signature-section text-center text-sm">
                 <div className="border-t border-black inline-block pt-1 px-4">
                   <span className="font-bold block uppercase">MARIA HELEN MACARAYAN ROMUALDO, MD.</span>
                 </div>
                 <p className="text-xs mt-1">Municipal Health Officer</p>
                 <p className="text-xs">PRC#.0154215</p>
               </footer>
+            </div>
+            
+            {/* Print Button Below Certificate */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50 no-print">
+              <div className="flex justify-end">
+                <button
+                  onClick={handlePrintCertificate}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md transition-colors"
+                >
+                  <FaPrint className="w-4 h-4" />
+                  Print
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -4037,114 +4582,144 @@ function HealthcarePanel() {
   );
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Healthcare Service Summary</h1>
-          <p className="text-gray-600">Disease Distribution by Barangay (Male, Female, Total)</p>
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      {/* Header Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+            <FaChartBar className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Healthcare Service Summary</h1>
+            <p className="text-gray-600 text-sm">Disease distribution across all barangays</p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">Service Details</h2>
+      {/* Main Content */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Controls Section */}
+        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by disease..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-          <div className="relative w-full sm:w-80">
-            <input
-              type="text"
-              placeholder="Search by disease..."
-              className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          </div>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+              >
+                <FiDownload className="w-4 h-4" />
+                Export CSV
+              </button>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={exportToCSV}
-              className="flex items-center justify-center py-2 px-4 text-sm font-medium rounded-lg transition duration-150 shadow-md bg-green-600 text-white hover:bg-green-700"
-            >
-              <FiDownload className="w-4 h-4 mr-2" />
-              Download CSV
-            </button>
-
-            <select
-              value={filterBrgy}
-              onChange={(e) => setFilterBrgy(e.target.value)}
-              className="py-2 px-4 text-sm font-medium border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-md"
-            >
-              <option value="All">All Brgys</option>
-              {barangays.map((brgy) => (
-                <option key={brgy} value={brgy}>{brgy}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <FaSpinner className="animate-spin text-4xl text-blue-600" />
-            <span className="ml-3 text-lg text-gray-600">Loading health summary data...</span>
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-10">
-                <tr>
-                  <HeaderCell className="w-1/6 sticky left-0 bg-green-600 z-20 rounded-tl-xl text-white font-semibold">Disease</HeaderCell>
-
-                  {barangays.map((brgy, index) => (
-                    <th key={brgy} colSpan="3" className={`px-2 py-2 border-b border-gray-200 text-center ${index < barangays.length - 1 ? 'border-r border-gray-300' : ''}`}>
-                      <span className="text-xs font-bold text-white block truncate max-w-[80px]">{brgy}</span>
-                      <div className="flex justify-around mt-1">
-                        <span className="text-xs font-medium w-1/3 text-white">M</span>
-                        <span className="text-xs font-medium w-1/3 text-white">F</span>
-                        <span className="text-xs font-bold w-1/3 text-white">T</span>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody className="bg-white divide-y divide-gray-100">
-                {filteredData.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-100 whitespace-nowrap z-10">
-                      {item.disease}
-                    </td>
-
-                    {barangays.map((brgy, index) => {
-                      const brgyData = item.brgys[brgy] || { M: 0, F: 0, T: 0 };
-                      return (
-                        <React.Fragment key={brgy}>
-                          <td className="px-2 py-3 text-sm text-center text-gray-700 whitespace-nowrap">
-                            {brgyData.M}
-                          </td>
-                          <td className="px-2 py-3 text-sm text-center text-gray-700 whitespace-nowrap">
-                            {brgyData.F}
-                          </td>
-                          <td className={`px-2 py-3 text-sm text-center font-semibold text-gray-900 whitespace-nowrap ${index < barangays.length - 1 ? 'border-r border-gray-200' : ''}`}>
-                            {brgyData.T}
-                          </td>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tr>
+              <select
+                value={filterBrgy}
+                onChange={(e) => setFilterBrgy(e.target.value)}
+                className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white text-sm font-medium"
+              >
+                <option value="All">All Barangays</option>
+                {barangays.map((brgy) => (
+                  <option key={brgy} value={brgy}>{brgy}</option>
                 ))}
-                {filteredData.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan={1 + barangays.length * 3} className="py-6 text-center text-gray-500">No matching records found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              </select>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
 
-      <div className="mt-6 text-center text-sm text-gray-500">
-        Healthcare Service Summary Report - Generated {new Date().toLocaleDateString()}
+        {/* Table Section */}
+        <div className="overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
+                <p className="text-gray-600 font-medium">Loading health summary data...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-10">
+                  <tr>
+                    <HeaderCell className="w-1/6 sticky left-0 bg-green-600 z-20 rounded-tl-xl text-white font-semibold">Disease</HeaderCell>
+
+                    {barangays.map((brgy, index) => (
+                      <th key={brgy} colSpan="3" className={`px-2 py-3 border-b border-green-500 text-center ${index < barangays.length - 1 ? 'border-r border-green-400' : ''}`}>
+                        <span className="text-xs font-bold text-white block truncate max-w-[80px]">{brgy}</span>
+                        <div className="flex justify-around mt-1">
+                          <span className="text-xs font-medium w-1/3 text-green-100">M</span>
+                          <span className="text-xs font-medium w-1/3 text-green-100">F</span>
+                          <span className="text-xs font-bold w-1/3 text-white">T</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {filteredData.map((item, rowIndex) => (
+                    <tr key={item.id} className={`hover:bg-green-50/50 transition-colors ${rowIndex % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'}`}>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-inherit border-r border-gray-100 whitespace-nowrap z-10">
+                        {item.disease}
+                      </td>
+
+                      {barangays.map((brgy, index) => {
+                        const brgyData = item.brgys[brgy] || { M: 0, F: 0, T: 0 };
+                        return (
+                          <React.Fragment key={brgy}>
+                            <td className="px-2 py-3 text-sm text-center text-gray-600 whitespace-nowrap">
+                              {brgyData.M}
+                            </td>
+                            <td className="px-2 py-3 text-sm text-center text-gray-600 whitespace-nowrap">
+                              {brgyData.F}
+                            </td>
+                            <td className={`px-2 py-3 text-sm text-center font-semibold text-gray-900 whitespace-nowrap ${index < barangays.length - 1 ? 'border-r border-gray-200' : ''}`}>
+                              <span className={`inline-flex items-center justify-center min-w-[24px] h-6 rounded-full text-xs font-bold ${
+                                brgyData.T > 0 ? 'bg-green-100 text-green-800' : 'text-gray-400'
+                              }`}>
+                                {brgyData.T}
+                              </span>
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {filteredData.length === 0 && !loading && (
+                    <tr>
+                      <td colSpan={1 + barangays.length * 3} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                            <FaChartBar className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <p className="text-gray-500 font-medium">No matching records found</p>
+                          <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+          <div className="text-center text-sm text-gray-500">
+            Healthcare Service Summary Report - Generated {new Date().toLocaleDateString()}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -4452,84 +5027,98 @@ function RabiesPanel() {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Rabies Registry Report</h1>
-          <p className="text-gray-600">Snapshot of Animal Bite Exposure Cases</p>
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      {/* Header Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg">
+              <FaFileMedical className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Rabies Registry Report</h1>
+              <p className="text-gray-600 text-sm">Animal bite exposure cases management</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            <FaPlus className="w-4 h-4" />
+            Add Patient
+          </button>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
-        >
-          <FaPlus className="w-4 h-4" />
-          Add Patient
-        </button>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <div className="mb-4 border-b pb-2">
-          <h2 className="text-2xl font-semibold text-gray-800">Case Details</h2>
-        </div>
+      {/* Main Content */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Controls Section */}
+        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, address, or animal..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-200 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-          <div className="relative w-full sm:w-80">
-            <input
-              type="text"
-              placeholder="Search by name, address, or animal..."
-              className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 transition duration-150"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          </div>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+              >
+                <FiDownload className="w-4 h-4" />
+                Export CSV
+              </button>
 
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-            <button
-              onClick={exportToCSV}
-              className="flex items-center justify-center py-2 px-4 text-sm font-medium rounded-lg transition duration-150 shadow-md bg-green-600 text-white hover:bg-green-700"
-            >
-              <FiDownload className="w-4 h-4 mr-2" />
-              Download CSV
-            </button>
-
-            <div className="flex space-x-2">
-              {['I', 'II', 'III'].map(cat => (
+              {/* Category Filters */}
+              <div className="flex gap-2">
+                {['I', 'II', 'III'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setFilterCategory(cat)}
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      filterCategory === cat
+                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                    }`}
+                  >
+                    Cat. {cat}
+                  </button>
+                ))}
                 <button
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`py-2 px-4 text-sm font-medium rounded-lg transition duration-150 shadow-md ${
-                    filterCategory === cat
-                      ? 'bg-teal-600 text-white hover:bg-teal-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                  onClick={() => setFilterCategory('All')}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    filterCategory === 'All'
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
                   }`}
                 >
-                  Cat. {cat}
+                  All
                 </button>
-              ))}
-              <button
-                onClick={() => setFilterCategory('All')}
-                className={`py-2 px-4 text-sm font-medium rounded-lg transition duration-150 shadow-md ${
-                  filterCategory === 'All'
-                    ? 'bg-teal-600 text-white hover:bg-teal-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                }`}
-              >
-                All
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="max-h-[500px] overflow-y-auto">
-          <RegistryTable data={filteredData} />
+        {/* Table Section */}
+        <div className="overflow-hidden">
+          <div className="max-h-[600px] overflow-y-auto">
+            <RegistryTable data={filteredData} />
+          </div>
         </div>
       </div>
 
       {/* Add Patient Modal */}
       {showAddModal && (
         <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-gray-800">Add Patient to Rabies Registry</h3>
@@ -4707,10 +5296,19 @@ function RabiesPanel() {
 
 // Referral Reports Component
 function ReferralReports() {
+  const balingasagBarangays = [
+    "1 Poblacion", "2 Poblacion", "3 Poblacion", "4 Poblacion", "5 Poblacion", "6 Poblacion",
+    "Balagnan", "Balingoan", "Barangay", "Blanco", "Calawag", "Camuayan", "Cogon", "Dansuli",
+    "Dumarait", "Hermano", "Kibanban", "Linggangao", "Mambayaan", "Mandangoa", "Napaliran",
+    "Natubo", "Quezon", "San Alonzo", "San Isidro", "San Juan", "San Miguel", "San Victor",
+    "Talusan", "Waterfall"
+  ];
+
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [barangayFilter, setBarangayFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
 
@@ -4771,7 +5369,10 @@ function ReferralReports() {
     const matchesDate = !dateFilter || 
                        (referral.date && new Date(referral.date).toISOString().split('T')[0] === dateFilter);
     
-    return matchesSearch && matchesDate;
+    const matchesBarangay = barangayFilter === "All" || 
+                           (referral.address && referral.address.toLowerCase().includes(barangayFilter.toLowerCase()));
+    
+    return matchesSearch && matchesDate && matchesBarangay;
   });
 
   // Pagination
@@ -4805,144 +5406,200 @@ function ReferralReports() {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[770px]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-800">Referral Reports</h3>
-          <p className="text-sm text-gray-600">View and manage patient referral records</p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-          <div className="relative max-w-md w-full sm:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaSearch className="text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search referrals..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(0);
-              }}
-            />
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      {/* Header Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+            <FaFileMedical className="w-6 h-6 text-white" />
           </div>
-          <input
-            type="date"
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            value={dateFilter}
-            onChange={(e) => {
-              setDateFilter(e.target.value);
-              setCurrentPage(0);
-            }}
-          />
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2"
-          >
-            <FaPrint size={16} />
-            Print Report
-          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Referral Reports</h1>
+            <p className="text-gray-600 text-sm">Patient referral records and analytics</p>
+          </div>
         </div>
       </div>
 
-      {/* Results Count */}
-      <div className="mb-4">
-        <p className="text-sm text-gray-600">{showingText}</p>
-      </div>
-
-      {/* Referrals Table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        {currentReferrals.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
-              {searchQuery || dateFilter ? 'No referrals found matching your criteria' : 'No referral records available'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-green-600 to-green-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason of Referral</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred to</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred by</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentReferrals.map((referral) => (
-                    <tr key={referral.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {referral.date ? new Date(referral.date).toLocaleDateString() : 'N/A'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{referral.patientName}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{referral.age}/{referral.sex}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">{referral.address}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">{referral.reasonOfReferral}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{referral.referredTo}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{referral.referredBy}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Main Content */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Controls Section */}
+        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search referrals..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(0);
+                }}
+              />
             </div>
 
-            {/* Pagination */}
-            {totalPages > 0 && (
-              <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-gray-200 gap-2">
-                <span className="text-xs sm:text-sm text-gray-600">{showingText}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 0}
-                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <FaArrowLeft className="w-3 sm:w-4 h-3 sm:h-4" />
-                  </button>
-                  {pageNumbers.map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md ${
-                        currentPage === page
-                          ? 'bg-green-600 text-white'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages - 1}
-                    className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <FaArrowRight className="w-3 sm:w-4 h-3 sm:h-4" />
-                  </button>
+            {/* Filters and Actions */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <input
+                type="date"
+                className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white text-sm font-medium"
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+              />
+              
+              <select
+                value={barangayFilter}
+                onChange={(e) => {
+                  setBarangayFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white text-sm font-medium"
+              >
+                <option value="All">All Barangays</option>
+                {balingasagBarangays.map((brgy) => (
+                  <option key={brgy} value={brgy}>{brgy}</option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+              >
+                <FaPrint className="w-4 h-4" />
+                Print Report
+              </button>
+            </div>
+          </div>
+
+          {/* Results Count */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600 font-medium">{showingText}</p>
+          </div>
+        </div>
+
+        {/* Table Section */}
+        <div className="overflow-hidden">
+          {currentReferrals.length === 0 ? (
+            <div className="py-16 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                  <FaFileMedical className="w-8 h-8 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-gray-500 font-medium">No referral records found</p>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {searchQuery || dateFilter || barangayFilter !== "All" 
+                      ? 'Try adjusting your search or filter criteria' 
+                      : 'No referral records available'}
+                  </p>
                 </div>
               </div>
-            )}
-          </>
-        )}
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gradient-to-r from-green-600 to-green-700">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient Name</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred To</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {currentReferrals.map((referral, index) => (
+                      <tr key={referral.id} className={`hover:bg-green-50/50 transition-colors ${index % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {referral.date ? new Date(referral.date).toLocaleDateString() : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">{referral.patientName}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-700">{referral.age}/{referral.sex}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-700 max-w-xs truncate">{referral.address}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-700 max-w-xs">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {referral.reasonOfReferral.length > 30 
+                                ? `${referral.reasonOfReferral.substring(0, 30)}...` 
+                                : referral.reasonOfReferral}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{referral.referredTo}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-700">{referral.referredBy}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 0 && (
+                <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <span className="text-sm text-gray-600 font-medium">{showingText}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 0}
+                        className="p-2.5 border border-gray-200 rounded-xl text-gray-700 hover:bg-white hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        <FaArrowLeft className="w-4 h-4" />
+                      </button>
+                      {pageNumbers.map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                            currentPage === page
+                              ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md'
+                              : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:shadow-sm'
+                          }`}
+                        >
+                          {page + 1}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage >= totalPages - 1}
+                        className="p-2.5 border border-gray-200 rounded-xl text-gray-700 hover:bg-white hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        <FaArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+          <div className="text-center text-sm text-gray-500">
+            Referral Reports - Generated {new Date().toLocaleDateString()}
+          </div>
+        </div>
       </div>
     </div>
   );
