@@ -9,7 +9,7 @@ import { FaSearch, FaFileMedical, FaEye, FaSpinner, FaStethoscope,FaFileAlt } fr
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { FaUserDoctor } from "react-icons/fa6";
 import Swal from "sweetalert2";
-import BHWReports from '@components/BHWComponents/BHWReports';
+import BHWReports from '/components/BHWComponents/Bhwreports';
 // Charts
 import {
   Chart as ChartJS,
