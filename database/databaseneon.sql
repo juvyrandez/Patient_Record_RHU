@@ -631,7 +631,7 @@ CREATE INDEX IF NOT EXISTS idx_philpen_created_at ON philpen_records(created_at)
 CREATE INDEX IF NOT EXISTS idx_philpen_risk_level ON philpen_records(risk_level);
 
 -- ==========================================================
--- Trigger to auto-update updated_at on record modification
+-- Trigger to auto-update updated_at on record modificationnn
 -- ==========================================================
 CREATE OR REPLACE FUNCTION update_philpen_updated_at_column()
 RETURNS TRIGGER AS $$
