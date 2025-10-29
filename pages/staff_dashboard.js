@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut, FiSearch, FiDownload } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
-import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaChartBar, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight, FaHeartbeat, FaCalculator  } from 'react-icons/fa';
+import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaChartBar, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight, FaHeartbeat, FaCalculator, FaDog  } from 'react-icons/fa';
 import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
@@ -231,6 +231,7 @@ export default function StaffDashboard() {
                     ${activeTab === "Reports - Rabies Registry" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
                   onClick={() => setActiveTab("Reports - Rabies Registry")}
                 >
+                  <FaDog size={16} />
                   <span>Rabies Registry</span>
                 </li>
                 <li
@@ -238,6 +239,7 @@ export default function StaffDashboard() {
                     ${activeTab === "Reports - Health Summary" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
                   onClick={() => setActiveTab("Reports - Health Summary")}
                 >
+                  <FaHeartbeat size={16} />
                   <span>Health Summary</span>
                 </li>
                 <li
@@ -245,6 +247,7 @@ export default function StaffDashboard() {
                     ${activeTab === "Reports - Referral Reports" ? "bg-white/20 font-semibold" : "hover:bg-white/10"}`}
                   onClick={() => setActiveTab("Reports - Referral Reports")}
                 >
+                  <FaFileMedical size={16} />
                   <span>Referral Reports</span>
                 </li>
               </ul>
