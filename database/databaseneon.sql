@@ -66,7 +66,7 @@ EXECUTE FUNCTION update_timestamp();
 
 
 -------------------------------------------------------------
-OLDDDDDDDDDDDDDD
+OLDDDDDDDDDDDDDDDD
 CREATE TABLE patients (
   id SERIAL PRIMARY KEY,
   last_name VARCHAR(100) NOT NULL,
