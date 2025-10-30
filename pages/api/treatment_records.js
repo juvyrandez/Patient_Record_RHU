@@ -5,14 +5,15 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const client = await pool.connect();
     try {
-      const { limit = 50, patient_id, id, status, data_type, bhw_id } = req.query;
+      const { limit = 50, patient_id, id, status, data_type, bhw_id, purpose_of_visit } = req.query;
       const lim = Math.min(parseInt(limit, 10) || 50, 200);
       const where = [];
       const params = [];
-      if (id) { params.push(parseInt(id, 10)); where.push(`id = $${params.length}`); }
-      if (patient_id) { params.push(parseInt(patient_id, 10)); where.push(`patient_id = $${params.length}`); }
-      if (data_type) { params.push(data_type); where.push(`data_type = $${params.length}`); }
-      if (bhw_id) { params.push(parseInt(bhw_id, 10)); where.push(`bhw_id = $${params.length}`); }
+      if (id) { params.push(parseInt(id, 10)); where.push(`itr.id = $${params.length}`); }
+      if (patient_id) { params.push(parseInt(patient_id, 10)); where.push(`itr.patient_id = $${params.length}`); }
+      if (data_type) { params.push(data_type); where.push(`itr.data_type = $${params.length}`); }
+      if (bhw_id) { params.push(parseInt(bhw_id, 10)); where.push(`itr.bhw_id = $${params.length}`); }
+      if (purpose_of_visit) { params.push(purpose_of_visit); where.push(`itr.purpose_of_visit = $${params.length}`); }
       if (status === 'pending') {
         // Pending: allow suggested diagnoses to exist; consider pending until any treatment/lab fields are filled
         where.push(`COALESCE(medication,'') = '' AND COALESCE(lab_findings,'') = '' AND COALESCE(lab_tests,'') = ''`);
@@ -24,44 +25,53 @@ export default async function handler(req, res) {
       params.push(lim);
 
       const sql = `
-        SELECT id,
-               patient_id,
-               patient_first_name,
-               patient_last_name,
-               patient_middle_name,
-               patient_suffix,
-               patient_birth_date,
-               visit_type,
-               consultation_date,
-               consultation_period,
-               consultation_time,
-               attending_provider,
-               referred_from,
-               referred_to,
-               referred_by,
-               referral_reasons,
-               blood_pressure,
-               temperature,
-               height_cm,
-               weight_kg,
-               heart_rate,
-               respiratory_rate,
-               purpose_of_visit,
-               chief_complaints,
-               diagnosis,
-               diagnosis_1,
-               diagnosis_2,
-               diagnosis_3,
-               medication,
-               lab_findings,
-               lab_tests,
-               status,
-               data_type,
-               bhw_id,
-               created_at
-        FROM individual_treatment_records
+        SELECT itr.id,
+               itr.patient_id,
+               itr.patient_first_name,
+               itr.patient_last_name,
+               itr.patient_middle_name,
+               itr.patient_suffix,
+               itr.patient_birth_date,
+               itr.visit_type,
+               itr.consultation_date,
+               itr.consultation_period,
+               itr.consultation_time,
+               itr.attending_provider,
+               itr.referred_from,
+               itr.referred_to,
+               itr.referred_by,
+               itr.referral_reasons,
+               itr.blood_pressure,
+               itr.temperature,
+               itr.height_cm,
+               itr.weight_kg,
+               itr.heart_rate,
+               itr.respiratory_rate,
+               itr.nature_of_visit,
+               itr.purpose_of_visit,
+               itr.chief_complaints,
+               itr.diagnosis,
+               itr.diagnosis_1,
+               itr.diagnosis_2,
+               itr.diagnosis_3,
+               itr.medication,
+               itr.lab_findings,
+               itr.lab_tests,
+               itr.status,
+               itr.data_type,
+               itr.bhw_id,
+               itr.created_at,
+               p.first_name,
+               p.last_name,
+               p.middle_name,
+               p.suffix,
+               p.birth_date,
+               p.gender,
+               p.residential_address
+        FROM individual_treatment_records itr
+        LEFT JOIN patients p ON itr.patient_id = p.id
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY created_at DESC
+        ORDER BY itr.created_at DESC
         LIMIT $${params.length}`;
       const { rows } = await client.query(sql, params);
       return res.status(200).json(rows);
@@ -186,6 +196,7 @@ export default async function handler(req, res) {
       referred_to,
       referral_reasons, // comma-separated string or array
       referred_by,
+      nature_of_visit,
       purpose_of_visit,
       chief_complaints,
       diagnosis,
@@ -211,7 +222,7 @@ export default async function handler(req, res) {
         blood_pressure, temperature, height_cm, weight_kg, heart_rate, respiratory_rate,
         attending_provider,
         referred_from, referred_to, referral_reasons, referred_by,
-        purpose_of_visit,
+        nature_of_visit, purpose_of_visit,
         chief_complaints, diagnosis, diagnosis_1, diagnosis_2, diagnosis_3, medication, lab_findings, lab_tests,
         referral_id, status, data_type, bhw_id
       ) VALUES (
@@ -220,9 +231,9 @@ export default async function handler(req, res) {
         $11, $12, $13, $14, $15, $16,
         $17,
         $18, $19, $20, $21,
-        $22,
-        $23, $24, $25, $26, $27, $28, $29, $30,
-        $31, $32, $33, $34
+        $22, $23,
+        $24, $25, $26, $27, $28, $29, $30, $31,
+        $32, $33, $34, $35
       ) RETURNING *`;
 
     const values = [
@@ -243,6 +254,7 @@ export default async function handler(req, res) {
       referred_to || null,
       reasonsArray.length ? reasonsArray : null,
       referred_by || null,
+      nature_of_visit || null,
       purpose_of_visit || null,
       chief_complaints || null,
       diagnosis || null,

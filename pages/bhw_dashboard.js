@@ -3,9 +3,9 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaUserPlus, FaChartBar, FaChevronDown,FaPrint,FaUser } from "react-icons/fa";
-import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash, FaUsers, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaPlus, FaTimes, FaSortAlphaDown, FaSortAlphaUp, FaArrowLeft, FaArrowRight,FaSyncAlt,FaDownload, FaEdit, FaTrash, FaUsers } from 'react-icons/fa';
 
-import { FaSearch, FaFileMedical, FaEye, FaSpinner, FaStethoscope,FaFileAlt, FaCalendarAlt, FaFilter } from 'react-icons/fa';
+import { FaSearch, FaFileMedical,FaClock,FaCheckCircle, FaEye, FaSpinner, FaStethoscope,FaFileAlt, FaCalendarAlt, FaFilter, FaHistory } from 'react-icons/fa';
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { FaUserDoctor } from "react-icons/fa6";
 import Swal from "sweetalert2";
@@ -22,6 +22,34 @@ import {
 import { Bar } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend);
+
+// Helper function to format time in 12-hour format with Asia/Manila timezone
+const formatTime = (timeString, period = '') => {
+  if (!timeString) return 'N/A';
+  
+  try {
+    // If timeString is in HH:MM format, convert to 12-hour format
+    if (timeString.includes(':') && !period) {
+      const [hours, minutes] = timeString.split(':');
+      const hour24 = parseInt(hours);
+      const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+      const ampm = hour24 >= 12 ? 'PM' : 'AM';
+      return `${hour12}:${minutes} ${ampm}`;
+    }
+    
+    // If period is provided, use it
+    if (period) {
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours);
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      return `${displayHour}:${minutes} ${period}`;
+    }
+    
+    return timeString;
+  } catch (error) {
+    return timeString;
+  }
+};
 
 export default function BHWDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -53,6 +81,9 @@ export default function BHWDashboard() {
   const [currentTreatmentPage, setCurrentTreatmentPage] = useState(0);
   const [currentReferralPage, setCurrentReferralPage] = useState(0);
   const itemsPerPage = 10;
+  
+  // State for handling saved record redirection
+  const [savedRecordToView, setSavedRecordToView] = useState(null);
   
   const router = useRouter();
 
@@ -729,9 +760,9 @@ export default function BHWDashboard() {
         <div className="flex-1 overflow-y-auto p-6 pt-24">
           {/* Content Section */}
           {activeTab === "Dashboard" && <BHWDashboardContent onQuickAction={setActiveTab} bhwId={profileData?.id} />}
-          {activeTab === "Add Patients" && <AddPatientRecords bhwName={fullname} bhwBarangay={barangay} bhwId={profileData?.id} />}
+          {activeTab === "Add Patients" && <AddPatientRecords bhwName={fullname} bhwBarangay={barangay} bhwId={profileData?.id} onRecordSaved={setSavedRecordToView} onTabChange={setActiveTab} />}
           {activeTab === "Referrals" && <ViewReferrals bhwId={profileData?.id} />}
-          {activeTab === "Individual Treatment Records" && <IndividualTreatmentRecords bhwId={profileData?.id} />}
+          {activeTab === "Individual Treatment Records" && <IndividualTreatmentRecords bhwId={profileData?.id} savedRecordToView={savedRecordToView} onRecordViewed={() => setSavedRecordToView(null)} />}
           {activeTab === "Reports" && (
             reportsLoading ? (
               <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-lg min-h-[400px] flex items-center justify-center">
@@ -741,94 +772,111 @@ export default function BHWDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="p-4 sm:p-6 space-y-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">BHW Reports</h2>
-                    <p className="text-sm text-gray-600">View and download comprehensive reports</p>
+              <div className="p-3 sm:p-4 lg:p-6 space-y-6">
+                {/* Enhanced Header */}
+                <div className="bg-gradient-to-r from-blue-50 via-green-50 to-emerald-50 rounded-2xl p-4 sm:p-6 border border-green-100 shadow-sm">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                        <FaChartBar className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-700 to-emerald-700 bg-clip-text text-transparent">BHW Reports Dashboard</h2>
+                        <p className="text-xs sm:text-sm text-gray-600 font-medium">Comprehensive healthcare analytics and insights</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={fetchReportsData}
+                      className="w-full sm:w-auto bg-gradient-to-r from-green-600 via-green-600 to-emerald-600 hover:from-green-700 hover:via-green-700 hover:to-emerald-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base font-semibold"
+                    >
+                      <FaSyncAlt className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>Refresh Data</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={fetchReportsData}
-                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <FaSyncAlt className="w-4 h-4" />
-                    <span>Refresh Data</span>
-                  </button>
                 </div>
 
-                {/* Report Type Tabs */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="flex border-b border-gray-200">
+                {/* Enhanced Report Type Tabs */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                  <div className="flex flex-col sm:flex-row">
                     <button
                       onClick={() => setActiveReport('treatment')}
-                      className={`flex-1 px-6 py-4 font-semibold transition-colors flex items-center justify-center gap-2 ${
+                      className={`flex-1 px-3 sm:px-6 py-4 sm:py-5 font-medium sm:font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base relative overflow-hidden ${
                         activeReport === 'treatment'
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
+                          : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 hover:from-green-50 hover:to-emerald-50 hover:text-green-700'
                       }`}
                     >
-                      <FaStethoscope className="w-5 h-5" />
-                      <span>Individual Treatment Records</span>
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                        activeReport === 'treatment' ? 'bg-green-700' : 'bg-gray-200'
+                      <FaStethoscope className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="hidden sm:inline">Individual Treatment Records</span>
+                      <span className="sm:hidden">Treatment</span>
+                      <span className={`ml-1 sm:ml-2 px-2 sm:px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                        activeReport === 'treatment' ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'
                       }`}>
                         {filteredTreatment.length}
                       </span>
+                      {activeReport === 'treatment' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 to-orange-400"></div>
+                      )}
                     </button>
                     <button
                       onClick={() => setActiveReport('referrals')}
-                      className={`flex-1 px-6 py-4 font-semibold transition-colors flex items-center justify-center gap-2 ${
+                      className={`flex-1 px-3 sm:px-6 py-4 sm:py-5 font-medium sm:font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base border-t sm:border-t-0 sm:border-l border-gray-200 relative overflow-hidden ${
                         activeReport === 'referrals'
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                          : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700'
                       }`}
                     >
-                      <FaFileMedical className="w-5 h-5" />
-                      <span>Referrals Report</span>
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                        activeReport === 'referrals' ? 'bg-green-700' : 'bg-gray-200'
+                      <FaFileMedical className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="hidden sm:inline">Referrals Report</span>
+                      <span className="sm:hidden">Referrals</span>
+                      <span className={`ml-1 sm:ml-2 px-2 sm:px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                        activeReport === 'referrals' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
                       }`}>
                         {filteredReferrals.length}
                       </span>
+                      {activeReport === 'referrals' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-pink-400"></div>
+                      )}
                     </button>
                   </div>
 
-                  {/* Filters Section */}
-                  <div className="bg-gradient-to-r from-blue-50 to-green-50 p-5 border-b border-gray-200">
-                    <div className="flex items-center gap-2 mb-4">
-                      <FaFilter className="text-blue-600" />
-                      <h3 className="text-lg font-semibold text-gray-700">Date Filters</h3>
+                  {/* Enhanced Filters Section */}
+                  <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-cyan-50 p-4 sm:p-5 lg:p-6 border-b border-blue-100">
+                    <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                        <FaFilter className="text-white w-4 h-4" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">Date Filters</h3>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          <FaCalendarAlt className="inline mr-1" />
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                          <FaCalendarAlt className="inline mr-1 w-3 h-3 sm:w-4 sm:h-4" />
                           Start Date
                         </label>
                         <input
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          <FaCalendarAlt className="inline mr-1" />
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                          <FaCalendarAlt className="inline mr-1 w-3 h-3 sm:w-4 sm:h-4" />
                           End Date
                         </label>
                         <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
-                      <div className="flex items-end">
+                      <div className="flex items-end sm:col-span-2 lg:col-span-1">
                         <button
                           onClick={clearFilters}
-                          className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                          className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
                         >
                           Clear Filters
                         </button>
@@ -854,75 +902,86 @@ export default function BHWDashboard() {
                   </div>
 
                   {/* Report Content */}
-                  <div className="p-6">
+                  <div className="p-3 sm:p-4 lg:p-6">
                     {activeReport === 'treatment' ? (
                       <>
                         {/* Treatment Records Table */}
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-xl font-bold text-gray-800">Individual Treatment Records</h3>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-md">
+                              <FaStethoscope className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-green-700 to-emerald-700 bg-clip-text text-transparent">Individual Treatment Records</h3>
+                              <p className="text-xs text-gray-500">Complete patient treatment history</p>
+                            </div>
+                          </div>
                           <button
                             onClick={downloadTreatmentCSV}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold text-sm sm:text-base"
                           >
-                            <FaDownload className="w-4 h-4" />
-                            Download CSV
+                            <FaDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Download CSV</span>
+                            <span className="sm:hidden">Download</span>
                           </button>
                         </div>
                         
-                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xl bg-white">
                           <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gradient-to-r from-green-600 to-green-700">
+                            <thead className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 shadow-lg">
                               <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Purpose of Visit</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Attending Provider</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Diagnosis</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                                <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
+                                <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
+                                <th className="hidden sm:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
+                                <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
+                                <th className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Purpose</th>
+                                <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Provider</th>
+                                <th className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Diagnosis</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                               {currentTreatmentItems.length > 0 ? (
                                 currentTreatmentItems.map((item, index) => (
                                   <tr key={item.id} className={`hover:bg-green-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                      {formatDate(item.consultation_date) || 'N/A'}
+                                    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600">
+                                      <div className="whitespace-nowrap">
+                                        {formatDate(item.consultation_date) || 'N/A'}
+                                      </div>
+                                      <div className="sm:hidden text-xs text-gray-500 mt-1">
+                                        {calculateAge(item.patient_birth_date)}/{item.patient_gender || 'N/A'}
+                                      </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                      {`${item.patient_last_name || ''}, ${item.patient_first_name || ''}`.trim() || 'N/A'}
+                                    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-medium text-gray-900">
+                                      <div className="whitespace-nowrap">
+                                        {`${item.patient_last_name || ''}, ${item.patient_first_name || ''}`.trim() || 'N/A'}
+                                      </div>
+                                      <div className="md:hidden text-xs text-gray-500 mt-1 truncate max-w-[120px]">
+                                        {item.patient_address || 'N/A'}
+                                      </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <td className="hidden sm:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
                                       {calculateAge(item.patient_birth_date)}/{item.patient_gender || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                    <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600 max-w-xs truncate">
                                       {item.patient_address || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                    <td className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600 max-w-xs truncate">
                                       {item.purpose_of_visit || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
                                       {item.attending_provider || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                    <td className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600 max-w-xs truncate">
                                       {item.diagnosis || 'N/A'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        item.status === 'Complete' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                      }`}>
-                                        {item.status || 'Pending'}
-                                      </span>
                                     </td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-500">
+                                  <td colSpan="7" className="px-3 sm:px-6 py-6 sm:py-8 text-center text-sm text-gray-500">
                                     <div className="flex flex-col items-center justify-center">
-                                      <FaStethoscope className="w-12 h-12 text-gray-400 mb-2" />
-                                      <p className="font-medium">No treatment records found</p>
+                                      <FaStethoscope className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mb-2" />
+                                      <p className="font-medium text-sm sm:text-base">No treatment records found</p>
                                       <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
                                     </div>
                                   </td>
@@ -934,23 +993,23 @@ export default function BHWDashboard() {
 
                         {/* Treatment Records Pagination */}
                         {totalTreatmentPages > 0 && (
-                          <div className="flex justify-between items-center mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <span className="text-sm text-gray-600 font-medium">
+                          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 gap-3 sm:gap-0">
+                            <span className="text-xs sm:text-sm text-gray-600 font-medium text-center sm:text-left">
                               Showing {Math.min(filteredTreatment.length, (currentTreatmentPage * itemsPerPage) + 1)}-{Math.min((currentTreatmentPage + 1) * itemsPerPage, filteredTreatment.length)} of {filteredTreatment.length} records
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <button
                                 onClick={() => setCurrentTreatmentPage(currentTreatmentPage - 1)}
                                 disabled={currentTreatmentPage === 0}
-                                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="p-1.5 sm:p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
-                                <FaArrowLeft className="w-4 h-4" />
+                                <FaArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                               </button>
-                              {treatmentPageNumbers.map((page) => (
+                              {treatmentPageNumbers.slice(0, 3).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentTreatmentPage(page)}
-                                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                  className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md transition-colors ${
                                     currentTreatmentPage === page
                                       ? 'bg-green-600 text-white shadow-md'
                                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
@@ -959,12 +1018,15 @@ export default function BHWDashboard() {
                                   {page + 1}
                                 </button>
                               ))}
+                              {treatmentPageNumbers.length > 3 && (
+                                <span className="px-2 text-gray-500 text-xs sm:text-sm">...</span>
+                              )}
                               <button
                                 onClick={() => setCurrentTreatmentPage(currentTreatmentPage + 1)}
                                 disabled={currentTreatmentPage >= totalTreatmentPages - 1}
-                                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="p-1.5 sm:p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
-                                <FaArrowRight className="w-4 h-4" />
+                                <FaArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
                               </button>
                             </div>
                           </div>
@@ -973,63 +1035,90 @@ export default function BHWDashboard() {
                     ) : (
                       <>
                         {/* Referrals Table */}
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-xl font-bold text-gray-800">Referrals Report</h3>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                              <FaFileMedical className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">Referrals Report</h3>
+                              <p className="text-xs text-gray-500">Patient referral tracking system</p>
+                            </div>
+                          </div>
                           <button
                             onClick={downloadReferralsCSV}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold text-sm sm:text-base"
                           >
-                            <FaDownload className="w-4 h-4" />
-                            Download CSV
+                            <FaDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Download CSV</span>
+                            <span className="sm:hidden">Download</span>
                           </button>
                         </div>
                         
-                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xl bg-white">
                           <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gradient-to-r from-green-600 to-green-700">
+                            <thead className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 shadow-lg">
                               <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason of Referral</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred to</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred by</th>
+                                <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
+                                <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
+                                <th className="hidden sm:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Age/Sex</th>
+                                <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Address</th>
+                                <th className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason</th>
+                                <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred To</th>
+                                <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Referred By</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                               {currentReferralItems.length > 0 ? (
                                 currentReferralItems.map((item, index) => (
                                   <tr key={item.id} className={`hover:bg-green-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                      {formatDate(item.referral_date) || 'N/A'}
+                                    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600">
+                                      <div className="whitespace-nowrap">
+                                        {formatDate(item.referral_date) || 'N/A'}
+                                      </div>
+                                      <div className="sm:hidden text-xs text-gray-500 mt-1">
+                                        {item.patient_age || 'N/A'}/{item.patient_gender || 'N/A'}
+                                      </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                      {`${item.patient_last_name || ''}, ${item.patient_first_name || ''}`.trim() || 'N/A'}
+                                    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-medium text-gray-900">
+                                      <div className="whitespace-nowrap">
+                                        {`${item.patient_last_name || ''}, ${item.patient_first_name || ''}`.trim() || 'N/A'}
+                                      </div>
+                                      <div className="md:hidden text-xs text-gray-500 mt-1 truncate max-w-[120px]">
+                                        {item.patient_address || 'N/A'}
+                                      </div>
+                                      <div className="lg:hidden text-xs text-gray-500 mt-1 truncate max-w-[150px]">
+                                        {item.chief_complaints || 'N/A'}
+                                      </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <td className="hidden sm:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
                                       {item.patient_age || 'N/A'}/{item.patient_gender || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                    <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600 max-w-xs truncate">
                                       {item.patient_address || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                    <td className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600 max-w-xs truncate">
                                       {item.chief_complaints || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                                      {item.referred_to || 'N/A'}
+                                    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600 max-w-xs truncate">
+                                      <div className="font-medium">
+                                        {item.referred_to || 'N/A'}
+                                      </div>
+                                      <div className="md:hidden text-xs text-gray-500 mt-1">
+                                        By: {item.referred_by_name || 'N/A'}
+                                      </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
                                       {item.referred_by_name || 'N/A'}
                                     </td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan="7" className="px-6 py-8 text-center text-sm text-gray-500">
+                                  <td colSpan="7" className="px-3 sm:px-6 py-6 sm:py-8 text-center text-sm text-gray-500">
                                     <div className="flex flex-col items-center justify-center">
-                                      <FaFileMedical className="w-12 h-12 text-gray-400 mb-2" />
-                                      <p className="font-medium">No referrals found</p>
+                                      <FaFileMedical className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mb-2" />
+                                      <p className="font-medium text-sm sm:text-base">No referrals found</p>
                                       <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
                                     </div>
                                   </td>
@@ -1041,23 +1130,23 @@ export default function BHWDashboard() {
 
                         {/* Referrals Pagination */}
                         {totalReferralPages > 0 && (
-                          <div className="flex justify-between items-center mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <span className="text-sm text-gray-600 font-medium">
+                          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 gap-3 sm:gap-0">
+                            <span className="text-xs sm:text-sm text-gray-600 font-medium text-center sm:text-left">
                               Showing {Math.min(filteredReferrals.length, (currentReferralPage * itemsPerPage) + 1)}-{Math.min((currentReferralPage + 1) * itemsPerPage, filteredReferrals.length)} of {filteredReferrals.length} referrals
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <button
                                 onClick={() => setCurrentReferralPage(currentReferralPage - 1)}
                                 disabled={currentReferralPage === 0}
-                                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="p-1.5 sm:p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
-                                <FaArrowLeft className="w-4 h-4" />
+                                <FaArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                               </button>
-                              {referralPageNumbers.map((page) => (
+                              {referralPageNumbers.slice(0, 3).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentReferralPage(page)}
-                                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                  className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md transition-colors ${
                                     currentReferralPage === page
                                       ? 'bg-green-600 text-white shadow-md'
                                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
@@ -1066,12 +1155,15 @@ export default function BHWDashboard() {
                                   {page + 1}
                                 </button>
                               ))}
+                              {referralPageNumbers.length > 3 && (
+                                <span className="px-2 text-gray-500 text-xs sm:text-sm">...</span>
+                              )}
                               <button
                                 onClick={() => setCurrentReferralPage(currentReferralPage + 1)}
                                 disabled={currentReferralPage >= totalReferralPages - 1}
-                                className="p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="p-1.5 sm:p-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
-                                <FaArrowRight className="w-4 h-4" />
+                                <FaArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
                               </button>
                             </div>
                           </div>
@@ -1318,7 +1410,7 @@ function ViewReferrals({ bhwId }) {
         </p>
       </div>
 
-      {/* Referrals Table */}
+      {/* Referrals Table - Desktop View */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {currentItems.length === 0 ? (
           <div className="text-center py-12">
@@ -1326,29 +1418,24 @@ function ViewReferrals({ bhwId }) {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-green-600 to-green-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Patient
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Referred To
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Date & Time
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Referred By
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Seen
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -1356,20 +1443,20 @@ function ViewReferrals({ bhwId }) {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentItems.map((referral) => (
                     <tr key={referral.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <div className="text-sm font-medium text-gray-900">
                           {referral.patient_last_name}, {referral.patient_first_name}
                           {referral.patient_middle_name && ` ${referral.patient_middle_name}`}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 truncate max-w-xs">
                           {referral.chief_complaints}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">{referral.referred_to}</div>
-                        <div className="text-sm text-gray-500">{referral.referred_to_address}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">{referral.referred_to_address}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
                           {formatDate(referral.referral_date)}
                         </div>
@@ -1377,37 +1464,75 @@ function ViewReferrals({ bhwId }) {
                           {referral.referral_time}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(referral.status)}`}>
                           {referral.status || 'Pending'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{referral.referred_by_name}</div>
-                        <div className="text-sm text-gray-500">License: {referral.license_number}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          referral.seen ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {referral.seen ? 'Yes' : 'No'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <td className="px-4 py-4 text-center">
                         <button
                           onClick={() => setViewReferral(referral)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100 transition-colors"
                           title="View Referral Details"
                           aria-label="View Referral Details"
                         >
                           <FaEye className="w-4 h-4" />
-                          <span>View</span>
+                          <span className="hidden sm:inline">View</span>
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden space-y-4 p-4">
+              {currentItems.map((referral) => (
+                <div key={referral.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {referral.patient_last_name}, {referral.patient_first_name}
+                        {referral.patient_middle_name && ` ${referral.patient_middle_name}`}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        {referral.chief_complaints}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ml-2 ${getStatusColor(referral.status)}`}>
+                      {referral.status || 'Pending'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="font-medium text-gray-700">Referred To:</span>
+                      <p className="text-gray-600 mt-1">{referral.referred_to}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Date & Time:</span>
+                      <p className="text-gray-600 mt-1">
+                        {formatDate(referral.referral_date)}<br />
+                        {referral.referral_time}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <div className="text-xs text-gray-500">
+                      By: {referral.referred_by_name}
+                    </div>
+                    <button
+                      onClick={() => setViewReferral(referral)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors text-xs font-medium"
+                    >
+                      <FaEye className="w-3 h-3" />
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Pagination */}
@@ -1805,7 +1930,7 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
 
 
 
-function AddPatientRecords({ bhwName, bhwBarangay, bhwId }) {
+function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabChange }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [patients, setPatients] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -2402,6 +2527,40 @@ cancelButtonText: 'Cancel',
       return checked.join(', ');
     };
 
+    // Validate required fields
+    const requiredFields = [
+      { selector: 'input[data-field="consultation_date"]', name: 'Date of Consultation' },
+      { selector: 'input[data-field="consultation_time"]', name: 'Consultation Time' },
+      { selector: 'select[data-field="consultation_period"]', name: 'Consultation Period' },
+      { selector: 'input[data-field="blood_pressure"]', name: 'Blood Pressure' },
+      { selector: 'input[data-field="temperature"]', name: 'Temperature' },
+      { selector: 'input[data-field="height_cm"]', name: 'Height (cm)' },
+      { selector: 'input[data-field="weight_kg"]', name: 'Weight (kg)' },
+      { selector: 'input[data-field="heart_rate"]', name: 'Heart Rate' },
+      { selector: 'input[data-field="respiratory_rate"]', name: 'Respiratory Rate' },
+      { selector: 'input[data-field="attending_provider"]', name: 'Attending Provider' },
+      { selector: 'textarea[data-field="chief_complaints"]', name: 'Chief Complaints' }
+    ];
+
+    const missingFields = [];
+    for (const field of requiredFields) {
+      const value = val(field.selector);
+      if (!value) {
+        missingFields.push(field.name);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      await Swal.fire({
+        title: 'Required Fields Missing',
+        html: `Please fill in the following required fields:<br><br><strong>${missingFields.join('<br>')}</strong>`,
+        icon: 'warning',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#f59e0b'
+      });
+      return;
+    }
+
     const treatmentData = {
       patient: {
         last_name: treatmentPatient.last_name,
@@ -2438,7 +2597,7 @@ cancelButtonText: 'Cancel',
         lab_tests: val('textarea[data-field="lab_tests"]'),
         data_type: 'bhw_treatment_data',
         bhw_id: bhwId,
-        status: 'pending'
+        status: 'completed'
       }
     };
 
@@ -2452,6 +2611,8 @@ cancelButtonText: 'Cancel',
       });
 
       if (response.ok) {
+        const savedRecord = await response.json();
+        
         await Swal.fire({
           title: 'Success',
           text: 'Treatment record saved successfully!',
@@ -2459,9 +2620,17 @@ cancelButtonText: 'Cancel',
           timer: 1500,
           showConfirmButton: false,
         });
+        
+        // Close the treatment modal
         setShowTreatmentModal(false);
         setTreatmentPatient(null);
         setTreatmentReferral(null);
+        
+        // Set the saved record to be viewed and switch tabs
+        if (savedRecord && savedRecord.id && onRecordSaved && onTabChange) {
+          onRecordSaved(savedRecord);
+          onTabChange("Individual Treatment Records");
+        }
       } else {
         throw new Error('Failed to save treatment record');
       }
@@ -4325,52 +4494,52 @@ cancelButtonText: 'Cancel',
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
-                        <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={new Date().toISOString().split('T')[0]} />
+                        <label className="block text-sm font-medium text-gray-700">Date of Consultation <span className="text-red-500">*</span></label>
+                        <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={new Date().toISOString().split('T')[0]} required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
+                        <label className="block text-sm font-medium text-gray-700">Consultation Time <span className="text-red-500">*</span></label>
                         <div className="flex gap-2">
-                          <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={new Date().toTimeString().slice(0, 5)} />
-                          <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md" defaultValue={new Date().getHours() < 12 ? 'AM' : 'PM'}>
+                          <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour12: false }).slice(0, 5)} required />
+                          <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md" defaultValue={new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour12: true }).includes('AM') ? 'AM' : 'PM'} required>
                             <option>AM</option>
                             <option>PM</option>
                           </select>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
-                        <input data-field="blood_pressure" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 120/80" />
+                        <label className="block text-sm font-medium text-gray-700">Blood Pressure <span className="text-red-500">*</span></label>
+                        <input data-field="blood_pressure" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 120/80" required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Temperature</label>
-                        <input data-field="temperature" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label className="block text-sm font-medium text-gray-700">Temperature <span className="text-red-500">*</span></label>
+                        <input data-field="temperature" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                        <input data-field="height_cm" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label className="block text-sm font-medium text-gray-700">Height (cm) <span className="text-red-500">*</span></label>
+                        <input data-field="height_cm" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                        <input data-field="weight_kg" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 65" />
+                        <label className="block text-sm font-medium text-gray-700">Weight (kg) <span className="text-red-500">*</span></label>
+                        <input data-field="weight_kg" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 65" required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
-                        <input data-field="heart_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 72" />
+                        <label className="block text-sm font-medium text-gray-700">HR/PR (bpm) <span className="text-red-500">*</span></label>
+                        <input data-field="heart_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 72" required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
-                        <input data-field="respiratory_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 18" />
+                        <label className="block text-sm font-medium text-gray-700">RR (cpm) <span className="text-red-500">*</span></label>
+                        <input data-field="respiratory_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. 18" required />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
-                        <input data-field="attending_provider" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label className="block text-sm font-medium text-gray-700">Name of Attending Provider <span className="text-red-500">*</span></label>
+                        <input data-field="attending_provider" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
                     </div>
                   </div>
@@ -4447,12 +4616,13 @@ cancelButtonText: 'Cancel',
 
                   {/* Right: Chief Complaints */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Chief Complaints</label>
+                    <label className="block text-sm font-medium text-gray-700">Chief Complaints <span className="text-red-500">*</span></label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       rows="8"
                       data-field="chief_complaints"
                       placeholder="Describe the patient's main symptoms and complaints..."
+                      required
                     ></textarea>
                   </div>
                 </div>
@@ -4464,12 +4634,6 @@ cancelButtonText: 'Cancel',
                   <h4 className="font-bold border-b border-gray-300 pb-1">
                     Diagnosis and Treatment
                   </h4>
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                  >
-                    Diagnose
-                  </button>
                 </div>
 
                 {/* Diagnosis + Medication/Treatment */}
@@ -4889,7 +5053,7 @@ function Reports({ bhwId }) {
   );
 }
 
-function IndividualTreatmentRecords({ bhwId }) {
+function IndividualTreatmentRecords({ bhwId, savedRecordToView, onRecordViewed }) {
   const [treatmentRecords, setTreatmentRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -4897,6 +5061,8 @@ function IndividualTreatmentRecords({ bhwId }) {
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
   const [viewRecord, setViewRecord] = useState(null);
+  const [patientHistory, setPatientHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     fetchTreatmentRecords();
@@ -4922,50 +5088,87 @@ function IndividualTreatmentRecords({ bhwId }) {
     }
   };
 
-  const updateRecordStatus = async (recordId, newStatus) => {
+  const fetchPatientHistory = async (patientId) => {
     try {
-      const response = await fetch(`/api/treatment_records?id=${recordId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        await Swal.fire({
-          title: 'Success',
-          text: `Record marked as ${newStatus}!`,
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        fetchTreatmentRecords(); // Refresh the list
-      } else {
-        throw new Error('Failed to update status');
+      setHistoryLoading(true);
+      // Fetch all treatment records for this patient
+      const response = await fetch(`/api/treatment_records?data_type=patient_history&patient_id=${patientId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch patient history');
       }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      Swal.fire({
-        title: 'Error',
-        text: 'Failed to update record status. Please try again.',
-        icon: 'error',
-        confirmButtonText: 'OK',
-      });
+      
+      const data = await response.json();
+      setPatientHistory(data);
+    } catch (err) {
+      console.error('Error fetching patient history:', err);
+      setPatientHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
-  const filteredRecords = treatmentRecords.filter(record =>
-    `${record.patient_last_name} ${record.patient_first_name} ${record.patient_middle_name || ''}`
+  const handleViewRecord = (record) => {
+    setViewRecord(record);
+    // Fetch patient history when viewing a record
+    if (record.patient_id) {
+      fetchPatientHistory(record.patient_id);
+    }
+  };
+
+  const handleViewPatientRecords = (patient) => {
+    // Set the patient's records as history and show the latest record
+    setPatientHistory(patient.records.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date)));
+    setViewRecord(patient.latestRecord);
+  };
+
+
+  // Group records by patient
+  const groupedPatients = treatmentRecords.reduce((acc, record) => {
+    const patientKey = `${record.patient_last_name}_${record.patient_first_name}_${record.patient_middle_name || ''}`;
+    
+    if (!acc[patientKey]) {
+      acc[patientKey] = {
+        patient_id: record.patient_id,
+        patient_last_name: record.patient_last_name,
+        patient_first_name: record.patient_first_name,
+        patient_middle_name: record.patient_middle_name,
+        patient_suffix: record.patient_suffix,
+        patient_birth_date: record.patient_birth_date,
+        records: [],
+        latestRecord: null
+      };
+    }
+    
+    acc[patientKey].records.push(record);
+    
+    // Keep track of the latest record for display
+    if (!acc[patientKey].latestRecord || 
+        new Date(record.consultation_date) > new Date(acc[patientKey].latestRecord.consultation_date)) {
+      acc[patientKey].latestRecord = record;
+    }
+    
+    return acc;
+  }, {});
+
+  // Convert to array and sort by latest consultation date
+  const patientsArray = Object.values(groupedPatients).sort((a, b) => {
+    const dateA = new Date(a.latestRecord?.consultation_date || 0);
+    const dateB = new Date(b.latestRecord?.consultation_date || 0);
+    return dateB - dateA;
+  });
+
+  const filteredPatients = patientsArray.filter(patient =>
+    `${patient.patient_last_name} ${patient.patient_first_name} ${patient.patient_middle_name || ''}`
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   );
 
-  const totalItems = filteredRecords.length;
+  const totalItems = filteredPatients.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = currentPage * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentRecords = filteredRecords.slice(startIndex, endIndex);
+  const currentPatients = filteredPatients.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     if (page >= 0 && page < totalPages) {
@@ -4979,8 +5182,25 @@ function IndividualTreatmentRecords({ bhwId }) {
   }
 
   const showingText = totalItems > 0 
-    ? `Showing ${startIndex + 1}-${endIndex} of ${totalItems} treatment records`
-    : 'No treatment records found';
+    ? `Showing ${startIndex + 1}-${endIndex} of ${totalItems} patients`
+    : 'No patients found';
+
+  // Handle viewing saved record
+  useEffect(() => {
+    if (savedRecordToView && savedRecordToView.id && treatmentRecords.length > 0) {
+      // Find the patient that contains this record
+      const patientKey = `${savedRecordToView.patient_last_name}_${savedRecordToView.patient_first_name}_${savedRecordToView.patient_middle_name || ''}`;
+      const patient = groupedPatients[patientKey];
+      
+      if (patient) {
+        // Show all records for this patient
+        handleViewPatientRecords(patient);
+        if (onRecordViewed) {
+          onRecordViewed();
+        }
+      }
+    }
+  }, [savedRecordToView, onRecordViewed, treatmentRecords, groupedPatients]);
 
   if (loading) {
     return (
@@ -5025,9 +5245,9 @@ function IndividualTreatmentRecords({ bhwId }) {
 
       {/* Treatment Records Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {currentRecords.length === 0 ? (
+        {currentPatients.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No treatment records found</p>
+            <p className="text-gray-500">No patients with treatment records found</p>
           </div>
         ) : (
           <>
@@ -5039,19 +5259,13 @@ function IndividualTreatmentRecords({ bhwId }) {
                       Patient Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Visit Type
+                      Total Records
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Consultation Date
+                      Latest Visit
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Purpose of Visit
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Attending Provider
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
-                      Status
+                      Latest Provider
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                       Actions
@@ -5059,78 +5273,49 @@ function IndividualTreatmentRecords({ bhwId }) {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {currentRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50">
+                  {currentPatients.map((patient) => (
+                    <tr key={`patient_${patient.patient_id}_${patient.patient_last_name}`} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {record.patient_last_name}, {record.patient_first_name}
-                          {record.patient_middle_name && ` ${record.patient_middle_name}`}
+                          {patient.patient_last_name}, {patient.patient_first_name}
+                          {patient.patient_middle_name && ` ${patient.patient_middle_name}`}
                         </div>
-                        {record.patient_suffix && (
-                          <div className="text-sm text-gray-500">{record.patient_suffix}</div>
+                        {patient.patient_suffix && (
+                          <div className="text-sm text-gray-500">{patient.patient_suffix}</div>
+                        )}
+                        {patient.patient_birth_date && (
+                          <div className="text-xs text-gray-400">
+                            Born: {new Date(patient.patient_birth_date).toLocaleDateString()}
+                          </div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          {record.visit_type || 'N/A'}
+                        <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                          {patient.records.length} {patient.records.length === 1 ? 'Record' : 'Records'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {record.consultation_date ? new Date(record.consultation_date).toLocaleDateString() : 'N/A'}
+                          {patient.latestRecord?.consultation_date ? new Date(patient.latestRecord.consultation_date).toLocaleDateString() : 'N/A'}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {record.consultation_time} {record.consultation_period}
+                          {formatTime(patient.latestRecord?.consultation_time, patient.latestRecord?.consultation_period)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{record.purpose_of_visit || 'N/A'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{record.attending_provider || 'N/A'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          record.status === 'completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {record.status === 'completed' ? 'Completed' : 'Pending'}
-                        </span>
+                        <div className="text-sm text-gray-900">{patient.latestRecord?.attending_provider || 'N/A'}</div>
                       </td>
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => setViewRecord(record)}
+                            onClick={() => handleViewPatientRecords(patient)}
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                            title="View Treatment Record"
-                            aria-label="View Treatment Record"
+                            title="View All Patient Records"
+                            aria-label="View All Patient Records"
                           >
                             <FaEye className="w-4 h-4" />
-                            <span>View</span>
+                            <span>View All</span>
                           </button>
-                          {record.status !== 'completed' && (
-                            <button
-                              onClick={() => updateRecordStatus(record.id, 'completed')}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                              title="Mark as Completed"
-                              aria-label="Mark as Completed"
-                            >
-                              <FaCheckCircle className="w-4 h-4" />
-                              <span>Complete</span>
-                            </button>
-                          )}
-                          {record.status === 'completed' && (
-                            <button
-                              onClick={() => updateRecordStatus(record.id, 'pending')}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100"
-                              title="Mark as Pending"
-                              aria-label="Mark as Pending"
-                            >
-                              <FaClock className="w-4 h-4" />
-                              <span>Pending</span>
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -5181,7 +5366,7 @@ function IndividualTreatmentRecords({ bhwId }) {
       {/* View Treatment Record Modal */}
       {viewRecord && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
             {/* Professional Header */}
             <div className="p-4 sm:p-6 border-b-2 border-green-600">
               <div className="flex items-center justify-between mb-4">
@@ -5216,7 +5401,7 @@ function IndividualTreatmentRecords({ bhwId }) {
               {/* Patient Information */}
               <div className="mb-6">
                 <h4 className="font-bold border-b border-gray-300 pb-1 mb-3">Patient Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Patient Name</p>
                     <p className="text-sm text-gray-900">
@@ -5230,16 +5415,6 @@ function IndividualTreatmentRecords({ bhwId }) {
                     <p className="text-sm text-gray-900">
                       {viewRecord.patient_birth_date ? new Date(viewRecord.patient_birth_date).toLocaleDateString() : 'N/A'}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Status</p>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      viewRecord.status === 'completed' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {viewRecord.status === 'completed' ? 'Completed' : 'Pending'}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -5256,7 +5431,7 @@ function IndividualTreatmentRecords({ bhwId }) {
                     <p className="text-sm font-medium text-gray-600">Consultation Date</p>
                     <p className="text-sm text-gray-900">
                       {viewRecord.consultation_date ? new Date(viewRecord.consultation_date).toLocaleDateString() : 'N/A'}
-                      {viewRecord.consultation_time && ` at ${viewRecord.consultation_time} ${viewRecord.consultation_period || ''}`}
+                      {viewRecord.consultation_time && ` at ${formatTime(viewRecord.consultation_time, viewRecord.consultation_period)}`}
                     </p>
                   </div>
                   <div>
@@ -5353,10 +5528,105 @@ function IndividualTreatmentRecords({ bhwId }) {
                 </div>
               )}
 
+              {/* Patient Treatment History */}
+              <div className="mb-6">
+                <h4 className="font-bold border-b border-gray-300 pb-1 mb-3 flex items-center gap-2">
+                  <FaHistory className="w-4 h-4" />
+                  Patient Treatment History
+                </h4>
+                {historyLoading ? (
+                  <div className="flex justify-center items-center py-4">
+                    <FaSpinner className="animate-spin text-2xl text-green-600" />
+                    <span className="ml-2 text-gray-600">Loading history...</span>
+                  </div>
+                ) : patientHistory.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>No previous treatment records found for this patient.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-80 overflow-y-auto">
+                    {patientHistory.map((historyRecord, index) => (
+                      <div 
+                        key={historyRecord.id} 
+                        className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                          historyRecord.id === viewRecord.id 
+                            ? 'border-green-500 bg-green-50 shadow-lg' 
+                            : 'border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50'
+                        }`}
+                        onClick={() => setViewRecord(historyRecord)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              Visit #{patientHistory.length - index}
+                            </span>
+                            {historyRecord.id === viewRecord.id && (
+                              <span className="px-2 py-1 text-xs bg-green-600 text-white rounded-full">
+                                Viewing
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-500 italic">
+                              Click to view details
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600">
+                              {historyRecord.consultation_date 
+                                ? new Date(historyRecord.consultation_date).toLocaleDateString()
+                                : 'N/A'
+                              }
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatTime(historyRecord.consultation_time, historyRecord.consultation_period)}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="font-medium text-gray-600">Chief Complaints:</p>
+                            <p className="text-gray-900 text-xs line-clamp-2">
+                              {historyRecord.chief_complaints || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-600">Diagnosis:</p>
+                            <p className="text-gray-900 text-xs line-clamp-2">
+                              {historyRecord.diagnosis || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-600">Treatment:</p>
+                            <p className="text-gray-900 text-xs line-clamp-2">
+                              {historyRecord.medication || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-600">Attending Provider:</p>
+                            <p className="text-gray-900 text-xs">
+                              {historyRecord.attending_provider || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-2 border-t border-gray-200">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                            Completed
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Close Button */}
               <div className="flex justify-end mt-6">
                 <button
-                  onClick={() => setViewRecord(null)}
+                  onClick={() => {
+                    setViewRecord(null);
+                    setPatientHistory([]);
+                  }}
                   className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
                 >
                   Close

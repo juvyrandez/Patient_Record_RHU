@@ -66,7 +66,7 @@ EXECUTE FUNCTION update_timestamp();
 
 
 -------------------------------------------------------------
-OLDDDDDDDDDDDDDDDD
+OLDDDDDDDDDDDDDD
 CREATE TABLE patients (
   id SERIAL PRIMARY KEY,
   last_name VARCHAR(100) NOT NULL,
@@ -286,6 +286,7 @@ CREATE TABLE IF NOT EXISTS individual_treatment_records (
   referred_to VARCHAR(255),
   referral_reasons TEXT[],
   referred_by VARCHAR(150),
+  nature_of_visit TEXT,
   purpose_of_visit VARCHAR(100),
 
   chief_complaints TEXT,
@@ -318,7 +319,7 @@ BEFORE UPDATE ON individual_treatment_records
 FOR EACH ROW
 EXECUTE FUNCTION update_itr_timestamp();
 
--- Add missing columns for BHW treatment records (if they don't exist)
+--- Add missing columns for BHW treatment records (if they don't exist)
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'individual_treatment_records' AND column_name = 'status') THEN
@@ -331,6 +332,10 @@ BEGIN
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'individual_treatment_records' AND column_name = 'bhw_id') THEN
         ALTER TABLE individual_treatment_records ADD COLUMN bhw_id INTEGER REFERENCES bhws(id) ON DELETE SET NULL;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'individual_treatment_records' AND column_name = 'nature_of_visit') THEN
+        ALTER TABLE individual_treatment_records ADD COLUMN nature_of_visit TEXT;
     END IF;
 END $$;
 
@@ -631,7 +636,7 @@ CREATE INDEX IF NOT EXISTS idx_philpen_created_at ON philpen_records(created_at)
 CREATE INDEX IF NOT EXISTS idx_philpen_risk_level ON philpen_records(risk_level);
 
 -- ==========================================================
--- Trigger to auto-update updated_at on record modificationnnnn
+-- Trigger to auto-update updated_at on record modification
 -- ==========================================================
 CREATE OR REPLACE FUNCTION update_philpen_updated_at_column()
 RETURNS TRIGGER AS $$

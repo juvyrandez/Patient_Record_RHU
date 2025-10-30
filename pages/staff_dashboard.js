@@ -9,7 +9,6 @@ import { FaUsers } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import ReferralForm from '/components/StaffComponents/ReferralForm';
-import PhilpenRiskAssessmentForm from '/components/StaffComponents/PhilpenRiskAssessmentForm';
 import Swal from "sweetalert2";
 
 // Register ChartJS components
@@ -841,6 +840,50 @@ function PatientRecords() {
   const handleSaveTreatmentRecord = async () => {
     if (!selectedPatient) return;
     
+    // Required field validation (excluding referral fields)
+    const root = treatmentFormRef.current;
+    if (!root) return;
+
+    const requiredFields = [
+      { selector: '[data-field="consultation_date"]', name: 'Date of Consultation' },
+      { selector: '[data-field="consultation_time"]', name: 'Consultation Time' },
+      { selector: '[data-field="consultation_period"]', name: 'Consultation Period' },
+      { selector: '[data-field="blood_pressure"]', name: 'Blood Pressure' },
+      { selector: '[data-field="temperature"]', name: 'Temperature' },
+      { selector: '[data-field="height_cm"]', name: 'Height (cm)' },
+      { selector: '[data-field="weight_kg"]', name: 'Weight (kg)' },
+      { selector: '[data-field="heart_rate"]', name: 'Heart Rate' },
+      { selector: '[data-field="respiratory_rate"]', name: 'Respiratory Rate' },
+      { selector: '[data-field="attending_provider"]', name: 'Attending Provider' },
+      { selector: '[data-field="chief_complaints"]', name: 'Chief Complaints' }
+    ];
+
+    const missingFields = [];
+    for (const field of requiredFields) {
+      const element = root.querySelector(field.selector);
+      const value = element?.value?.trim() || '';
+      if (!value) {
+        missingFields.push(field.name);
+      }
+    }
+
+    // Check if Purpose of Visit is selected
+    const purposeOfVisit = root.querySelector('input[data-field="purpose_of_visit"]:checked');
+    if (!purposeOfVisit) {
+      missingFields.push('Type of Consultation / Purpose of Visit');
+    }
+
+    if (missingFields.length > 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Required Fields Missing',
+        html: `Please fill in the following required fields:<br><br><strong>${missingFields.join('<br>')}</strong>`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#f59e0b'
+      });
+      return;
+    }
+    
     // Check if patient already has an incomplete record (not yet completed by doctor)
     try {
       // Add a small delay to ensure any recent database updates are committed
@@ -871,9 +914,18 @@ function PatientRecords() {
       console.error('Error checking existing records:', error);
     }
 
-    const root = treatmentFormRef.current;
     const val = (sel) => root?.querySelector(sel)?.value?.trim() || "";
     const checkedVal = (sel) => root?.querySelector(sel)?.value?.trim() || "";
+    
+    // Get all checked nature of visit checkboxes
+    const natureOfVisitCheckboxes = root?.querySelectorAll('input[data-field="nature_of_visit"]:checked') || [];
+    const natureOfVisitValues = Array.from(natureOfVisitCheckboxes).map(cb => cb.value);
+    const natureOfVisit = natureOfVisitValues.length > 0 ? natureOfVisitValues.join(', ') : null;
+    
+    // Debug: Log nature of visit data
+    console.log('Nature of Visit - Checkboxes found:', natureOfVisitCheckboxes.length);
+    console.log('Nature of Visit - Values:', natureOfVisitValues);
+    console.log('Nature of Visit - Final string:', natureOfVisit);
 
     const body = {
       patient: {
@@ -900,6 +952,7 @@ function PatientRecords() {
         referred_to: val('[data-field="referred_to"]'),
         referral_reasons: val('[data-field="referral_reasons"]'),
         referred_by: val('[data-field="referred_by"]'),
+        nature_of_visit: natureOfVisit,
         purpose_of_visit: checkedVal('input[data-field="purpose_of_visit"]:checked'),
         chief_complaints: val('[data-field="chief_complaints"]'),
         // Staff can fill top 3 diagnosis, but not treatment/lab fields - those are for doctors only
@@ -2757,20 +2810,6 @@ function PatientRecords() {
         </div>
         
         <div className="grid grid-cols-1 gap-4">
-          {/* PHILPEN Risk Assessment Form */}
-          <button
-            onClick={() => {
-              setSelectedFormType('philpen');
-              setShowFormSelection(false);
-            }}
-            className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
-          >
-            <FaHeartbeat className="text-red-500 mr-3 text-xl" />
-            <div>
-              <h4 className="font-medium">PHILPEN Risk Assessment Form</h4>
-              <p className="text-sm text-gray-500">For NCD risk assessment and screening</p>
-            </div>
-          </button>
 
           {/* Individual Treatment Record */}
           <button
@@ -2832,21 +2871,6 @@ function PatientRecords() {
   </div>
 )}
 
-{/* PHILPEN Risk Assessment Form Modal */}
-{selectedPatient && selectedFormType === 'philpen' && (
-  <PhilpenRiskAssessmentForm 
-    patient={selectedPatient}
-    onClose={() => {
-      setSelectedPatient(null);
-      setSelectedFormType(null);
-    }}
-    onSave={() => {
-      setSelectedPatient(null);
-      setSelectedFormType(null);
-      // Refresh data if needed
-    }}
-  />
-)}
 
 {/* Individual Treatment Record Modal */}
 {selectedPatient && selectedFormType === 'treatment' && (
@@ -2960,66 +2984,66 @@ function PatientRecords() {
                   <label className="block text-sm font-medium text-gray-700">Visit Type</label>
                   <div className="flex items-center flex-wrap gap-4">
                     <label className="inline-flex items-center">
-                      <input data-field="visit_type" type="radio" name="visit_type" value="Walk-in" className="form-radio" />
+                      <input data-field="visit_type" type="radio" name="visit_type" value="Walk-in" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500" />
                       <span className="ml-2">Walk-in</span>
                     </label>
                     <label className="inline-flex items-center">
-                      <input data-field="visit_type" type="radio" name="visit_type" value="Visited" className="form-radio" />
+                      <input data-field="visit_type" type="radio" name="visit_type" value="Visited" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500" />
                       <span className="ml-2">Visited</span>
                     </label>
                     <label className="inline-flex items-center">
-                      <input data-field="visit_type" type="radio" name="visit_type" value="Referral" className="form-radio" />
+                      <input data-field="visit_type" type="radio" name="visit_type" value="Referral" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500" />
                       <span className="ml-2">Referral</span>
                     </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
-                  <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">Date of Consultation <span className="text-red-500">*</span></label>
+                  <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
+                  <label className="block text-sm font-medium text-gray-700">Consultation Time <span className="text-red-500">*</span></label>
                   <div className="flex gap-2">
-                    <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                    <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md">
+                    <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
+                    <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md" required>
                       <option>AM</option>
                       <option>PM</option>
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
-                  <input type="text" data-field="blood_pressure" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">Blood Pressure <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="blood_pressure" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Temperature</label>
-                  <input type="text" data-field="temperature" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">Temperature <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="temperature" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                  <input type="text" data-field="height_cm" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">Height (cm) <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="height_cm" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                  <input type="text" data-field="weight_kg" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">Weight (kg) <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="weight_kg" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
-                  <input type="text" data-field="heart_rate" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">HR/PR (bpm) <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="heart_rate" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
-                  <input type="text" data-field="respiratory_rate" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">RR (cpm) <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="respiratory_rate" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
-                  <input type="text" data-field="attending_provider" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <label className="block text-sm font-medium text-gray-700">Name of Attending Provider <span className="text-red-500">*</span></label>
+                  <input type="text" data-field="attending_provider" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                 </div>
               </div>
             </div>
@@ -3061,34 +3085,52 @@ function PatientRecords() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
+                <input 
+                  type="checkbox" 
+                  name="nature_of_visit" 
+                  value="New Consultation/Case" 
+                  data-field="nature_of_visit"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" 
+                />
                 <span className="ml-2">New Consultation/Case</span>
               </label>
             </div>
             <div>
               <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
+                <input 
+                  type="checkbox" 
+                  name="nature_of_visit" 
+                  value="New Admission" 
+                  data-field="nature_of_visit"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" 
+                />
                 <span className="ml-2">New Admission</span>
               </label>
             </div>
             <div>
               <label className="inline-flex items-center">
-                <input type="checkbox" className="form-checkbox" />
+                <input 
+                  type="checkbox" 
+                  name="nature_of_visit" 
+                  value="Follow-up visit" 
+                  data-field="nature_of_visit"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" 
+                />
                 <span className="ml-2">Follow-up visit</span>
               </label>
             </div>
           </div>
-          <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
+          <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit <span className="text-red-500">*</span></h5>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left: single-select radios */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {[
                 "General", "Family Planning", "Prenatal", "Postpartum", "Dental Care",
                 "Tuberculosis", "Child Care", "Child Immunization", "Child Nutrition",
-                "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization"
+                "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization", "Animal Bite"
               ].map((label, idx) => (
                 <label key={idx} className="inline-flex items-center">
-                  <input name="purpose_of_visit" value={label} data-field="purpose_of_visit" type="radio" className="form-radio" />
+                  <input name="purpose_of_visit" value={label} data-field="purpose_of_visit" type="radio" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500" />
                   <span className="ml-2">{label}</span>
                 </label>
               ))}
@@ -3096,11 +3138,12 @@ function PatientRecords() {
 
             {/* Right: Chief Complaints */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Chief Complaints</label>
+              <label className="block text-sm font-medium text-gray-700">Chief Complaints <span className="text-red-500">*</span></label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 rows="8"
                 data-field="chief_complaints"
+                required
               ></textarea>
             </div>
           </div>
@@ -3110,7 +3153,7 @@ function PatientRecords() {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
             <h4 className="font-bold border-b border-gray-300 pb-1">
-              Diagnosis
+              Possible Diagnosis
             </h4>
             <button
               type="button"
@@ -4602,41 +4645,55 @@ function HealthcarePanel() {
       {/* Main Content */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Controls Section */}
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by disease..."
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            {/* Left Side - Search and Filter */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full lg:w-auto">
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by disease or barangay..."
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white shadow-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              {/* Barangay Filter */}
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Barangay:</label>
+                <select
+                  value={filterBrgy}
+                  onChange={(e) => setFilterBrgy(e.target.value)}
+                  className="border-0 focus:ring-0 text-sm font-medium text-gray-900 bg-transparent cursor-pointer"
+                >
+                  <option value="All">All Barangays</option>
+                  {barangays.map((brgy) => (
+                    <option key={brgy} value={brgy}>{brgy}</option>
+                  ))}
+                </select>
+                {filterBrgy !== 'All' && (
+                  <button
+                    onClick={() => setFilterBrgy('All')}
+                    className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Clear filter"
+                  >
+                    <span className="text-lg">×</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 items-center">
-              <button
-                onClick={exportToCSV}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
-              >
-                <FiDownload className="w-4 h-4" />
-                Export CSV
-              </button>
-
-              <select
-                value={filterBrgy}
-                onChange={(e) => setFilterBrgy(e.target.value)}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white text-sm font-medium"
-              >
-                <option value="All">All Barangays</option>
-                {barangays.map((brgy) => (
-                  <option key={brgy} value={brgy}>{brgy}</option>
-                ))}
-              </select>
-            </div>
+            {/* Right Side - Export Button */}
+            <button
+              onClick={exportToCSV}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium whitespace-nowrap"
+            >
+              <FiDownload className="w-4 h-4" />
+              Export CSV
+            </button>
           </div>
         </div>
 
@@ -4650,69 +4707,80 @@ function HealthcarePanel() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-10">
-                  <tr>
-                    <HeaderCell className="w-1/6 sticky left-0 bg-green-600 z-20 rounded-tl-xl text-white font-semibold">Disease</HeaderCell>
-
-                    {barangays.map((brgy, index) => (
-                      <th key={brgy} colSpan="3" className={`px-2 py-3 border-b border-green-500 text-center ${index < barangays.length - 1 ? 'border-r border-green-400' : ''}`}>
-                        <span className="text-xs font-bold text-white block truncate max-w-[80px]">{brgy}</span>
-                        <div className="flex justify-around mt-1">
-                          <span className="text-xs font-medium w-1/3 text-green-100">M</span>
-                          <span className="text-xs font-medium w-1/3 text-green-100">F</span>
-                          <span className="text-xs font-bold w-1/3 text-white">T</span>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {filteredData.map((item, rowIndex) => (
-                    <tr key={item.id} className={`hover:bg-green-50/50 transition-colors ${rowIndex % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'}`}>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-inherit border-r border-gray-100 whitespace-nowrap z-10">
-                        {item.disease}
-                      </td>
-
-                      {barangays.map((brgy, index) => {
-                        const brgyData = item.brgys[brgy] || { M: 0, F: 0, T: 0 };
-                        return (
-                          <React.Fragment key={brgy}>
-                            <td className="px-2 py-3 text-sm text-center text-gray-600 whitespace-nowrap">
-                              {brgyData.M}
-                            </td>
-                            <td className="px-2 py-3 text-sm text-center text-gray-600 whitespace-nowrap">
-                              {brgyData.F}
-                            </td>
-                            <td className={`px-2 py-3 text-sm text-center font-semibold text-gray-900 whitespace-nowrap ${index < barangays.length - 1 ? 'border-r border-gray-200' : ''}`}>
-                              <span className={`inline-flex items-center justify-center min-w-[24px] h-6 rounded-full text-xs font-bold ${
-                                brgyData.T > 0 ? 'bg-green-100 text-green-800' : 'text-gray-400'
-                              }`}>
-                                {brgyData.T}
-                              </span>
-                            </td>
-                          </React.Fragment>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  {filteredData.length === 0 && !loading && (
+            <div className="overflow-x-auto">
+              <div className="max-h-[600px] overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-30">
                     <tr>
-                      <td colSpan={1 + barangays.length * 3} className="py-12 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                            <FaChartBar className="w-8 h-8 text-gray-400" />
+                      <th className="px-4 py-4 text-left text-sm font-bold text-white uppercase tracking-wider sticky left-0 bg-green-600 z-40 min-w-[150px] shadow-md">
+                        Barangay
+                      </th>
+                      {filteredData.map((item, index) => (
+                        <th key={item.id} className="px-3 py-4 text-center border-l border-green-500 bg-gradient-to-r from-green-600 to-green-700">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-bold text-white block">{item.disease}</span>
+                            <div className="flex justify-around gap-1 mt-1">
+                              <span className="text-xs font-medium text-green-100 w-8">M</span>
+                              <span className="text-xs font-medium text-green-100 w-8">F</span>
+                              <span className="text-xs font-bold text-white w-8">T</span>
+                            </div>
                           </div>
-                          <p className="text-gray-500 font-medium">No matching records found</p>
-                          <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
-                        </div>
-                      </td>
+                        </th>
+                      ))}
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {barangays.map((brgy, rowIndex) => {
+                      // Filter check for barangay
+                      if (filterBrgy !== 'All' && brgy !== filterBrgy) return null;
+                      
+                      return (
+                        <tr key={brgy} className={`hover:bg-green-50/50 transition-colors ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-900 sticky left-0 bg-inherit border-r border-gray-200 z-20 whitespace-nowrap shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              {brgy}
+                            </div>
+                          </td>
+
+                          {filteredData.map((item, index) => {
+                            const brgyData = item.brgys[brgy] || { M: 0, F: 0, T: 0 };
+                            return (
+                              <td key={item.id} className="px-3 py-3 border-l border-gray-100">
+                                <div className="flex justify-around gap-1">
+                                  <span className="text-sm text-center text-gray-600 w-8">{brgyData.M}</span>
+                                  <span className="text-sm text-center text-gray-600 w-8">{brgyData.F}</span>
+                                  <span className="text-sm text-center font-bold w-8">
+                                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${
+                                      brgyData.T > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-50 text-gray-400'
+                                    }`}>
+                                      {brgyData.T}
+                                    </span>
+                                  </span>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                    {barangays.filter(brgy => filterBrgy === 'All' || brgy === filterBrgy).length === 0 && (
+                      <tr>
+                        <td colSpan={1 + filteredData.length} className="py-12 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                              <FaChartBar className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-gray-500 font-medium">No matching records found</p>
+                            <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -4731,54 +4799,115 @@ function HealthcarePanel() {
 // --- RABIES REGISTRY PANEL ---
 function RabiesPanel() {
   // State management
-  const [registryData, setRegistryData] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [animalBitePatients, setAnimalBitePatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState(null);
-  const [formData, setFormData] = useState({
-    exposure_category: '',
-    animal: '',
-    cat_ii_date: '',
-    cat_ii_vac: false,
-    cat_iii_date: '',
-    cat_iii_vac: false,
-    notes: ''
-  });
 
   // Load data on component mount
   useEffect(() => {
-    loadRegistryData();
-    loadPatients();
+    loadAnimalBitePatients();
   }, []);
 
-  const loadRegistryData = async () => {
+  const loadAnimalBitePatients = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/rabies_registry');
+      // Fetch treatment records with Animal Bite consultation type
+      const response = await fetch('/api/treatment_records?purpose_of_visit=Animal Bite');
       if (response.ok) {
-        const data = await response.json();
-        setRegistryData(data);
+        const treatmentRecords = await response.json();
+        
+        // First, get existing rabies registry data
+        const registryResponse = await fetch('/api/rabies_registry');
+        const existingRegistry = registryResponse.ok ? await registryResponse.json() : [];
+        
+        // Create a map of existing registry data by patient_id
+        const registryMap = new Map();
+        existingRegistry.forEach(entry => {
+          // Debug logging for date format
+          console.log('🔍 Registry entry from DB:', entry);
+          if (entry.cat_ii_date) console.log('📅 cat_ii_date from DB:', entry.cat_ii_date, typeof entry.cat_ii_date);
+          if (entry.cat_iii_date) console.log('📅 cat_iii_date from DB:', entry.cat_iii_date, typeof entry.cat_iii_date);
+          
+          registryMap.set(entry.patient_id, entry);
+        });
+        
+        // Process and group by patient, removing duplicates
+        const patientMap = new Map();
+        
+        treatmentRecords.forEach(record => {
+          const patientId = record.patient_id;
+          const age = calculateAge(record.birth_date);
+          const ageSex = `${age}/${record.gender || 'N/A'}`;
+          const fullName = `${record.last_name || ''}, ${record.first_name || ''} ${record.middle_name || ''}`.trim().replace(/,$/, '');
+          
+          // Use the most recent record for each patient
+          if (!patientMap.has(patientId) || new Date(record.consultation_date) > new Date(patientMap.get(patientId).consultation_date)) {
+            const existingRegistryData = registryMap.get(patientId);
+            
+            patientMap.set(patientId, {
+              id: record.id,
+              patient_id: patientId,
+              patient_name: fullName || 'Unknown Patient',
+              age_sex: ageSex,
+              address: record.residential_address || 'N/A',
+              consultation_date: record.consultation_date,
+              // Load existing registry data if available, otherwise initialize
+              exposure_category: existingRegistryData?.exposure_category || '',
+              animal: existingRegistryData?.animal || '',
+              cat_ii_date: existingRegistryData?.cat_ii_date ? formatDateForInput(existingRegistryData.cat_ii_date) : '',
+              cat_ii_vac: existingRegistryData?.cat_ii_vac || false,
+              cat_iii_date: existingRegistryData?.cat_iii_date ? formatDateForInput(existingRegistryData.cat_iii_date) : '',
+              cat_iii_vac: existingRegistryData?.cat_iii_vac || false,
+              // Additional patient info
+              birth_date: record.birth_date,
+              gender: record.gender,
+              // Treatment record info
+              attending_provider: record.attending_provider,
+              status: record.status
+            });
+          }
+        });
+        
+        const processedPatients = Array.from(patientMap.values());
+        
+        setAnimalBitePatients(processedPatients);
+        
+        // Show success message
+        if (processedPatients.length > 0) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Data Refreshed',
+            text: `Found ${processedPatients.length} Animal Bite patient(s)`,
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+          });
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'No Data Found',
+            text: 'No Animal Bite consultations found. Patients will appear here when Animal Bite is selected in treatment forms.',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+          });
+        }
+      } else {
+        throw new Error('Failed to fetch data');
       }
     } catch (error) {
-      console.error('Error loading registry data:', error);
+      console.error('Error loading animal bite patients:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error Loading Data',
+        text: 'Failed to load Animal Bite patients. Please try again.',
+        confirmButtonText: 'OK'
+      });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadPatients = async () => {
-    try {
-      const response = await fetch('/api/patients');
-      if (response.ok) {
-        const data = await response.json();
-        setPatients(data);
-      }
-    } catch (error) {
-      console.error('Error loading patients:', error);
     }
   };
 
@@ -4794,97 +4923,107 @@ function RabiesPanel() {
     return age;
   };
 
-  const handleAddPatient = (patient) => {
-    const age = calculateAge(patient.birth_date);
-    const ageSex = `${age}/${patient.gender || 'N/A'}`;
-    const fullName = `${patient.last_name}, ${patient.first_name} ${patient.middle_name || ''}`.trim();
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return '';
     
-    setSelectedPatient({
-      ...patient,
-      age_sex: ageSex,
-      patient_name: fullName,
-      address: patient.residential_address || 'N/A'
-    });
-    setShowAddModal(true);
-    setPatientSearchTerm('');
-  };
-
-  const handleSaveRegistry = async () => {
-    if (!selectedPatient) return;
-
+    console.log('🔧 Formatting date:', dateValue, typeof dateValue);
+    
+    // Convert to string if needed
+    const dateStr = String(dateValue);
+    
+    // If it's already in YYYY-MM-DD format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      console.log('✅ Date already in correct format:', dateStr);
+      return dateStr;
+    }
+    
+    // If it has time component, extract just the date part
+    if (dateStr.includes('T') || dateStr.includes(' ')) {
+      const formatted = dateStr.split('T')[0].split(' ')[0];
+      console.log('✅ Extracted date:', formatted);
+      return formatted;
+    }
+    
+    // Last resort: parse and format using local date (not UTC to avoid timezone shift)
     try {
-      const payload = {
-        patient_id: selectedPatient.id,
-        patient_name: selectedPatient.patient_name,
-        age_sex: selectedPatient.age_sex,
-        address: selectedPatient.address,
-        ...formData
-      };
-
-      const response = await fetch('/api/rabies_registry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Success!',
-          text: 'Patient registry updated successfully',
-          confirmButtonText: 'OK'
-        });
-        loadRegistryData();
-        setShowAddModal(false);
-        setSelectedPatient(null);
-        setFormData({
-          exposure_category: '',
-          animal: '',
-          cat_ii_date: '',
-          cat_ii_vac: false,
-          cat_iii_date: '',
-          cat_iii_vac: false,
-          notes: ''
-        });
-      } else {
-        const error = await response.json();
-        await Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.message || 'Failed to add patient to registry',
-          confirmButtonText: 'OK'
-        });
-      }
+      const date = new Date(dateValue);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formatted = `${year}-${month}-${day}`;
+      console.log('✅ Formatted using local date:', formatted);
+      return formatted;
     } catch (error) {
-      console.error('Error saving registry:', error);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'An error occurred while saving',
-        confirmButtonText: 'OK'
-      });
+      console.error('❌ Error formatting date:', error);
+      return '';
     }
   };
 
   const handleUpdateField = async (id, field, value) => {
+    // Find the patient first before updating state
+    const patient = animalBitePatients.find(p => p.id === id);
+    if (!patient) return;
+    
+    // Update the local state for immediate UI feedback
+    setAnimalBitePatients(prevPatients => 
+      prevPatients.map(p => 
+        p.id === id ? { ...p, [field]: value } : p
+      )
+    );
+    
+    // Save to backend rabies_registry table
     try {
-      const response = await fetch(`/api/rabies_registry?id=${id}`, {
-        method: 'PUT',
+      // Prepare the data for rabies registry with the updated value
+      const registryData = {
+        patient_id: patient.patient_id,
+        patient_name: patient.patient_name,
+        age_sex: patient.age_sex,
+        address: patient.address,
+        exposure_category: field === 'exposure_category' ? value : patient.exposure_category,
+        animal: field === 'animal' ? value : patient.animal,
+        cat_ii_date: field === 'cat_ii_date' ? (value || null) : (patient.cat_ii_date || null),
+        cat_ii_vac: field === 'cat_ii_vac' ? value : patient.cat_ii_vac,
+        cat_iii_date: field === 'cat_iii_date' ? (value || null) : (patient.cat_iii_date || null),
+        cat_iii_vac: field === 'cat_iii_vac' ? value : patient.cat_iii_vac
+      };
+      
+      console.log(`🔄 Updating ${field} to:`, value);
+      console.log('📤 Sending registry data:', registryData);
+      
+      const response = await fetch('/api/rabies_registry', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value })
+        body: JSON.stringify(registryData)
       });
-
+      
       if (response.ok) {
-        loadRegistryData();
+        const savedData = await response.json();
+        // Show subtle success indicator
+        console.log(`✅ Auto-saved ${field} for ${patient.patient_name}: ${value}`);
+        console.log('Saved data:', savedData);
+      } else {
+        const error = await response.json();
+        console.error('Failed to save to registry:', error);
+        console.error('Registry data sent:', registryData);
+        // Optionally show user notification for save failure
+        Swal.fire({
+          icon: 'warning',
+          title: 'Save Warning',
+          text: `Failed to auto-save ${field}. Changes are kept locally.`,
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
       }
     } catch (error) {
-      console.error('Error updating field:', error);
+      console.error('Error auto-saving to registry:', error);
     }
   };
 
   // Filter data
   const filteredData = useMemo(() => {
-    let filtered = registryData;
+    let filtered = animalBitePatients;
     if (filterCategory !== 'All') {
       filtered = filtered.filter(item => item.exposure_category === filterCategory);
     }
@@ -4897,21 +5036,12 @@ function RabiesPanel() {
       );
     }
     return filtered;
-  }, [searchTerm, filterCategory, registryData]);
-
-  // Filter patients for search
-  const filteredPatients = patients.filter(patient => {
-    if (!patientSearchTerm) return false;
-    const searchLower = patientSearchTerm.toLowerCase();
-    const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
-    return fullName.includes(searchLower) || 
-           (patient.last_name && patient.last_name.toLowerCase().includes(searchLower));
-  });
+  }, [searchTerm, filterCategory, animalBitePatients]);
 
   const convertToCSV = (objArray) => {
     const headers = [
-      'Patient Name', 'Age/Sex', 'Address', 'Exposure Category', 'Animal',
-      'Cat II Date', 'Cat. II Vac', 'Cat III Date', 'Cat. III Vac'
+      'Patient Name', 'Age/Sex', 'Address',
+      'Exposure Category', 'Animal', 'Cat II Date', 'Cat. II Vac', 'Cat III Date', 'Cat. III Vac'
     ];
     const rows = objArray.map(row => [
       `"${row.patient_name.replace(/"/g, '""')}"`,
@@ -4940,17 +5070,17 @@ function RabiesPanel() {
 
   const RegistryTable = ({ data: tableData }) => {
     const headers = [
-      'Patient Name', 'Age/Sex', 'Address', 'Exposure Category', 'Animal',
-      'Cat II Date', 'Cat. II Vac', 'Cat III Date', 'Cat. III Vac'
+      'Patient Name', 'Age/Sex', 'Address',
+      'Exposure Category', 'Animal', 'Cat II Date', 'Cat. II Vac', 'Cat III Date', 'Cat. III Vac'
     ];
 
     return (
       <div className="overflow-x-auto relative">
-        <table className="w-full text-sm text-left text-gray-500">
+        <table className="w-full text-xs sm:text-sm text-left text-gray-500">
           <thead className="text-xs text-white uppercase bg-gradient-to-r from-green-600 to-green-700 sticky top-0 z-10">
             <tr>
               {headers.map(header => (
-                <th key={header} scope="col" className="py-3 px-6 whitespace-nowrap">
+                <th key={header} scope="col" className="py-2 px-2 sm:py-3 sm:px-4 whitespace-nowrap text-xs">
                   {header}
                 </th>
               ))}
@@ -4959,52 +5089,73 @@ function RabiesPanel() {
           <tbody>
             {tableData.map((item) => (
               <tr key={item.id} className="bg-white border-b hover:bg-teal-50/50">
-                <td className="py-4 px-6 font-medium text-gray-900">{item.patient_name}</td>
-                <td className="py-4 px-6">{item.age_sex}</td>
-                <td className="py-4 px-6 max-w-xs truncate">{item.address}</td>
-                <td className="py-4 px-6">
-                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                    item.exposure_category === 'III' ? 'bg-red-100 text-red-800' :
-                    item.exposure_category === 'II' ? 'bg-yellow-100 text-yellow-800' :
-                    item.exposure_category === 'I' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {item.exposure_category || 'Not Set'}
-                  </span>
+                <td className="py-2 px-2 sm:py-3 sm:px-4 font-medium text-gray-900 text-xs sm:text-sm">
+                  <div className="max-w-[120px] sm:max-w-[150px] truncate" title={item.patient_name}>
+                    {item.patient_name}
+                  </div>
                 </td>
-                <td className="py-4 px-6">{item.animal || 'Not Set'}</td>
-                <td className="py-4 px-6">
+                <td className="py-2 px-2 sm:py-3 sm:px-4 text-xs sm:text-sm">{item.age_sex}</td>
+                <td className="py-2 px-2 sm:py-3 sm:px-4 text-xs sm:text-sm">
+                  <div className="max-w-[100px] sm:max-w-[150px] truncate" title={item.address}>
+                    {item.address}
+                  </div>
+                </td>
+                <td className="py-2 px-2 sm:py-3 sm:px-4">
+                  <select
+                    value={item.exposure_category || ''}
+                    onChange={(e) => handleUpdateField(item.id, 'exposure_category', e.target.value)}
+                    className="w-full text-xs px-1 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white min-w-[80px]"
+                  >
+                    <option value="">Select</option>
+                    <option value="I">Cat I</option>
+                    <option value="II">Cat II</option>
+                    <option value="III">Cat III</option>
+                  </select>
+                </td>
+                <td className="py-2 px-2 sm:py-3 sm:px-4">
+                  <select
+                    value={item.animal || ''}
+                    onChange={(e) => handleUpdateField(item.id, 'animal', e.target.value)}
+                    className="w-full text-xs px-1 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white min-w-[70px]"
+                  >
+                    <option value="">Select</option>
+                    <option value="Dog">Dog</option>
+                    <option value="Cat">Cat</option>
+                    <option value="Bat">Bat</option>
+                    <option value="Monkey">Monkey</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </td>
+                <td className="py-2 px-2 sm:py-3 sm:px-4">
                   <input
                     type="date"
-                    value={item.cat_ii_date ? new Date(item.cat_ii_date).toISOString().split('T')[0] : ''}
+                    value={item.cat_ii_date || ''}
                     onChange={(e) => handleUpdateField(item.id, 'cat_ii_date', e.target.value)}
-                    className="w-full text-xs px-2 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white"
-                    placeholder="Select date"
+                    className="w-full text-xs px-1 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white min-w-[110px]"
                   />
                 </td>
-                <td className="py-4 px-6 text-center">
+                <td className="py-2 px-2 sm:py-3 sm:px-4 text-center">
                   <input
                     type="checkbox"
                     checked={item.cat_ii_vac || false}
                     onChange={(e) => handleUpdateField(item.id, 'cat_ii_vac', e.target.checked)}
-                    className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
                   />
                 </td>
-                <td className="py-4 px-6">
+                <td className="py-2 px-2 sm:py-3 sm:px-4">
                   <input
                     type="date"
-                    value={item.cat_iii_date ? new Date(item.cat_iii_date).toISOString().split('T')[0] : ''}
+                    value={item.cat_iii_date || ''}
                     onChange={(e) => handleUpdateField(item.id, 'cat_iii_date', e.target.value)}
-                    className="w-full text-xs px-2 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white"
-                    placeholder="Select date"
+                    className="w-full text-xs px-1 py-1 border rounded focus:ring-2 focus:ring-green-500 bg-white min-w-[110px]"
                   />
                 </td>
-                <td className="py-4 px-6 text-center">
+                <td className="py-2 px-2 sm:py-3 sm:px-4 text-center">
                   <input
                     type="checkbox"
                     checked={item.cat_iii_vac || false}
                     onChange={(e) => handleUpdateField(item.id, 'cat_iii_vac', e.target.checked)}
-                    className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
                   />
                 </td>
               </tr>
@@ -5012,7 +5163,21 @@ function RabiesPanel() {
           </tbody>
         </table>
         {tableData.length === 0 && (
-          <p className="p-6 text-center text-gray-500">No registry entries found.</p>
+          <div className="p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <FaDog className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Animal Bite Patients</h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              Patients will appear here automatically when "Animal Bite" is selected as the consultation type in Individual Treatment Records.
+            </p>
+            <button
+              onClick={loadAnimalBitePatients}
+              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Refresh Data
+            </button>
+          </div>
         )}
       </div>
     );
@@ -5040,15 +5205,29 @@ function RabiesPanel() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Rabies Registry Report</h1>
-              <p className="text-gray-600 text-sm">Animal bite exposure cases management</p>
+              <p className="text-gray-600 text-sm">Automatic registry from Animal Bite consultations</p>
+              <div className="flex gap-4 mt-2">
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                  Total Patients: {filteredData.length}
+                </span>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  Category I: {filteredData.filter(p => p.exposure_category === 'I').length}
+                </span>
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+                  Category II: {filteredData.filter(p => p.exposure_category === 'II').length}
+                </span>
+                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                  Category III: {filteredData.filter(p => p.exposure_category === 'III').length}
+                </span>
+              </div>
             </div>
           </div>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={loadAnimalBitePatients}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <FaPlus className="w-4 h-4" />
-            Add Patient
+            Refresh Data
           </button>
         </div>
       </div>
@@ -5118,177 +5297,6 @@ function RabiesPanel() {
         </div>
       </div>
 
-      {/* Add Patient Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800">Add Patient to Rabies Registry</h3>
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setSelectedPatient(null);
-                    setPatientSearchTerm('');
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <FaTimes size={24} />
-                </button>
-              </div>
-
-              {!selectedPatient ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Search Patient
-                  </label>
-                  <div className="relative mb-4">
-                    <input
-                      type="text"
-                      placeholder="Type patient name to search..."
-                      className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      value={patientSearchTerm}
-                      onChange={(e) => setPatientSearchTerm(e.target.value)}
-                    />
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  </div>
-
-                  {patientSearchTerm && (
-                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
-                      {filteredPatients.length > 0 ? (
-                        filteredPatients.map(patient => (
-                          <div
-                            key={patient.id}
-                            onClick={() => handleAddPatient(patient)}
-                            className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                          >
-                            <div className="font-medium text-gray-900">
-                              {patient.last_name}, {patient.first_name} {patient.middle_name || ''}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Age: {calculateAge(patient.birth_date)} | Gender: {patient.gender || 'N/A'}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Address: {patient.residential_address || 'N/A'}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-3 text-center text-gray-500">
-                          No patients found matching "{patientSearchTerm}"
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                    <h4 className="font-medium text-gray-800 mb-2">Selected Patient</h4>
-                    <p><strong>Name:</strong> {selectedPatient.patient_name}</p>
-                    <p><strong>Age/Sex:</strong> {selectedPatient.age_sex}</p>
-                    <p><strong>Address:</strong> {selectedPatient.address}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Exposure Category
-                      </label>
-                      <select
-                        value={formData.exposure_category}
-                        onChange={(e) => setFormData({...formData, exposure_category: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      >
-                        <option value="">Select Category</option>
-                        <option value="I">Category I</option>
-                        <option value="II">Category II</option>
-                        <option value="III">Category III</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Animal
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.animal}
-                        onChange={(e) => setFormData({...formData, animal: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                        placeholder="e.g., Dog, Cat, etc."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Cat II Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.cat_ii_date}
-                        onChange={(e) => setFormData({...formData, cat_ii_date: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Cat III Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.cat_iii_date}
-                        onChange={(e) => setFormData({...formData, cat_iii_date: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Notes
-                    </label>
-                    <textarea
-                      value={formData.notes}
-                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      rows="3"
-                      placeholder="Additional notes..."
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 mt-6">
-                    <button
-                      onClick={() => {
-                        setSelectedPatient(null);
-                        setFormData({
-                          exposure_category: '',
-                          animal: '',
-                          cat_ii_date: '',
-                          cat_ii_vac: false,
-                          cat_iii_date: '',
-                          cat_iii_vac: false,
-                          notes: ''
-                        });
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                    >
-                      Back to Search
-                    </button>
-                    <button
-                      onClick={handleSaveRegistry}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      Save to Registry
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mt-6 text-center text-sm text-gray-500">
         Rabies Registry Data Report - Generated {new Date().toLocaleDateString()}

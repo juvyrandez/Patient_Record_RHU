@@ -19,12 +19,22 @@ export default async function handler(req, res) {
         } else {
           // Get all rabies registry entries
           const { rows } = await pool.query(`
-            SELECT r.*, p.first_name, p.last_name, p.middle_name, p.birth_date, p.gender, p.residential_address
+            SELECT r.*, p.first_name, p.last_name, p.middle_name, p.birth_date, p.gender, p.residential_address,
+                   TO_CHAR(r.cat_ii_date, 'YYYY-MM-DD') as cat_ii_date_formatted,
+                   TO_CHAR(r.cat_iii_date, 'YYYY-MM-DD') as cat_iii_date_formatted
             FROM rabies_registry r
             LEFT JOIN patients p ON r.patient_id = p.id
             ORDER BY r.created_at DESC
           `);
-          res.status(200).json(rows);
+          
+          // Format dates to ensure they're in YYYY-MM-DD format
+          const formattedRows = rows.map(row => ({
+            ...row,
+            cat_ii_date: row.cat_ii_date_formatted || row.cat_ii_date,
+            cat_iii_date: row.cat_iii_date_formatted || row.cat_iii_date
+          }));
+          
+          res.status(200).json(formattedRows);
         }
         break;
 
@@ -52,6 +62,12 @@ export default async function handler(req, res) {
         }
 
         try {
+          // Debug logging
+          console.log('Rabies Registry API - Received data:', {
+            patient_id, patient_name, age_sex, address, exposure_category,
+            animal, cat_ii_date, cat_ii_vac, cat_iii_date, cat_iii_vac, notes
+          });
+          
           // Use UPSERT (INSERT ... ON CONFLICT ... DO UPDATE) to update existing records
           const { rows: [entry] } = await pool.query(`
             INSERT INTO rabies_registry (
@@ -65,13 +81,20 @@ export default async function handler(req, res) {
               exposure_category = EXCLUDED.exposure_category,
               animal = EXCLUDED.animal,
               cat_ii_date = EXCLUDED.cat_ii_date,
+              cat_ii_vac = EXCLUDED.cat_ii_vac,
               cat_iii_date = EXCLUDED.cat_iii_date,
+              cat_iii_vac = EXCLUDED.cat_iii_vac,
               notes = EXCLUDED.notes,
               updated_at = NOW()
             RETURNING *
           `, [
             patient_id, patient_name, age_sex, address, exposure_category,
-            animal, cat_ii_date || null, cat_ii_vac || false, cat_iii_date || null, cat_iii_vac || false, notes
+            animal, 
+            cat_ii_date && cat_ii_date.trim() !== '' ? cat_ii_date : null, 
+            cat_ii_vac || false, 
+            cat_iii_date && cat_iii_date.trim() !== '' ? cat_iii_date : null, 
+            cat_iii_vac || false, 
+            notes
           ]);
 
           res.status(200).json(entry);

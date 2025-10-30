@@ -30,6 +30,50 @@ function ReferralForm() {
   const handleSaveTreatmentRecord = async () => {
     if (!treatmentPatient) return;
     
+    // Required field validation (excluding referral fields)
+    const root = treatmentFormRef.current;
+    if (!root) return;
+
+    const requiredFields = [
+      { selector: '[data-field="consultation_date"]', name: 'Date of Consultation' },
+      { selector: '[data-field="consultation_time"]', name: 'Consultation Time' },
+      { selector: '[data-field="consultation_period"]', name: 'Consultation Period' },
+      { selector: '[data-field="blood_pressure"]', name: 'Blood Pressure' },
+      { selector: '[data-field="temperature"]', name: 'Temperature' },
+      { selector: '[data-field="height_cm"]', name: 'Height (cm)' },
+      { selector: '[data-field="weight_kg"]', name: 'Weight (kg)' },
+      { selector: '[data-field="heart_rate"]', name: 'Heart Rate' },
+      { selector: '[data-field="respiratory_rate"]', name: 'Respiratory Rate' },
+      { selector: '[data-field="attending_provider"]', name: 'Attending Provider' },
+      { selector: '[data-field="chief_complaints"]', name: 'Chief Complaints' }
+    ];
+
+    const missingFields = [];
+    for (const field of requiredFields) {
+      const element = root.querySelector(field.selector);
+      const value = element?.value?.trim() || '';
+      if (!value) {
+        missingFields.push(field.name);
+      }
+    }
+
+    // Check if Purpose of Visit is selected
+    const purposeOfVisit = root.querySelector('input[data-field="purpose_of_visit"]:checked');
+    if (!purposeOfVisit) {
+      missingFields.push('Type of Consultation / Purpose of Visit');
+    }
+
+    if (missingFields.length > 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Required Fields Missing',
+        html: `Please fill in the following required fields:<br><br><strong>${missingFields.join('<br>')}</strong>`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#f59e0b'
+      });
+      return;
+    }
+    
     // Check if patient already has an incomplete record (not yet completed by doctor)
     try {
       // Add a small delay to ensure any recent database updates are committed
@@ -60,9 +104,18 @@ function ReferralForm() {
       console.error('Error checking existing records:', error);
     }
 
-    const root = treatmentFormRef.current;
     const val = (sel) => root?.querySelector(sel)?.value?.trim() || "";
     const checkedVal = (sel) => root?.querySelector(sel)?.value?.trim() || "";
+    
+    // Get all checked nature of visit checkboxes
+    const natureOfVisitCheckboxes = root?.querySelectorAll('input[data-field="nature_of_visit"]:checked') || [];
+    const natureOfVisitValues = Array.from(natureOfVisitCheckboxes).map(cb => cb.value);
+    const natureOfVisit = natureOfVisitValues.length > 0 ? natureOfVisitValues.join(', ') : null;
+    
+    // Debug: Log nature of visit data
+    console.log('Nature of Visit - Checkboxes found:', natureOfVisitCheckboxes.length);
+    console.log('Nature of Visit - Values:', natureOfVisitValues);
+    console.log('Nature of Visit - Final string:', natureOfVisit);
 
     const body = {
       patient: {
@@ -90,6 +143,7 @@ function ReferralForm() {
         referred_to: val('[data-field="referred_to"]'),
         referral_reasons: val('[data-field="referral_reasons"]'),
         referred_by: val('[data-field="referred_by"]'),
+        nature_of_visit: natureOfVisit,
         purpose_of_visit: checkedVal('input[data-field="purpose_of_visit"]:checked'),
         chief_complaints: val('[data-field="chief_complaints"]'),
         // Staff can fill top 3 diagnosis, but not treatment/lab fields - those are for doctors only
@@ -1190,52 +1244,52 @@ function ReferralForm() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
-                        <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_date ? new Date(treatmentReferral.referral_date).toISOString().split('T')[0] : ''} />
+                        <label className="block text-sm font-medium text-gray-700">Date of Consultation <span className="text-red-500">*</span></label>
+                        <input data-field="consultation_date" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_date ? new Date(treatmentReferral.referral_date).toISOString().split('T')[0] : ''} required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
+                        <label className="block text-sm font-medium text-gray-700">Consultation Time <span className="text-red-500">*</span></label>
                         <div className="flex gap-2">
-                          <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_time || ''} />
-                          <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md" defaultValue={(() => { try { const h = new Date(`2025-01-01T${treatmentReferral?.referral_time || '00:00'}`).getHours(); return h < 12 ? 'AM' : 'PM'; } catch { return 'AM'; } })()}>
+                          <input data-field="consultation_time" type="time" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.referral_time || ''} required />
+                          <select data-field="consultation_period" className="px-3 py-2 border border-gray-300 rounded-md" defaultValue={(() => { try { const h = new Date(`2025-01-01T${treatmentReferral?.referral_time || '00:00'}`).getHours(); return h < 12 ? 'AM' : 'PM'; } catch { return 'AM'; } })()} required>
                             <option>AM</option>
                             <option>PM</option>
                           </select>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
-                        <input data-field="blood_pressure" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.blood_pressure || ''} />
+                        <label className="block text-sm font-medium text-gray-700">Blood Pressure <span className="text-red-500">*</span></label>
+                        <input data-field="blood_pressure" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.blood_pressure || ''} required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Temperature</label>
-                        <input data-field="temperature" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label className="block text-sm font-medium text-gray-700">Temperature <span className="text-red-500">*</span></label>
+                        <input data-field="temperature" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                        <input data-field="height_cm" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label className="block text-sm font-medium text-gray-700">Height (cm) <span className="text-red-500">*</span></label>
+                        <input data-field="height_cm" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                        <input data-field="weight_kg" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.weight || ''} />
+                        <label className="block text-sm font-medium text-gray-700">Weight (kg) <span className="text-red-500">*</span></label>
+                        <input data-field="weight_kg" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.weight || ''} required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
-                        <input data-field="heart_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.heart_rate || ''} />
+                        <label className="block text-sm font-medium text-gray-700">HR/PR (bpm) <span className="text-red-500">*</span></label>
+                        <input data-field="heart_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.heart_rate || ''} required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
-                        <input data-field="respiratory_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.respiratory_rate || ''} />
+                        <label className="block text-sm font-medium text-gray-700">RR (cpm) <span className="text-red-500">*</span></label>
+                        <input data-field="respiratory_rate" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue={treatmentReferral?.respiratory_rate || ''} required />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
-                        <input data-field="attending_provider" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label className="block text-sm font-medium text-gray-700">Name of Attending Provider <span className="text-red-500">*</span></label>
+                        <input data-field="attending_provider" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
                     </div>
                   </div>
@@ -1291,31 +1345,49 @@ function ReferralForm() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="inline-flex items-center">
-                      <input type="checkbox" className="form-checkbox" />
+                      <input 
+                        type="checkbox" 
+                        name="nature_of_visit" 
+                        value="New Consultation/Case" 
+                        data-field="nature_of_visit"
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" 
+                      />
                       <span className="ml-2">New Consultation/Case</span>
                     </label>
                   </div>
                   <div>
                     <label className="inline-flex items-center">
-                      <input type="checkbox" className="form-checkbox" />
+                      <input 
+                        type="checkbox" 
+                        name="nature_of_visit" 
+                        value="New Admission" 
+                        data-field="nature_of_visit"
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" 
+                      />
                       <span className="ml-2">New Admission</span>
                     </label>
                   </div>
                   <div>
                     <label className="inline-flex items-center">
-                      <input type="checkbox" className="form-checkbox" />
+                      <input 
+                        type="checkbox" 
+                        name="nature_of_visit" 
+                        value="Follow-up visit" 
+                        data-field="nature_of_visit"
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" 
+                      />
                       <span className="ml-2">Follow-up visit</span>
                     </label>
                   </div>
                 </div>
-                <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
+                <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit <span className="text-red-500">*</span></h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Left: single-select radios */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
                       "General", "Family Planning", "Prenatal", "Postpartum", "Dental Care",
                       "Tuberculosis", "Child Care", "Child Immunization", "Child Nutrition",
-                      "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization"
+                      "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization", "Animal Bite"
                     ].map((label, idx) => (
                       <label key={idx} className="inline-flex items-center">
                         <input name="purpose_of_visit" value={label} data-field="purpose_of_visit" type="radio" className="form-radio" />
@@ -1326,12 +1398,13 @@ function ReferralForm() {
 
                   {/* Right: Chief Complaints */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Chief Complaints</label>
+                    <label className="block text-sm font-medium text-gray-700">Chief Complaints <span className="text-red-500">*</span></label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       rows="8"
                       data-field="chief_complaints"
                       defaultValue={treatmentReferral?.chief_complaints || ''}
+                      required
                     ></textarea>
                   </div>
                 </div>

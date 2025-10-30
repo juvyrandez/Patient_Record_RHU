@@ -2081,6 +2081,8 @@ function ConsultationHistory() {
   const [loading, setLoading] = useState(false);
   const [viewRecord, setViewRecord] = useState(null);
   const [viewOpen, setViewOpen] = useState(false);
+  const [patientHistory, setPatientHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   // Search + sorting for history
   const [histSearch, setHistSearch] = useState("");
   const [histSort, setHistSort] = useState("newest"); // newest | oldest | alpha
@@ -2090,53 +2092,95 @@ function ConsultationHistory() {
       setLoading(true);
       
       // Fetch completed treatment records
-      const res = await fetch('/api/treatment_records?status=completed&limit=100');
+      const res = await fetch('/api/treatment_records?status=completed&limit=200');
       if (!res.ok) throw new Error(await res.text());
       const rows = await res.json();
       
-      // Fetch approved diagnoses for all treatment records
-      const recordIds = rows.map(r => r.id);
-      const diagnosesPromises = recordIds.map(id => 
-        fetch(`/api/approved_diagnoses?treatment_record_id=${id}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => [])
-      );
-      const allDiagnoses = await Promise.all(diagnosesPromises);
-      
-      // Map treatment records with their approved diagnoses
-      const mapped = (rows || []).map((r, index) => {
-        const approvedDiagnoses = allDiagnoses[index] || [];
+      // Group records by patient
+      const groupedPatients = rows.reduce((acc, record) => {
+        const patientKey = `${record.patient_id || 'unknown'}`;
         
-        return {
-          id: r.id,
-          patient: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
-          date: r.consultation_date ? new Date(r.consultation_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString(),
-          rawDate: r.consultation_date ? new Date(r.consultation_date) : new Date(r.created_at),
-          diagnosis: (() => {
-            if (approvedDiagnoses.length > 0) {
-              // Show approved diagnoses only
-              const primaryDiagnosis = approvedDiagnoses.find(d => d.is_primary);
-              const otherDiagnoses = approvedDiagnoses.filter(d => !d.is_primary);
-              
-              if (primaryDiagnosis) {
-                const summary = otherDiagnoses.length > 0 
-                  ? `${primaryDiagnosis.diagnosis_text} (+${otherDiagnoses.length} more)`
-                  : primaryDiagnosis.diagnosis_text;
-                return summary;
-              } else if (approvedDiagnoses.length === 1) {
-                return approvedDiagnoses[0].diagnosis_text;
-              } else {
-                return `${approvedDiagnoses[0].diagnosis_text} (+${approvedDiagnoses.length - 1} more)`;
+        if (!acc[patientKey]) {
+          acc[patientKey] = {
+            patient_id: record.patient_id,
+            patient_first_name: record.patient_first_name,
+            patient_last_name: record.patient_last_name,
+            patient_middle_name: record.patient_middle_name,
+            patient_suffix: record.patient_suffix,
+            records: [],
+            latestRecord: null
+          };
+        }
+        
+        acc[patientKey].records.push(record);
+        
+        // Keep track of the latest record for display
+        if (!acc[patientKey].latestRecord || 
+            new Date(record.consultation_date || record.created_at) > new Date(acc[patientKey].latestRecord.consultation_date || acc[patientKey].latestRecord.created_at)) {
+          acc[patientKey].latestRecord = record;
+        }
+        
+        return acc;
+      }, {});
+      
+      // Convert to array
+      const patientsArray = Object.values(groupedPatients);
+      
+      // Fetch approved diagnoses only for latest records (limited batch to avoid connection issues)
+      const batchSize = 20; // Process in smaller batches
+      const allMapped = [];
+      
+      for (let i = 0; i < patientsArray.length; i += batchSize) {
+        const batch = patientsArray.slice(i, i + batchSize);
+        const latestRecordIds = batch.map(p => p.latestRecord.id);
+        
+        // Fetch diagnoses for this batch
+        const diagnosesPromises = latestRecordIds.map(id => 
+          fetch(`/api/approved_diagnoses?treatment_record_id=${id}`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+        );
+        const batchDiagnoses = await Promise.all(diagnosesPromises);
+        
+        // Map batch to display format
+        const batchMapped = batch.map((patient, batchIndex) => {
+          const r = patient.latestRecord;
+          const approvedDiagnoses = batchDiagnoses[batchIndex] || [];
+          
+          return {
+            id: r.id,
+            patient_id: patient.patient_id,
+            patient: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
+            date: r.consultation_date ? new Date(r.consultation_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString(),
+            rawDate: r.consultation_date ? new Date(r.consultation_date) : new Date(r.created_at),
+            visitCount: patient.records.length,
+            diagnosis: (() => {
+              if (approvedDiagnoses.length > 0) {
+                const primaryDiagnosis = approvedDiagnoses.find(d => d.is_primary);
+                const otherDiagnoses = approvedDiagnoses.filter(d => !d.is_primary);
+                
+                if (primaryDiagnosis) {
+                  const summary = otherDiagnoses.length > 0 
+                    ? `${primaryDiagnosis.diagnosis_text} (+${otherDiagnoses.length} more)`
+                    : primaryDiagnosis.diagnosis_text;
+                  return summary;
+                } else if (approvedDiagnoses.length === 1) {
+                  return approvedDiagnoses[0].diagnosis_text;
+                } else {
+                  return `${approvedDiagnoses[0].diagnosis_text} (+${approvedDiagnoses.length - 1} more)`;
+                }
               }
-            }
-            
-            // Fallback to old diagnosis field if no approved diagnoses
-            return r.diagnosis || '-';
-          })(),
-          status: 'Completed',
-          approvedDiagnoses: approvedDiagnoses // Store for detailed view
-        };
-      });
+              
+              return r.diagnosis || '-';
+            })(),
+            status: 'Completed'
+          };
+        });
+        
+        allMapped.push(...batchMapped);
+      }
+      
+      const mapped = allMapped;
       
       setHistory(mapped);
     } catch (e) {
@@ -2144,6 +2188,33 @@ function ConsultationHistory() {
       setHistory([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPatientHistory = async (patientId) => {
+    try {
+      setHistoryLoading(true);
+      console.log('Fetching patient history for patient_id:', patientId);
+      const response = await fetch(`/api/treatment_records?patient_id=${patientId}&limit=100`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch patient history');
+      }
+      
+      const data = await response.json();
+      console.log('Patient history loaded:', data.length, 'records');
+      // Sort by date, newest first
+      const sortedData = data.sort((a, b) => {
+        const dateA = new Date(a.consultation_date || a.created_at);
+        const dateB = new Date(b.consultation_date || b.created_at);
+        return dateB - dateA;
+      });
+      setPatientHistory(sortedData);
+    } catch (err) {
+      console.error('Error fetching patient history:', err);
+      setPatientHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -2195,10 +2266,13 @@ function ConsultationHistory() {
     if (page >= 0 && page < histTotalPages) setHistPage(page);
   };
 
-  const openView = async (id) => {
+  const openView = async (id, patientId) => {
     try {
       setViewOpen(true);
       setViewRecord(null);
+      setPatientHistory([]);
+      
+      console.log('Opening view for record ID:', id, 'Patient ID:', patientId);
       
       // Load treatment record
       const res = await fetch(`/api/treatment_records?id=${encodeURIComponent(id)}&limit=1`);
@@ -2207,13 +2281,17 @@ function ConsultationHistory() {
       const record = rows && rows[0] ? rows[0] : null;
       
       if (record) {
-        // Load approved diagnoses for this record
+        console.log('Record loaded:', record.id, 'Patient ID from record:', record.patient_id);
+        console.log('Nature of Visit from API:', record.nature_of_visit);
+        
+        // Load approved diagnoses for this record (only when viewing)
         try {
           const diagnosesRes = await fetch(`/api/approved_diagnoses?treatment_record_id=${id}`);
           if (diagnosesRes.ok) {
             const approvedDiagnoses = await diagnosesRes.json();
             record.approvedDiagnoses = approvedDiagnoses;
           } else {
+            console.warn('Failed to load approved diagnoses');
             record.approvedDiagnoses = [];
           }
         } catch (diagError) {
@@ -2221,10 +2299,13 @@ function ConsultationHistory() {
           record.approvedDiagnoses = [];
         }
         
+        // Use patientId parameter if provided, otherwise use record.patient_id
+        const actualPatientId = patientId || record.patient_id;
+        
         // Load patient data if patient_id exists
-        if (record.patient_id) {
+        if (actualPatientId) {
           try {
-            const patientRes = await fetch(`/api/patients?id=${record.patient_id}&type=staff_data`);
+            const patientRes = await fetch(`/api/patients?id=${actualPatientId}&type=staff_data`);
             if (patientRes.ok) {
               const patientData = await patientRes.json();
               if (patientData) {
@@ -2234,12 +2315,17 @@ function ConsultationHistory() {
           } catch (patError) {
             console.error('Failed to load patient data:', patError);
           }
+          
+          // Fetch patient history
+          fetchPatientHistory(actualPatientId);
+        } else {
+          console.warn('No patient ID available to fetch history');
         }
         
         // Load referral data if visit_type is Referral
-        if (record.visit_type === 'Referral' && record.patient_id) {
+        if (record.visit_type === 'Referral' && actualPatientId) {
           try {
-            const referralRes = await fetch(`/api/bhw_referrals?patient_id=${record.patient_id}`);
+            const referralRes = await fetch(`/api/bhw_referrals?patient_id=${actualPatientId}`);
             if (referralRes.ok) {
               const referralData = await referralRes.json();
               if (referralData && referralData.length > 0) {
@@ -2294,23 +2380,29 @@ function ConsultationHistory() {
           <thead className="bg-gradient-to-r from-green-600 to-green-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Patient</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Diagnosis</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Total Visits</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Latest Visit</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Latest Diagnosis</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedHistory.slice(histStartIndex, histEndIndex).map((item) => (
-              <tr key={item.id}>
+              <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{item.patient}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{item.date}</div>
+                  <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                    {item.visitCount} {item.visitCount === 1 ? 'Visit' : 'Visits'}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{item.diagnosis}</div>
+                  <div className="text-sm text-gray-500">{item.date}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-500 max-w-xs truncate" title={item.diagnosis}>{item.diagnosis}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -2318,16 +2410,16 @@ function ConsultationHistory() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button onClick={() => openView(item.id)} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
+                  <button onClick={() => openView(item.id, item.patient_id)} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100 transition-colors">
                     <FiEye size={16} />
-                    <span>View</span>
+                    <span>View All</span>
                   </button>
                 </td>
               </tr>
             ))}
             {filteredHistory.length === 0 && !loading && (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500 text-sm">No consultations found.</td>
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500 text-sm">No consultations found.</td>
               </tr>
             )}
           </tbody>
@@ -2488,37 +2580,52 @@ function ConsultationHistory() {
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700">Visit Type</label>
                           <div className="flex items-center flex-wrap gap-4 mt-2">
-                            <label className="inline-flex items-center">
-                              <input 
-                                type="radio" 
-                                name="visit_type_view" 
-                                value="Walk-in" 
-                                className="form-radio accent-green-600" 
-                                checked={viewRecord.visit_type === 'Walk-in'}
-                                disabled
-                              />
+                            <label className={`inline-flex items-center px-4 py-2 rounded-lg border-2 transition-all cursor-default ${
+                              viewRecord.visit_type === 'Walk-in' 
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}>
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                viewRecord.visit_type === 'Walk-in' 
+                                  ? 'border-blue-600 bg-white' 
+                                  : 'border-gray-400 bg-white'
+                              }`}>
+                                {viewRecord.visit_type === 'Walk-in' && (
+                                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                )}
+                              </div>
                               <span className="ml-2">Walk-in</span>
                             </label>
-                            <label className="inline-flex items-center">
-                              <input 
-                                type="radio" 
-                                name="visit_type_view" 
-                                value="Visited" 
-                                className="form-radio accent-green-600" 
-                                checked={viewRecord.visit_type === 'Visited'}
-                                disabled
-                              />
+                            <label className={`inline-flex items-center px-4 py-2 rounded-lg border-2 transition-all cursor-default ${
+                              viewRecord.visit_type === 'Visited' 
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}>
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                viewRecord.visit_type === 'Visited' 
+                                  ? 'border-blue-600 bg-white' 
+                                  : 'border-gray-400 bg-white'
+                              }`}>
+                                {viewRecord.visit_type === 'Visited' && (
+                                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                )}
+                              </div>
                               <span className="ml-2">Visited</span>
                             </label>
-                            <label className="inline-flex items-center">
-                              <input 
-                                type="radio" 
-                                name="visit_type_view" 
-                                value="Referral" 
-                                className="form-radio accent-green-600" 
-                                checked={viewRecord.visit_type === 'Referral'}
-                                disabled
-                              />
+                            <label className={`inline-flex items-center px-4 py-2 rounded-lg border-2 transition-all cursor-default ${
+                              viewRecord.visit_type === 'Referral' 
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}>
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                viewRecord.visit_type === 'Referral' 
+                                  ? 'border-blue-600 bg-white' 
+                                  : 'border-gray-400 bg-white'
+                              }`}>
+                                {viewRecord.visit_type === 'Referral' && (
+                                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                )}
+                              </div>
                               <span className="ml-2">Referral</span>
                             </label>
                           </div>
@@ -2640,39 +2747,84 @@ function ConsultationHistory() {
                 <div className="mb-6">
                   <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">Nature of Visit</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="inline-flex items-center">
-                        <input 
-                          type="checkbox" 
-                          className="form-checkbox accent-green-600" 
-                          checked={viewRecord.nature_new_consultation}
-                          disabled
-                        />
-                        <span className="ml-2">New Consultation/Case</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className="inline-flex items-center">
-                        <input 
-                          type="checkbox" 
-                          className="form-checkbox accent-green-600" 
-                          checked={viewRecord.nature_new_admission}
-                          disabled
-                        />
-                        <span className="ml-2">New Admission</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className="inline-flex items-center">
-                        <input 
-                          type="checkbox" 
-                          className="form-checkbox accent-green-600" 
-                          checked={viewRecord.nature_follow_up}
-                          disabled
-                        />
-                        <span className="ml-2">Follow-up visit</span>
-                      </label>
-                    </div>
+                    {(() => {
+                      const natureOfVisit = viewRecord.nature_of_visit || '';
+                      const isNewConsultation = natureOfVisit.includes('New Consultation/Case');
+                      const isNewAdmission = natureOfVisit.includes('New Admission');
+                      const isFollowUp = natureOfVisit.includes('Follow-up visit');
+                      
+                      console.log('Nature of Visit Display:', {
+                        raw: natureOfVisit,
+                        isNewConsultation,
+                        isNewAdmission,
+                        isFollowUp
+                      });
+                      
+                      return (
+                        <>
+                          <div>
+                            <label className={`inline-flex items-center px-4 py-2 rounded-lg border-2 transition-all cursor-default ${
+                              isNewConsultation 
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}>
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                isNewConsultation 
+                                  ? 'border-blue-600 bg-blue-600' 
+                                  : 'border-gray-400 bg-white'
+                              }`}>
+                                {isNewConsultation && (
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="ml-2">New Consultation/Case</span>
+                            </label>
+                          </div>
+                          <div>
+                            <label className={`inline-flex items-center px-4 py-2 rounded-lg border-2 transition-all cursor-default ${
+                              isNewAdmission 
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}>
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                isNewAdmission 
+                                  ? 'border-blue-600 bg-blue-600' 
+                                  : 'border-gray-400 bg-white'
+                              }`}>
+                                {isNewAdmission && (
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="ml-2">New Admission</span>
+                            </label>
+                          </div>
+                          <div>
+                            <label className={`inline-flex items-center px-4 py-2 rounded-lg border-2 transition-all cursor-default ${
+                              isFollowUp 
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}>
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                isFollowUp 
+                                  ? 'border-blue-600 bg-blue-600' 
+                                  : 'border-gray-400 bg-white'
+                              }`}>
+                                {isFollowUp && (
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="ml-2">Follow-up visit</span>
+                            </label>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2681,17 +2833,22 @@ function ConsultationHistory() {
                       {[
                         "General", "Family Planning", "Prenatal", "Postpartum", "Dental Care",
                         "Tuberculosis", "Child Care", "Child Immunization", "Child Nutrition",
-                        "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization"
+                        "Sick Children", "Injury", "Firecracker Injury", "Adult Immunization", "Animal Bite"
                       ].map((label, idx) => (
-                        <label key={idx} className="inline-flex items-center">
-                          <input 
-                            name="purpose_of_visit_view" 
-                            value={label} 
-                            type="radio" 
-                            className="form-radio accent-green-600" 
-                            checked={viewRecord.purpose_of_visit === label}
-                            disabled
-                          />
+                        <label key={idx} className={`inline-flex items-center px-3 py-2 rounded-lg border-2 transition-all cursor-default ${
+                          viewRecord.purpose_of_visit === label 
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold' 
+                            : 'bg-gray-50 border-gray-300 text-gray-600'
+                        }`}>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            viewRecord.purpose_of_visit === label 
+                              ? 'border-blue-600 bg-white' 
+                              : 'border-gray-400 bg-white'
+                          }`}>
+                            {viewRecord.purpose_of_visit === label && (
+                              <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                            )}
+                          </div>
                           <span className="ml-2">{label}</span>
                         </label>
                       ))}
@@ -2783,11 +2940,89 @@ function ConsultationHistory() {
                   </div>
                 </div>
 
+                {/* Patient Treatment History */}
+                {viewRecord.patient_id && (
+                  <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <MdHistory className="w-6 h-6 text-blue-600" />
+                      <h5 className="text-lg font-semibold text-blue-800">Patient Treatment History</h5>
+                    </div>
+                    
+                    {historyLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-gray-600">Loading history...</span>
+                      </div>
+                    ) : patientHistory.length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <p>No previous treatment records found for this patient.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 max-h-80 overflow-y-auto">
+                        {patientHistory.map((historyRecord, index) => (
+                          <div 
+                            key={historyRecord.id} 
+                            className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                              historyRecord.id === viewRecord.id 
+                                ? 'bg-green-50 border-green-500 border-2' 
+                                : 'bg-white border-gray-200 hover:border-blue-300'
+                            }`}
+                            onClick={() => openView(historyRecord.id, historyRecord.patient_id || viewRecord.patient_id)}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">
+                                  Visit #{patientHistory.length - index}
+                                </span>
+                                {historyRecord.id === viewRecord.id && (
+                                  <span className="px-2 py-1 text-xs bg-green-600 text-white rounded-full">
+                                    Current
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {historyRecord.consultation_date ? new Date(historyRecord.consultation_date).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-1 text-sm">
+                              <div className="flex gap-2">
+                                <span className="font-medium text-gray-600">Chief Complaints:</span>
+                                <span className="text-gray-800">{historyRecord.chief_complaints || '-'}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className="font-medium text-gray-600">Diagnosis:</span>
+                                <span className="text-gray-800">{historyRecord.diagnosis || '-'}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className="font-medium text-gray-600">Treatment:</span>
+                                <span className="text-gray-800">{historyRecord.medication || '-'}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className="font-medium text-gray-600">Provider:</span>
+                                <span className="text-gray-800">{historyRecord.attending_provider || '-'}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className="font-medium text-gray-600">Status:</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                  historyRecord.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {historyRecord.status || 'Pending'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Form Actions */}
                 <div className="flex justify-end space-x-4 mt-6 pt-4 border-t border-gray-200">
                   <button
                     type="button"
-                    onClick={() => { setViewOpen(false); setViewRecord(null); }}
+                    onClick={() => { setViewOpen(false); setViewRecord(null); setPatientHistory([]); }}
                     className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                   >
                     Close
