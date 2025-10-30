@@ -9,9 +9,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotError, setForgotError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -76,23 +73,6 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setForgotError("");
-
-    if (!forgotEmail) {
-      setForgotError("Please enter your email address.");
-      return;
-    }
-
-    // Simulate sending a password reset email
-    setTimeout(() => {
-      setForgotEmail("");
-      setIsForgotPasswordOpen(false);
-      alert("A password reset link has been sent to your email. Please check your inbox.");
-    }, 1000);
   };
 
   return (
@@ -182,14 +162,6 @@ export default function Login() {
                   Remember me
                 </label>
               </div>
-              <button
-                type="button"
-                className="text-sm text-green-600 hover:text-green-800 font-medium hover:underline"
-                onClick={() => setIsForgotPasswordOpen(true)}
-                disabled={isLoading}
-              >
-                Forgot Password?
-              </button>
             </div>
             
             <button 
@@ -209,55 +181,11 @@ export default function Login() {
           </form>
 
           <p className="text-sm text-center mt-6 text-gray-600">
-            Don't have an account?{' '}
-            <a href="/signup" className="text-green-600 hover:text-green-800 font-medium hover:underline">
-              Sign up
-            </a>
+            Contact your administrator for account access.
           </p>
         </div>
       </div>
 
-      {/* Forgot Password Modal */}
-      {isForgotPasswordOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl w-full max-w-md p-8 relative transform transition-all duration-300 scale-100 hover:scale-[1.02]">
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-              onClick={() => setIsForgotPasswordOpen(false)}
-              disabled={isLoading}
-            >
-              <FaTimes size={20} />
-            </button>
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Reset Your Password</h3>
-            {forgotError && (
-              <div className="text-red-500 text-sm text-center mb-4 p-2 bg-red-50 rounded-lg border border-red-200">
-                {forgotError}
-              </div>
-            )}
-            <form className="space-y-4" onSubmit={handleForgotPassword}>
-              <div className="relative">
-                <input
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full p-4 pl-12 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm transition-all duration-300 text-gray-800 placeholder-gray-400"
-                  required
-                />
-                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
-                  <FaUser className="w-5 h-5" />
-                </span>
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white py-3 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                Send Reset Link
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

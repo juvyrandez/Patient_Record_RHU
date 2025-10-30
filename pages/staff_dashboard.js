@@ -3,16 +3,16 @@ import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut, FiSearch, FiDownload } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import { FaClipboardList, FaCalendarCheck, FaHistory } from "react-icons/fa";
-import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaChartBar, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight, FaHeartbeat, FaCalculator, FaDog  } from 'react-icons/fa';
+import { FaUserPlus,FaUser, FaSearch, FaEdit, FaFileMedical, FaChartBar, FaTimes, FaEye, FaNotesMedical, FaHandHoldingMedical, FaPlus,FaSpinner,FaSortAlphaDown,FaArrowLeft,FaArrowRight,FaSortAlphaUp, FaPrint, FaChevronDown, FaChevronRight, FaHeartbeat, FaCalculator, FaDog, FaChartPie  } from 'react-icons/fa';
 import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import ReferralForm from '/components/StaffComponents/ReferralForm';
 import Swal from "sweetalert2";
 
 // Register ChartJS components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 export default function StaffDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -481,7 +481,17 @@ function Dashboard({ onQuickAction }) {
     diagnosedRecords: 0,
   });
   const [analytics, setAnalytics] = useState({ labels: [], patients: [], referrals: [], diagnoses: [] });
+  const [diagnosisByBarangay, setDiagnosisByBarangay] = useState({});
+  const [viewMode, setViewMode] = useState('bar'); // 'bar', 'doughnut'
   const [loading, setLoading] = useState(false);
+
+  const balingasagBarangays = [
+    "1 Poblacion", "2 Poblacion", "3 Poblacion", "4 Poblacion", "5 Poblacion", "6 Poblacion",
+    "Balagnan", "Balingoan", "Barangay", "Blanco", "Calawag", "Camuayan", "Cogon", "Dansuli",
+    "Dumarait", "Hermano", "Kibanban", "Linggangao", "Mambayaan", "Mandangoa", "Napaliran",
+    "Natubo", "Quezon", "San Alonzo", "San Isidro", "San Juan", "San Miguel", "San Victor",
+    "Talusan", "Waterfall"
+  ];
 
   useEffect(() => {
     const load = async () => {
@@ -492,6 +502,7 @@ function Dashboard({ onQuickAction }) {
         const data = await res.json();
         setStats(data.metrics || {});
         setAnalytics(data.analytics || { labels: [], patients: [], referrals: [], diagnoses: [] });
+        setDiagnosisByBarangay(data.diagnosisByBarangay || {});
       } catch (e) {
         console.error('Failed to load staff analytics', e);
       } finally {
@@ -647,6 +658,98 @@ function Dashboard({ onQuickAction }) {
           />
         </div>
       </div>
+
+      {/* Common Diagnoses by Barangay */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h3 className="text-lg font-semibold">Common Diagnoses by Barangay</h3>
+          <div className="flex gap-1 border border-gray-300 rounded-md p-1">
+            <button
+              onClick={() => setViewMode('bar')}
+              className={`p-2 rounded ${viewMode === 'bar' ? 'bg-green-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+              title="Bar Chart"
+            >
+              <FaChartBar />
+            </button>
+            <button
+              onClick={() => setViewMode('doughnut')}
+              className={`p-2 rounded ${viewMode === 'doughnut' ? 'bg-green-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+              title="Doughnut Chart"
+            >
+              <FaChartPie />
+            </button>
+          </div>
+        </div>
+
+        {/* Chart Views */}
+        {(() => {
+          // Show total cases per barangay (All Barangays)
+          const labels = balingasagBarangays;
+          const data = labels.map(brgy => 
+            (diagnosisByBarangay[brgy] || []).reduce((sum, d) => sum + d.count, 0)
+          );
+          
+          let chartData, chartOptions;
+          
+          if (viewMode === 'bar') {
+            chartData = {
+              labels,
+              datasets: [{
+                label: 'Total Cases',
+                data,
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: 'rgba(34, 197, 94, 1)',
+                borderWidth: 1
+              }]
+            };
+            chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: true, position: 'top' },
+                title: { display: true, text: 'Total Diagnosis Cases by Barangay' }
+              },
+              scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+              }
+            };
+          } else if (viewMode === 'doughnut') {
+            const colors = [
+              '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6',
+              '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
+              '#6366f1', '#f43f5e', '#10b981', '#eab308', '#a855f7',
+              '#64748b', '#0ea5e9', '#d946ef', '#059669', '#dc2626',
+              '#7c3aed', '#0891b2', '#65a30d', '#4f46e5', '#be123c',
+              '#0d9488', '#ca8a04', '#9333ea', '#475569', '#0284c7'
+            ];
+            chartData = {
+              labels,
+              datasets: [{
+                label: 'Cases',
+                data,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+              }]
+            };
+            chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: true, position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
+                title: { display: true, text: 'Diagnosis Distribution Across Barangays' }
+              }
+            };
+          }
+          
+          return (
+            <div className="w-full" style={{ height: '500px' }}>
+              {viewMode === 'bar' && <Bar data={chartData} options={chartOptions} />}
+              {viewMode === 'doughnut' && <Doughnut data={chartData} options={chartOptions} />}
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -701,6 +804,13 @@ function PatientRecords() {
       .trim();
   const isTitleCase = (str = "") => str === toTitleCase(str);
   const [viewPatient, setViewPatient] = useState(null);
+  const [showViewSelection, setShowViewSelection] = useState(false);
+  const [selectedViewPatient, setSelectedViewPatient] = useState(null);
+  const [consultationHistoryData, setConsultationHistoryData] = useState([]);
+  const [showConsultationHistory, setShowConsultationHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [viewRecord, setViewRecord] = useState(null);
+  const [patientHistory, setPatientHistory] = useState([]);
   const [referralData, setReferralData] = useState({
     referralType: "",
     date: new Date().toISOString().split('T')[0],
@@ -1409,10 +1519,72 @@ function PatientRecords() {
     try {
       const response = await fetch(`/api/patients?id=${patientId}&type=staff_data`);
       const patient = await response.json();
-      setViewPatient(patient);
+      setSelectedViewPatient(patient);
+      setShowViewSelection(true);
     } catch (error) {
       console.error('Error fetching patient for view:', error);
     }
+  };
+
+  const handleViewPatientMedicalRecord = () => {
+    setViewPatient(selectedViewPatient);
+    setShowViewSelection(false);
+  };
+
+  const handleViewConsultationHistory = async () => {
+    setShowViewSelection(false);
+    setShowConsultationHistory(true);
+    setViewRecord(null);
+    setPatientHistory([]);
+    
+    // Fetch and display the specific patient's consultation history
+    await fetchSinglePatientHistory(selectedViewPatient.id);
+  };
+
+  const fetchSinglePatientHistory = async (patientId) => {
+    setLoadingHistory(true);
+    try {
+      console.log('Fetching consultation history for patient ID:', patientId);
+      const response = await fetch(`/api/consultation_history?patient_id=${patientId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Consultation history data received:', data);
+        console.log('Number of records:', data.length);
+        
+        setPatientHistory(data);
+        
+        // Automatically load the first (most recent) record
+        if (data.length > 0) {
+          console.log('Setting first record as viewRecord:', data[0]);
+          setViewRecord(data[0]);
+        } else {
+          console.log('No consultation records found for this patient');
+          setViewRecord(null);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('API error response:', errorData);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: errorData.error || 'Failed to load consultation history',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching consultation history:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to load consultation history. Please check console for details.',
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const openConsultationRecord = (record) => {
+    setViewRecord(record);
   };
 
   const handleViewBhw = async (patientId) => {
@@ -2246,9 +2418,8 @@ function PatientRecords() {
                       name="birth_date"
                       value={formData.birth_date}
                       onChange={handleInputChange}
-                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${isEditing ? 'bg-gray-100' : ''}`}
-                      required={!isEditing}
-                      readOnly={isEditing}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
                     />
                   </div>
                   <div className="space-y-1">
@@ -3802,6 +3973,384 @@ function PatientRecords() {
 )}
 
 
+
+      {/* View Selection Modal */}
+{showViewSelection && selectedViewPatient && (
+  <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-800">Select View Option</h3>
+          <button 
+            onClick={() => {
+              setShowViewSelection(false);
+              setSelectedViewPatient(null);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <FaTimes className="w-6 h-6" />
+          </button>
+        </div>
+        
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center">
+            <FaUser className="text-blue-600 mr-3 text-2xl" />
+            <div>
+              <p className="font-semibold text-gray-800">
+                {selectedViewPatient.last_name}, {selectedViewPatient.first_name} {selectedViewPatient.middle_name || ''}
+              </p>
+              <p className="text-sm text-gray-600">
+                Age: {calculateAge(selectedViewPatient.birth_date)} | Gender: {selectedViewPatient.gender}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-4">
+          {/* Patient Medical Record */}
+          <button
+            onClick={handleViewPatientMedicalRecord}
+            className="p-4 border-2 border-blue-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 flex items-start"
+          >
+            <FaFileMedical className="text-blue-500 mr-3 text-2xl mt-1" />
+            <div className="text-left">
+              <h4 className="font-semibold text-gray-800 mb-1">Patient Medical Record</h4>
+              <p className="text-sm text-gray-600">View complete patient information and medical details</p>
+            </div>
+          </button>
+          
+          {/* Consultation History */}
+          <button
+            onClick={handleViewConsultationHistory}
+            disabled={loadingHistory}
+            className="p-4 border-2 border-green-300 rounded-lg hover:bg-green-50 hover:border-green-500 transition-all duration-200 flex items-start disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FaHistory className="text-green-500 mr-3 text-2xl mt-1" />
+            <div className="text-left">
+              <h4 className="font-semibold text-gray-800 mb-1">Consultation History</h4>
+              <p className="text-sm text-gray-600">
+                {loadingHistory ? 'Loading...' : 'View all consultation records and treatment history'}
+              </p>
+            </div>
+          </button>
+        </div>
+        
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={() => {
+              setShowViewSelection(false);
+              setSelectedViewPatient(null);
+            }}
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Consultation History Modal - Doctor Dashboard Format */}
+{showConsultationHistory && selectedViewPatient && (
+  <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6">
+        {/* Professional Header with Logo */}
+        <div className="flex items-start mb-6 pb-4 border-b-2 border-gray-300">
+          <div className="flex-shrink-0 mr-4">
+            <img src="/images/rhulogo.jpg" alt="RHU Logo" className="w-20 h-20 object-contain" />
+          </div>
+          <div className="flex-1 text-center">
+            <div className="text-sm font-medium text-gray-700">Republic of the Philippines</div>
+            <div className="text-xl font-bold text-gray-900 mt-1">Department of Health</div>
+            <div className="text-sm font-medium text-gray-700 italic">Kagawaran ng Kalusugan</div>
+            <div className="text-lg font-bold text-gray-800 mt-3 border-t pt-2">
+              Consultation History - {selectedViewPatient.last_name}, {selectedViewPatient.first_name}
+            </div>
+          </div>
+          <div className="flex-shrink-0 ml-4 w-20">
+            <button 
+              onClick={() => {
+                setShowConsultationHistory(false);
+                setConsultationHistoryData([]);
+                setSelectedViewPatient(null);
+              }}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FaTimes className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {loadingHistory && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading consultation history...</p>
+            </div>
+          </div>
+        )}
+
+        {!loadingHistory && patientHistory.length === 0 && (
+          <div className="text-center py-12">
+            <FaHistory className="mx-auto text-gray-400 text-6xl mb-4" />
+            <h4 className="text-xl font-semibold text-gray-700 mb-2">No Consultation History</h4>
+            <p className="text-gray-500">This patient has no consultation records yet.</p>
+          </div>
+        )}
+
+        {!loadingHistory && viewRecord && (
+          <>
+            {/* Patient Information */}
+            <div className="mb-6">
+              <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
+                I. PATIENT INFORMATION (IMPORMASYON NG PASYENTE)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name (Apelyido)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.patient_last_name || selectedViewPatient.last_name || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name (Pangalan)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.patient_first_name || selectedViewPatient.first_name || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Middle Name (Gitnang Pangalan)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.patient_middle_name || selectedViewPatient.middle_name || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CHU/RHU Information */}
+            <div className="mb-6">
+              <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
+                II. FOR CHU/RHU PERSONNEL ONLY (PARA SA KINATAWAN NG CHU/RHU LAMANG)
+              </h4>
+                  
+              {/* Consultation Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date of Consultation</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.consultation_date ? new Date(viewRecord.consultation_date).toLocaleDateString() : '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Consultation Time</label>
+                  <div className="flex gap-2">
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewRecord.consultation_time || '-'}
+                    </div>
+                    <div className="px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                      {viewRecord.consultation_period || '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vital Signs */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Blood Pressure</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.blood_pressure || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Temperature</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.temperature || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.height_cm || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.weight_kg || '-'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">HR/PR (bpm)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.heart_rate || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">RR (cpm)</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.respiratory_rate || '-'}
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Name of Attending Provider</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {viewRecord.attending_provider || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Nature of Visit */}
+            <div className="mb-6">
+              <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">Nature of Visit</h4>
+              <div className="mb-4">
+                <h5 className="font-medium mb-2">Type of Consultation / Purpose of Visit</h5>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                  {viewRecord.purpose_of_visit || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Chief Complaints</label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[100px] whitespace-pre-wrap">
+                  {viewRecord.chief_complaints || '-'}
+                </div>
+              </div>
+            </div>
+
+            {/* Diagnosis and Treatment */}
+            {viewRecord.decision_status && (
+              <div className="mb-6">
+                <h4 className="font-bold border-b-2 border-gray-400 pb-2 mb-4 text-gray-800 px-3 py-2">
+                  Diagnosis and Treatment
+                </h4>
+                {viewRecord.diagnoses && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[72px] whitespace-pre-wrap">
+                      {viewRecord.diagnoses}
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Medication / Treatment</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[120px] whitespace-pre-wrap">
+                      {viewRecord.medication_treatment || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Laboratory Findings / Impression</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[120px] whitespace-pre-wrap">
+                      {viewRecord.lab_findings_impression || '-'}
+                    </div>
+                  </div>
+                </div>
+                {viewRecord.decision_lab_tests && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Performed Laboratory Test</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[72px] whitespace-pre-wrap">
+                      {viewRecord.decision_lab_tests}
+                    </div>
+                  </div>
+                )}
+                {viewRecord.doctor_notes && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Doctor's Notes</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[72px] whitespace-pre-wrap">
+                      {viewRecord.doctor_notes}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Patient Treatment History Sidebar */}
+            {patientHistory.length > 0 && (
+              <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FaHistory className="w-6 h-6 text-blue-600" />
+                  <h5 className="text-lg font-semibold text-blue-800">Patient Treatment History</h5>
+                </div>
+                <div className="space-y-4 max-h-80 overflow-y-auto">
+                  {patientHistory.map((historyRecord, index) => (
+                    <div 
+                      key={historyRecord.id} 
+                      className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                        historyRecord.id === viewRecord.id 
+                          ? 'bg-green-50 border-green-500 border-2' 
+                          : 'bg-white border-gray-200 hover:border-blue-300'
+                      }`}
+                      onClick={() => openConsultationRecord(historyRecord)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">
+                            Visit #{patientHistory.length - index}
+                          </span>
+                          {historyRecord.id === viewRecord.id && (
+                            <span className="px-2 py-1 text-xs bg-green-600 text-white rounded-full">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {historyRecord.consultation_date ? new Date(historyRecord.consultation_date).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1 text-sm">
+                        <div className="flex gap-2">
+                          <span className="font-medium text-gray-600">Chief Complaints:</span>
+                          <span className="text-gray-800 truncate">{historyRecord.chief_complaints || '-'}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-gray-600">Provider:</span>
+                          <span className="text-gray-800">{historyRecord.attending_provider || '-'}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-gray-600">Status:</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            historyRecord.decision_status === 'Complete' ? 'bg-green-100 text-green-800' : 
+                            historyRecord.decision_status === 'In Laboratory' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {historyRecord.decision_status || historyRecord.status || 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-4 mt-6 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => { 
+                  setShowConsultationHistory(false); 
+                  setViewRecord(null); 
+                  setPatientHistory([]); 
+                  setSelectedViewPatient(null);
+                }}
+                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Close
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* View Patient Modal */}
 {viewPatient && (

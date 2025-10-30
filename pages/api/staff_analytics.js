@@ -74,7 +74,65 @@ export default async function handler(req, res) {
       diagnoses: labels.map(l => dMap[l] || 0),
     };
 
-    return res.status(200).json({ metrics, analytics });
+    // Fetch common diagnoses by barangay from approved_diagnoses
+    const diagnosisByBarangayQuery = `
+      SELECT 
+        p.residential_address,
+        ad.diagnosis_text,
+        COUNT(*) as count
+      FROM approved_diagnoses ad
+      JOIN individual_treatment_records itr ON ad.treatment_record_id = itr.id
+      JOIN patients p ON itr.patient_id = p.id
+      WHERE ad.diagnosis_text IS NOT NULL 
+        AND ad.diagnosis_text != ''
+        AND p.residential_address IS NOT NULL
+        AND p.residential_address != ''
+      GROUP BY p.residential_address, ad.diagnosis_text
+      ORDER BY p.residential_address, count DESC
+    `;
+
+    const diagnosisByBarangayRes = await client.query(diagnosisByBarangayQuery).catch(() => ({ rows: [] }));
+
+    // Process the data to group by barangay
+    const barangayDiagnoses = {};
+    const balingasagBarangays = [
+      "1 Poblacion", "2 Poblacion", "3 Poblacion", "4 Poblacion", "5 Poblacion", "6 Poblacion",
+      "Balagnan", "Balingoan", "Barangay", "Blanco", "Calawag", "Camuayan", "Cogon", "Dansuli",
+      "Dumarait", "Hermano", "Kibanban", "Linggangao", "Mambayaan", "Mandangoa", "Napaliran",
+      "Natubo", "Quezon", "San Alonzo", "San Isidro", "San Juan", "San Miguel", "San Victor",
+      "Talusan", "Waterfall"
+    ];
+
+    // Initialize all barangays
+    balingasagBarangays.forEach(brgy => {
+      barangayDiagnoses[brgy] = [];
+    });
+
+    // Map diagnoses to barangays
+    diagnosisByBarangayRes.rows.forEach(row => {
+      const address = row.residential_address || '';
+      // Find matching barangay in address
+      const matchedBarangay = balingasagBarangays.find(brgy => 
+        address.toLowerCase().includes(brgy.toLowerCase())
+      );
+      
+      if (matchedBarangay) {
+        barangayDiagnoses[matchedBarangay].push({
+          diagnosis: row.diagnosis_text,
+          count: parseInt(row.count)
+        });
+      }
+    });
+
+    // Get top 5 diagnoses for each barangay
+    const topDiagnosesByBarangay = {};
+    Object.keys(barangayDiagnoses).forEach(brgy => {
+      topDiagnosesByBarangay[brgy] = barangayDiagnoses[brgy]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+    });
+
+    return res.status(200).json({ metrics, analytics, diagnosisByBarangay: topDiagnosesByBarangay });
   } catch (error) {
     console.error('staff_analytics error:', error);
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
