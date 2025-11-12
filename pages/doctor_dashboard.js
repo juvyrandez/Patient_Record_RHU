@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiMenu, FiBell, FiUser, FiLogOut, FiEye, FiSearch } from "react-icons/fi";
 import { MdDashboard, MdMedicalServices, MdPeople, MdHistory } from "react-icons/md";
-import { FaNotesMedical, FaFileMedical, FaStethoscope, FaArrowLeft, FaArrowRight, FaUsers, FaClipboardList, FaChartBar,FaSortAlphaDown,FaSortAlphaUp } from "react-icons/fa";
+import { FaNotesMedical, FaFileMedical, FaStethoscope, FaArrowLeft, FaArrowRight, FaUsers, FaClipboardList, FaChartBar,FaSortAlphaDown,FaSortAlphaUp, FaCheck, FaUser, FaHeartbeat, FaHandHoldingMedical } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
 import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
 import Swal from "sweetalert2";
@@ -20,6 +20,89 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
+// Diagnosis explanations function
+function getDiagnosisExplanation(diagnosisName) {
+  const explanations = {
+    'Influenza': 'A viral respiratory infection causing fever, cough, body aches, and fatigue. Usually resolves in 7-10 days with rest and supportive care.',
+    'Bronchitis': 'Inflammation of the bronchial tubes causing persistent cough, mucus production, and chest discomfort. May be viral or bacterial in origin.',
+    'Viral Upper Respiratory Infection': 'Common cold or viral infection affecting the nose, throat, and upper airways. Symptoms include runny nose, sore throat, and mild fever.',
+    'Pneumonia': 'Infection of the lungs causing fever, cough with phlegm, chest pain, and difficulty breathing. Requires prompt medical treatment.',
+    'Acute Coronary Syndrome': 'Serious heart condition including heart attack or unstable angina. Requires immediate emergency medical care.',
+    'Costochondritis': 'Inflammation of the cartilage connecting ribs to breastbone, causing sharp chest pain that worsens with movement or breathing.',
+    'Hypertension': 'High blood pressure condition that increases risk of heart disease and stroke. Often managed with lifestyle changes and medication.',
+    'Diabetes': 'Metabolic disorder characterized by high blood sugar levels. Requires ongoing management through diet, exercise, and possibly medication.',
+    'Gastroenteritis': 'Inflammation of stomach and intestines causing nausea, vomiting, diarrhea, and abdominal pain. Often viral or bacterial in origin.',
+    'Urinary Tract Infection': 'Bacterial infection of the urinary system causing painful urination, frequent urination, and pelvic pain.',
+    'Migraine': 'Severe headache disorder causing intense throbbing pain, often with nausea, vomiting, and sensitivity to light and sound.',
+    'Allergic Reaction': 'Immune system response to allergens causing symptoms like rash, itching, swelling, or difficulty breathing.',
+    'Asthma': 'Chronic respiratory condition causing wheezing, shortness of breath, chest tightness, and coughing attacks.',
+    'Anxiety Disorder': 'Mental health condition causing excessive worry, fear, and physical symptoms like rapid heartbeat and sweating.',
+    'Dermatitis': 'Skin inflammation causing redness, itching, and rash. May be caused by allergies, irritants, or underlying conditions.',
+    'Arthritis': 'Joint inflammation causing pain, stiffness, and reduced range of motion. May be due to wear and tear or autoimmune causes.',
+    'Sinusitis': 'Inflammation of sinus cavities causing facial pain, nasal congestion, and thick nasal discharge.',
+    'Otitis Media': 'Middle ear infection causing ear pain, fever, and possible hearing difficulties. Common in children.',
+    'Conjunctivitis': 'Eye infection or inflammation causing redness, itching, and discharge. May be viral, bacterial, or allergic.',
+    'Tonsillitis': 'Inflammation of the tonsils causing sore throat, difficulty swallowing, and swollen lymph nodes.',
+    'Animal Bite Category I': 'Minor animal contact with intact skin. Low rabies risk. Clean wound thoroughly and monitor for signs of infection.',
+    'Animal Bite Category II': 'Nibbling or minor scratches with bleeding. Moderate rabies risk. Requires wound cleaning and rabies vaccination series.',
+    'Animal Bite Category III': 'Deep bite wounds or scratches. High rabies risk. Requires immediate wound cleaning, rabies vaccination, and immunoglobulin.',
+    'Animal Bite Category 1': 'Minor animal contact with intact skin. Low rabies risk. Clean wound thoroughly and monitor for signs of infection.',
+    'Animal Bite Category 2': 'Nibbling or minor scratches with bleeding. Moderate rabies risk. Requires wound cleaning and rabies vaccination series.',
+    'Animal Bite Category 3': 'Deep bite wounds or scratches. High rabies risk. Requires immediate wound cleaning, rabies vaccination, and immunoglobulin.',
+    'Fracture': 'Broken bone requiring immediate medical attention, immobilization, and possible surgical intervention.',
+    'Sprain': 'Ligament injury causing pain, swelling, and limited mobility. Treated with rest, ice, compression, and elevation.',
+    'Dehydration': 'Fluid loss causing weakness, dizziness, and dry mouth. Requires fluid replacement and monitoring.',
+    'Food Poisoning': 'Illness from contaminated food causing nausea, vomiting, diarrhea, and abdominal cramps.',
+    'Heat Exhaustion': 'Heat-related illness causing heavy sweating, weakness, and nausea. Requires cooling and fluid replacement.',
+    'Malnutrition': 'Poor nutrition causing weakness, weight loss, and increased susceptibility to infections.',
+    'Anemia': 'Low red blood cell count causing fatigue, weakness, and pale skin. May require dietary changes or supplements.',
+    'Upper Respiratory Tract Infection': 'Viral or bacterial infection of the nose, throat, and upper airways causing congestion, sore throat, and mild fever.',
+    'Common Cold': 'Viral infection causing runny nose, sneezing, sore throat, and mild fatigue. Usually resolves within 7-10 days.',
+    'Fever': 'Elevated body temperature often indicating infection or illness. Monitor closely and treat underlying cause.',
+    'Cough': 'Reflex action to clear airways. May be dry or productive, acute or chronic. Investigate underlying cause.',
+    'Headache': 'Pain in head or neck region. May be tension-type, migraine, or secondary to other conditions.',
+    'Chest Pain': 'Discomfort in chest area. Can range from minor muscle strain to serious cardiac conditions. Requires evaluation.',
+    'Abdominal Pain': 'Stomach or belly pain with various causes including infection, inflammation, or digestive issues.',
+    'Back Pain': 'Pain in back muscles, bones, or nerves. Often due to strain, injury, or poor posture.',
+    'Joint Pain': 'Discomfort in joints due to arthritis, injury, or inflammation. May affect mobility.',
+    'Muscle Pain': 'Soreness or aching in muscles due to overuse, strain, or viral infections.',
+    'Fatigue': 'Extreme tiredness or lack of energy. May indicate underlying medical condition or lifestyle factors.',
+    'Dizziness': 'Feeling of lightheadedness or unsteadiness. Various causes including inner ear problems or blood pressure changes.',
+    'Nausea': 'Feeling of sickness with urge to vomit. Common with infections, medications, or digestive issues.',
+    'Vomiting': 'Forceful expulsion of stomach contents. May indicate infection, food poisoning, or other conditions.',
+    'Diarrhea': 'Loose or watery stools occurring frequently. Often due to infection, food intolerance, or medications.',
+    'Constipation': 'Difficulty passing stools or infrequent bowel movements. May be due to diet, medications, or medical conditions.',
+    'Rash': 'Skin irritation or eruption. Can be allergic, infectious, or due to underlying skin conditions.',
+    'Skin Infection': 'Bacterial, viral, or fungal infection of the skin causing redness, swelling, or discharge.',
+    'Eye Infection': 'Infection of the eye or eyelid causing redness, discharge, and discomfort.',
+    'Ear Infection': 'Infection of the ear canal or middle ear causing pain, discharge, and possible hearing loss.',
+    'Sore Throat': 'Pain or irritation in the throat, often due to viral or bacterial infection.',
+    'Runny Nose': 'Nasal discharge due to cold, allergies, or sinus infection.',
+    'Nasal Congestion': 'Blocked or stuffy nose due to swelling of nasal tissues.',
+    'Shortness of Breath': 'Difficulty breathing or feeling breathless. May indicate respiratory or cardiac issues.',
+    'Wheezing': 'High-pitched whistling sound when breathing, often associated with asthma or respiratory conditions.',
+    'Palpitations': 'Awareness of heartbeat or irregular heart rhythm. May be normal or indicate heart condition.',
+    'Swelling': 'Enlargement of body parts due to fluid retention, infection, or injury.',
+    'Wound': 'Break in skin or tissue requiring cleaning and proper care to prevent infection.',
+    'Burn': 'Injury to skin or tissue from heat, chemicals, or radiation. Severity varies from minor to severe.',
+    'Cut': 'Sharp injury to skin requiring cleaning and possible suturing depending on depth and location.',
+    'Bruise': 'Discoloration of skin due to bleeding under the surface from injury or trauma.',
+    'Insect Bite': 'Reaction to insect bite causing redness, swelling, and itching. Usually minor but monitor for allergic reactions.',
+    'Food Allergy': 'Immune reaction to specific foods causing symptoms from mild rash to severe anaphylaxis.',
+    'Drug Allergy': 'Adverse reaction to medications causing rash, swelling, or more serious symptoms.',
+    'Seasonal Allergies': 'Allergic reaction to pollen or environmental allergens causing sneezing, runny nose, and itchy eyes.',
+    'Stress': 'Physical or emotional tension that can cause various symptoms including headaches, fatigue, and digestive issues.',
+    'Sleep Disorder': 'Problems with sleep quality or quantity affecting daily functioning and health.',
+    'Nutritional Deficiency': 'Lack of essential nutrients causing various symptoms depending on the deficient nutrient.',
+    'Heat Stroke': 'Severe heat-related illness with high body temperature and altered mental state. Medical emergency.',
+    'Hypothermia': 'Dangerously low body temperature requiring immediate warming and medical attention.',
+    'Poisoning': 'Exposure to toxic substances causing various symptoms. May require immediate medical intervention.',
+    'Overdose': 'Taking excessive amount of medication or substance causing toxic effects. Requires immediate medical care.'
+  };
+  
+  return explanations[diagnosisName] || `Medical condition requiring professional evaluation. Please consult current medical literature and clinical guidelines for proper assessment and treatment.`;
+}
 
 export default function DoctorDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -398,8 +481,13 @@ function DoctorDashboardContent({ onQuickAction }) {
               <p className="text-sm font-medium text-gray-500">All Consultations</p>
               <p className="text-2xl font-bold mt-1">{loading ? '—' : analytics.totalConsultations}</p>
             </div>
-            <div className="p-2 bg-green-50 rounded-lg">
+            <div className="relative p-2 bg-green-50 rounded-lg">
               <FaStethoscope className="text-green-600" size={22} />
+              {!loading && analytics.totalConsultations > 0 && (
+                <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                  {analytics.totalConsultations > 99 ? '99+' : analytics.totalConsultations}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -412,8 +500,13 @@ function DoctorDashboardContent({ onQuickAction }) {
               <p className="text-sm font-medium text-gray-500">Total Patients</p>
               <p className="text-2xl font-bold mt-1">{loading ? '—' : analytics.totalPatients}</p>
             </div>
-            <div className="p-2 bg-blue-50 rounded-lg">
+            <div className="relative p-2 bg-blue-50 rounded-lg">
               <FaUsers className="text-blue-600" size={22} />
+              {!loading && analytics.totalPatients > 0 && (
+                <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                  {analytics.totalPatients > 99 ? '99+' : analytics.totalPatients}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -426,8 +519,13 @@ function DoctorDashboardContent({ onQuickAction }) {
               <p className="text-sm font-medium text-gray-500">Consultation History</p>
               <p className="text-2xl font-bold mt-1">{loading ? '—' : analytics.totalHistory}</p>
             </div>
-            <div className="p-2 bg-purple-50 rounded-lg">
+            <div className="relative p-2 bg-purple-50 rounded-lg">
               <FaClipboardList className="text-purple-600" size={22} />
+              {!loading && analytics.totalHistory > 0 && (
+                <div className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                  {analytics.totalHistory > 99 ? '99+' : analytics.totalHistory}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -440,8 +538,13 @@ function DoctorDashboardContent({ onQuickAction }) {
               <p className="text-sm font-medium text-gray-500">Pending Consultations</p>
               <p className="text-2xl font-bold mt-1">{loading ? '—' : analytics.pendingConsultations}</p>
             </div>
-            <div className="p-2 bg-yellow-50 rounded-lg">
+            <div className="relative p-2 bg-yellow-50 rounded-lg">
               <FaNotesMedical className="text-yellow-600" size={22} />
+              {!loading && analytics.pendingConsultations > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+                  {analytics.pendingConsultations > 99 ? '99+' : analytics.pendingConsultations}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -574,12 +677,15 @@ function PatientConsultations() {
   const [otherDiagnosisChecked, setOtherDiagnosisChecked] = useState(false);
   const [otherDiagnosisText, setOtherDiagnosisText] = useState("");
   const [medicationText, setMedicationText] = useState("");
+  const [treatmentText, setTreatmentText] = useState("");
   const [labFindingsText, setLabFindingsText] = useState("");
   const [labTestsText, setLabTestsText] = useState("");
   // Decision status for consultation
   const [consultationStatus, setConsultationStatus] = useState("Pending");
   // Form data storage for each patient (preserves data when modal is closed)
   const [patientFormData, setPatientFormData] = useState({});
+  // Wizard step state
+  const [consultationStep, setConsultationStep] = useState(1);
   // Search for Patient Consultations
   const [pcSearch, setPcSearch] = useState("");
   const [pcStatusFilter, setPcStatusFilter] = useState("All");
@@ -598,7 +704,20 @@ function PatientConsultations() {
         
         if (existingDecision) {
           // Load data from database
-          setMedicationText(existingDecision.medication_treatment || "");
+          // Split combined medication_treatment back into separate fields
+          const combinedText = existingDecision.medication_treatment || "";
+          const parts = combinedText.split('\n\n');
+          
+          if (parts.length >= 2) {
+            // If we have both parts separated by \n\n
+            setMedicationText(parts[0] || "");
+            setTreatmentText(parts.slice(1).join('\n\n') || "");
+          } else {
+            // If no separator found, put everything in medication
+            setMedicationText(combinedText);
+            setTreatmentText("");
+          }
+          
           setLabFindingsText(existingDecision.lab_findings_impression || "");
           setLabTestsText(existingDecision.lab_tests || "");
           setConsultationStatus(existingDecision.status || "Pending");
@@ -625,6 +744,7 @@ function PatientConsultations() {
         setOtherDiagnosisChecked(savedData.otherDiagnosisChecked || false);
         setOtherDiagnosisText(savedData.otherDiagnosisText || "");
         setMedicationText(savedData.medicationText || "");
+        setTreatmentText(savedData.treatmentText || "");
         setLabFindingsText(savedData.labFindingsText || "");
         setLabTestsText(savedData.labTestsText || "");
         setConsultationStatus(savedData.consultationStatus || "Pending");
@@ -634,6 +754,7 @@ function PatientConsultations() {
         setOtherDiagnosisChecked(false);
         setOtherDiagnosisText("");
         setMedicationText(patient?.medication || "");
+        setTreatmentText("");
         setLabFindingsText(patient?.lab_findings || "");
         setLabTestsText(patient?.lab_tests || "");
         setConsultationStatus("Pending");
@@ -645,6 +766,7 @@ function PatientConsultations() {
       setOtherDiagnosisChecked(false);
       setOtherDiagnosisText("");
       setMedicationText(patient?.medication || "");
+      setTreatmentText("");
       setLabFindingsText(patient?.lab_findings || "");
       setLabTestsText(patient?.lab_tests || "");
       setConsultationStatus("Pending");
@@ -686,7 +808,8 @@ function PatientConsultations() {
           name: `${r.patient_first_name || ''} ${r.patient_last_name || ''}`.trim() || 'Unknown',
           patientId: r.patient_id || r.id,
           age: calcAge(r.patient_birth_date),
-          gender: '-',
+          gender: r.gender || '-',
+          residential_address: r.residential_address || '-',
           status: consultationStatus,
           concern: r.chief_complaints || '',
           visit_type: r.visit_type || '',
@@ -774,6 +897,14 @@ function PatientConsultations() {
     // Validation: Check if required fields are filled for completion
     const errors = [];
     
+    // Check if at least one diagnosis is selected or entered
+    const hasAIDiagnosis = selectedDiagnoses.length > 0;
+    const hasFinalDiagnosis = otherDiagnosisChecked && otherDiagnosisText.trim() !== '';
+    
+    if (!hasAIDiagnosis && !hasFinalDiagnosis) {
+      errors.push('At least one AI Diagnosis must be checked OR Doctor\'s Final Diagnosis must be entered');
+    }
+    
     if (!medicationText || medicationText.trim() === '') {
       errors.push('Medication / Treatment');
     }
@@ -839,6 +970,11 @@ function PatientConsultations() {
         }
 
         // 2. Save consultation decision
+        // Combine medication and treatment with separator
+        const combinedMedicationTreatment = [medicationText, treatmentText]
+          .filter(text => text && text.trim())
+          .join('\n\n');
+        
         const decisionResponse = await fetch('/api/consultation_decisions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -846,7 +982,7 @@ function PatientConsultations() {
             treatment_record_id: selectedPatient.id,
             doctor_id: 1, // TODO: Get actual doctor ID from session
             status: consultationStatus,
-            medication_treatment: medicationText,
+            medication_treatment: combinedMedicationTreatment,
             lab_findings_impression: labFindingsText,
             lab_tests: labTestsText,
             notes: '',
@@ -864,7 +1000,7 @@ function PatientConsultations() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: consultationStatus.toLowerCase(),
-            medication: medicationText,
+            medication: combinedMedicationTreatment,
             lab_findings: labFindingsText,
             lab_tests: labTestsText
           }),
@@ -945,6 +1081,7 @@ function PatientConsultations() {
           otherDiagnosisChecked,
           otherDiagnosisText,
           medicationText,
+          treatmentText,
           labFindingsText,
           labTestsText,
           consultationStatus
@@ -952,6 +1089,7 @@ function PatientConsultations() {
       }));
     }
     setSelectedPatient(null);
+    setConsultationStep(1); // Reset to first step
   };
 
   const handleSaveDraft = async () => {
@@ -959,6 +1097,11 @@ function PatientConsultations() {
 
     try {
       // Save consultation decision as draft
+      // Combine medication and treatment with separator
+      const combinedMedicationTreatment = [medicationText, treatmentText]
+        .filter(text => text && text.trim())
+        .join('\n\n');
+      
       const decisionResponse = await fetch('/api/consultation_decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -966,7 +1109,7 @@ function PatientConsultations() {
           treatment_record_id: selectedPatient.id,
           doctor_id: 1, // TODO: Get actual doctor ID from session
           status: consultationStatus,
-          medication_treatment: medicationText,
+          medication_treatment: combinedMedicationTreatment,
           lab_findings_impression: labFindingsText,
           lab_tests: labTestsText,
           notes: '',
@@ -1188,24 +1331,91 @@ function PatientConsultations() {
 
       {/* Modal for Consultation Form */}
       {selectedPatient && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white max-w-5xl w-full mx-auto border border-gray-300 rounded-lg shadow-lg relative max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              
-              {/* Close Button */}
+        <div className="fixed inset-0 backdrop-blur-md bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white max-w-6xl w-full mx-auto rounded-2xl shadow-2xl relative max-h-[95vh] overflow-hidden flex flex-col">
+            
+            {/* Modern Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <FaStethoscope className="text-white text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Patient Consultation</h3>
+                  <p className="text-blue-100 text-sm">Rural Health Unit - Balingasag</p>
+                </div>
+              </div>
               <button
                 onClick={closeModal}
-                className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold"
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
               >
-                &times;
+                <FaTimes size={20} />
               </button>
-              
-              <h3 className="text-xl font-bold text-center mb-6">Rural Health Unit - Patient Consultation Form</h3>
+            </div>
 
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto flex-1 p-6">
+
+              {/* Step Progress Bar */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between relative">
+                  {/* Progress Line */}
+                  <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 -z-10">
+                    <div 
+                      className="h-full bg-blue-600 transition-all duration-300"
+                      style={{ width: `${((consultationStep - 1) / 2) * 100}%` }}
+                    ></div>
+                  </div>
+
+                  {/* Step 1: Patient Info & Chief Complaints */}
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold transition-all duration-300 ${
+                      consultationStep >= 1 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-200 text-gray-400'
+                    }`}>
+                      {consultationStep > 1 ? <FaCheck size={20} /> : '1'}
+                    </div>
+                    <span className={`text-sm mt-3 text-center font-medium transition-colors ${
+                      consultationStep >= 1 ? 'text-blue-600' : 'text-gray-400'
+                    }`}>Patient Info</span>
+                  </div>
+
+                  {/* Step 2: AI Diagnoses & Treatment */}
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold transition-all duration-300 ${
+                      consultationStep >= 2 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-200 text-gray-400'
+                    }`}>
+                      {consultationStep > 2 ? <FaCheck size={20} /> : '2'}
+                    </div>
+                    <span className={`text-sm mt-3 text-center font-medium transition-colors ${
+                      consultationStep >= 2 ? 'text-blue-600' : 'text-gray-400'
+                    }`}>Diagnosis & Treatment</span>
+                  </div>
+
+                  {/* Step 3: Laboratory & Decision */}
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold transition-all duration-300 ${
+                      consultationStep >= 3 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-200 text-gray-400'
+                    }`}>
+                      {consultationStep >= 3 ? <FaCheck size={20} /> : '3'}
+                    </div>
+                    <span className={`text-sm mt-3 text-center font-medium transition-colors ${
+                      consultationStep >= 3 ? 'text-blue-600' : 'text-gray-400'
+                    }`}>Laboratory & Decision</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 1: Patient Information & Chief Complaints */}
+              <div className={consultationStep !== 1 ? 'hidden' : ''}>
               {/* Patient Information Section */}
-              <div className="border border-gray-400">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Patient Information</div>
-                <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <FaUser className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Patient Information</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Visit Information Row */}
                   <div className="col-span-2 grid grid-cols-3 gap-x-4 gap-y-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center">
@@ -1232,176 +1442,253 @@ function PatientConsultations() {
                     </div>
                   </div>
                   
-                  <div className="col-span-2 md:col-span-1 flex items-center">
-                    <label className="min-w-[80px] font-semibold">Name:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.name}</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Name</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.name}</div>
                   </div>
-                  <div className="col-span-2 md:col-span-1 flex items-center">
-                    <label className="min-w-[80px] font-semibold">Age:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.age}</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Age</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.age}</div>
                   </div>
-                  <div className="col-span-2 md:col-span-1 flex items-center">
-                    <label className="min-w-[80px] font-semibold">Sex:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.gender}</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sex</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.gender}</div>
                   </div>
-                  <div className="col-span-2 md:col-span-1 flex items-center">
-                    <label className="min-w-[80px] font-semibold">Address:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2"></div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{new Date().toLocaleDateString()}</div>
                   </div>
-                  <div className="col-span-2 flex items-center">
-                    <label className="min-w-[80px] font-semibold">Date:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{new Date().toLocaleDateString()}</div>
+                  <div className="col-span-2 bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Address</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.residential_address || selectedPatient.address || '-'}</div>
                   </div>
                 </div>
               </div>
               
               {/* Vital Signs Section */}
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Vital Signs</div>
-                <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <div className="flex items-center">
-                    <label className="min-w-[120px] font-semibold">Blood Pressure:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.vitalSigns.bloodPressure} mmHg</div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-sm border border-green-100 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                    <FaHeartbeat className="text-white text-sm" />
                   </div>
-                  <div className="flex items-center">
-                    <label className="min-w-[120px] font-semibold">Heart Rate:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.vitalSigns.heartRate} bpm</div>
+                  <h4 className="text-lg font-semibold text-gray-800">Vital Signs</h4>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Blood Pressure</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.vitalSigns.bloodPressure} mmHg</div>
                   </div>
-                  <div className="flex items-center">
-                    <label className="min-w-[120px] font-semibold">Temperature:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.vitalSigns.temperature}°C</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Heart Rate</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.vitalSigns.heartRate} bpm</div>
                   </div>
-                  <div className="flex items-center">
-                    <label className="min-w-[120px] font-semibold">Respiratory Rate:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.vitalSigns.respiratoryRate} bpm</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Temperature</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.vitalSigns.temperature}°C</div>
                   </div>
-                  <div className="flex items-center">
-                    <label className="min-w-[120px] font-semibold">Height:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.vitalSigns.height}</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Respiratory Rate</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.vitalSigns.respiratoryRate} cpm</div>
                   </div>
-                  <div className="flex items-center">
-                    <label className="min-w-[120px] font-semibold">Weight:</label>
-                    <div className="flex-1 border-b border-gray-400 px-2">{selectedPatient.vitalSigns.weight}</div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Height</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.vitalSigns.height}</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Weight</label>
+                    <div className="text-sm font-semibold text-gray-800 mt-1">{selectedPatient.vitalSigns.weight}</div>
                   </div>
                 </div>
               </div>
               
               {/* Chief Complaints Section */}
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Chief Complaints</div>
-                <div className="p-4">
-                  <textarea
-                    className="w-full h-24 p-2 text-sm border border-gray-300 rounded-md bg-gray-50 resize-none"
-                    readOnly
-                    value={selectedPatient.concern}
-                  ></textarea>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-sm border border-green-100 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                    <FaNotesMedical className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Chief Complaints</h4>
                 </div>
+                <textarea
+                  className="w-full h-24 p-4 text-sm border-2 border-green-200 rounded-lg bg-white resize-none focus:outline-none focus:border-green-400 transition-colors"
+                  readOnly
+                  value={selectedPatient.concern}
+                ></textarea>
               </div>
-              
-              {/* Diagnoses Section */}
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-blue-100 px-4 py-2 font-bold text-blue-800 border-b border-blue-200">
-                  AI Suggested Diagnoses (Check to Approve & Save)
-                  <div className="text-xs font-normal text-blue-600 mt-1">
-                    ✓ Only checked diagnoses will be saved
+              </div>
+
+              {/* Step 2: AI Diagnoses & Treatment Section */}
+              <div className={consultationStep !== 2 ? 'hidden' : ''}>
+              {/* AI Diagnoses */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <FaStethoscope className="text-white text-sm" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-800">
+                        AI Suggested Diagnoses <span className="text-red-500">*</span>
+                      </h4>
+                      <p className="text-xs text-blue-600 mt-0.5">✓ Check at least one to approve & save (or enter final diagnosis below)</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-y-2 text-sm">
+                <div className="p-4 space-y-4">
                   {(selectedPatient?.possibleDiagnosis || []).map((d, idx) => {
                     const label = typeof d === 'string' ? d : (d?.condition || '');
                     const checked = selectedDiagnoses.includes(label);
+                    
+                    // Parse diagnosis name and percentage from label (e.g., "Influenza (26.2%)")
+                    const diagnosisMatch = label.match(/^(.+?)\s*\((\d+\.?\d*)%\)$/);
+                    const diagnosisName = diagnosisMatch ? diagnosisMatch[1].trim() : label;
+                    const percentage = diagnosisMatch ? diagnosisMatch[2] : '';
+                    const explanation = getDiagnosisExplanation(diagnosisName);
+                    
                     return (
-                      <div key={idx} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          className="mr-2"
-                          checked={checked}
-                          onChange={(e) => {
-                            setSelectedDiagnoses((prev) => {
-                              if (e.target.checked) {
-                                // Add AI diagnosis to selectedDiagnoses array
-                                return [...prev, label];
-                              } else {
-                                // Remove AI diagnosis from selectedDiagnoses array
-                                return prev.filter((x) => x !== label);
-                              }
-                            });
-                          }}
-                        />
-                        <label>{label}</label>
+                      <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-white shadow-sm">
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            className="mr-3 mt-1"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedDiagnoses((prev) => {
+                                if (e.target.checked) {
+                                  // Add AI diagnosis to selectedDiagnoses array
+                                  return [...prev, label];
+                                } else {
+                                  // Remove AI diagnosis from selectedDiagnoses array
+                                  return prev.filter((x) => x !== label);
+                                }
+                              });
+                            }}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="font-semibold text-gray-800 text-sm cursor-pointer">
+                                {idx + 1}. {diagnosisName}
+                              </label>
+                              {percentage && (
+                                <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                  {percentage}%
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              {explanation}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
-                  <div className="flex items-center col-span-2">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={otherDiagnosisChecked}
-                      onChange={(e) => {
-                        setOtherDiagnosisChecked(e.target.checked);
-                        if (!e.target.checked) {
-                          setOtherDiagnosisText("");
-                        }
-                      }}
-                    />
-                    <label>Doctor's Final Diagnosis: </label>
-                    <input
-                      type="text"
-                      className="ml-2 flex-1 border-b border-gray-400 outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
-                      value={otherDiagnosisText}
-                      onChange={(e) => {
-                        console.log('Doctor diagnosis text changed:', e.target.value);
-                        setOtherDiagnosisText(e.target.value);
-                      }}
-                      disabled={!otherDiagnosisChecked}
-                      placeholder="Enter doctor's final diagnosis..."
-                    />
+                  {/* Doctor's Final Diagnosis Section */}
+                  <div className="border border-gray-200 rounded-lg p-3 bg-blue-50 shadow-sm">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        className="mr-3 mt-1"
+                        checked={otherDiagnosisChecked}
+                        onChange={(e) => {
+                          setOtherDiagnosisChecked(e.target.checked);
+                          if (!e.target.checked) {
+                            setOtherDiagnosisText("");
+                          }
+                        }}
+                      />
+                      <div className="flex-1">
+                        <label className="font-semibold text-gray-800 text-sm cursor-pointer">
+                          Doctor's Final Diagnosis
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
+                          value={otherDiagnosisText}
+                          onChange={(e) => setOtherDiagnosisText(e.target.value)}
+                          disabled={!otherDiagnosisChecked}
+                          placeholder={otherDiagnosisChecked ? "Enter your final diagnosis..." : "Check the box to enable"}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              
-              
 
-              {/* Treatment and Labs Section */}
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Medication / Treatment</div>
-                <div className="p-4">
-                  <textarea
-                    className="w-full h-24 p-2 text-sm border border-gray-300 rounded-md resize-none"
-                    placeholder="Prescribed medication or treatment plan..."
-                    value={medicationText}
-                    onChange={(e) => setMedicationText(e.target.value)}
-                  ></textarea>
+              {/* Medication - Same Step 2 */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-sm border border-green-100 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                    <FaFileMedical className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Medication</h4>
                 </div>
+                <textarea
+                  className="w-full h-32 p-4 text-sm border-2 border-green-200 rounded-lg bg-white resize-none focus:outline-none focus:border-green-400 transition-colors"
+                  placeholder="Prescribed medication..."
+                  value={medicationText}
+                  onChange={(e) => setMedicationText(e.target.value)}
+                ></textarea>
               </div>
 
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Laboratory Findings / Impression</div>
-                <div className="p-4">
-                  <textarea
-                    className="w-full h-24 p-2 text-sm border border-gray-300 rounded-md resize-none"
-                    placeholder="Findings or impressions from lab results..."
-                    value={labFindingsText}
-                    onChange={(e) => setLabFindingsText(e.target.value)}
-                  ></textarea>
+              {/* Treatment - Same Step 2 */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <FaHandHoldingMedical className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Treatment</h4>
                 </div>
+                <textarea
+                  className="w-full h-32 p-4 text-sm border-2 border-blue-200 rounded-lg bg-white resize-none focus:outline-none focus:border-blue-400 transition-colors"
+                  placeholder="Treatment plan..."
+                  value={treatmentText}
+                  onChange={(e) => setTreatmentText(e.target.value)}
+                ></textarea>
+              </div>
               </div>
 
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Performed Laboratory Test</div>
-                <div className="p-4">
-                  <textarea
-                    className="w-full h-24 p-2 text-sm border border-gray-300 rounded-md resize-none"
-                    placeholder="List of lab tests performed..."
-                    value={labTestsText}
-                    onChange={(e) => setLabTestsText(e.target.value)}
-                  ></textarea>
+              {/* Step 3: Laboratory & Consultation Decision */}
+              <div className={consultationStep !== 3 ? 'hidden' : ''}>
+              {/* Laboratory Findings */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <FaFileMedical className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Laboratory Findings / Impression</h4>
                 </div>
+                <textarea
+                  className="w-full h-32 p-4 text-sm border-2 border-blue-200 rounded-lg bg-white resize-none focus:outline-none focus:border-blue-400 transition-colors"
+                  placeholder="Findings or impressions from lab results..."
+                  value={labFindingsText}
+                  onChange={(e) => setLabFindingsText(e.target.value)}
+                ></textarea>
               </div>
 
-              {/* Decision Status */}
-              <div className="border border-gray-400 mt-6">
-                <div className="bg-gray-200 px-4 py-2 font-bold">Consultation Decision</div>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <FaClipboardList className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Performed Laboratory Test</h4>
+                </div>
+                <textarea
+                  className="w-full h-32 p-4 text-sm border-2 border-blue-200 rounded-lg bg-white resize-none focus:outline-none focus:border-blue-400 transition-colors"
+                  placeholder="List of lab tests performed..."
+                  value={labTestsText}
+                  onChange={(e) => setLabTestsText(e.target.value)}
+                ></textarea>
+              </div>
+
+              {/* Consultation Decision - Same Step 3 */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-sm border border-green-100 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                    <FaCheck className="text-white text-sm" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">Consultation Decision</h4>
+                </div>
                 <div className="p-4">
                   <div className="flex items-center gap-4">
                     <label className="block text-sm font-medium text-gray-700">Status:</label>
@@ -1427,34 +1714,60 @@ function PatientConsultations() {
                   )}
                 </div>
               </div>
+              </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t mt-8">
+              {/* Wizard Navigation Buttons */}
+              <div className="flex justify-between items-center pt-6 mt-8">
+                {/* Back Button */}
                 <button
-                  onClick={closeModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                {consultationStatus !== 'Complete' && (
-                  <button
-                    onClick={handleSaveDraft}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Save Draft
-                  </button>
-                )}
-                <button
-                  onClick={handleCompleteConsultation}
-                  className={`px-4 py-2 text-white rounded-md ${
-                    consultationStatus === 'Complete' 
-                      ? 'bg-green-600 hover:bg-green-700' 
-                      : 'bg-gray-400 cursor-not-allowed'
+                  onClick={() => {
+                    if (consultationStep > 1) {
+                      setConsultationStep(consultationStep - 1);
+                    }
+                  }}
+                  disabled={consultationStep === 1}
+                  className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                    consultationStep === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white border-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md'
                   }`}
-                  disabled={consultationStatus !== 'Complete'}
                 >
-                  Complete Consultation
+                  <FaArrowLeft />
+                  Back
                 </button>
+
+                {/* Next/Complete Button */}
+                {consultationStep < 3 ? (
+                  <button
+                    onClick={() => setConsultationStep(consultationStep + 1)}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                  >
+                    Next
+                    <FaArrowRight />
+                  </button>
+                ) : (
+                  <div className="flex gap-3">
+                    {consultationStatus !== 'Complete' && (
+                      <button
+                        onClick={handleSaveDraft}
+                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 font-semibold transition-all shadow-lg hover:shadow-xl"
+                      >
+                        Save Draft
+                      </button>
+                    )}
+                    <button
+                      onClick={handleCompleteConsultation}
+                      className={`px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl ${
+                        consultationStatus === 'Complete' 
+                          ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      disabled={consultationStatus !== 'Complete'}
+                    >
+                      Complete Consultation
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

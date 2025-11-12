@@ -72,15 +72,13 @@ export default async function handler(req, res) {
          OR COALESCE(TRIM(diagnosis_3), '') <> ''
     `);
 
-    // Pending consultations derived from individual_treatment_records
-    // Definition: records with no diagnosis provided yet
+    // Pending consultations from consultation_decisions table
+    // Definition: records with status 'Pending' or no decision record yet
     const pendingResult = await pool.query(`
       SELECT COUNT(*)::int AS pending
-      FROM individual_treatment_records
-      WHERE COALESCE(TRIM(diagnosis), '') = ''
-        AND COALESCE(TRIM(diagnosis_1), '') = ''
-        AND COALESCE(TRIM(diagnosis_2), '') = ''
-        AND COALESCE(TRIM(diagnosis_3), '') = ''
+      FROM individual_treatment_records itr
+      LEFT JOIN consultation_decisions cd ON itr.id = cd.treatment_record_id
+      WHERE cd.status IS NULL OR cd.status = 'Pending'
     `);
 
     const analytics = {

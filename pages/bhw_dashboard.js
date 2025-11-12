@@ -1202,6 +1202,11 @@ function ViewReferrals({ bhwId }) {
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
   const [viewReferral, setViewReferral] = useState(null);
+  
+  // State for viewing referral history
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedPatientReferrals, setSelectedPatientReferrals] = useState([]);
+  const [viewingReferral, setViewingReferral] = useState(null);
 
   // Fetch referrals data - only for this BHW
   const fetchReferrals = async () => {
@@ -1271,13 +1276,47 @@ function ViewReferrals({ bhwId }) {
     setCurrentPage(0); // Reset to first page when filters change
   }, [referrals, searchQuery, filterStatus, sortOrder]);
 
+  // Group referrals by patient
+  const groupedReferrals = filteredReferrals.reduce((acc, referral) => {
+    const patientKey = `${referral.patient_id}`;
+    if (!acc[patientKey]) {
+      acc[patientKey] = {
+        patient_id: referral.patient_id,
+        patient_name: `${referral.patient_last_name}, ${referral.patient_first_name} ${referral.patient_middle_name || ''}`.trim(),
+        patient_last_name: referral.patient_last_name,
+        patient_first_name: referral.patient_first_name,
+        patient_middle_name: referral.patient_middle_name,
+        referrals: []
+      };
+    }
+    acc[patientKey].referrals.push(referral);
+    return acc;
+  }, {});
+
+  // Convert to array and sort by most recent referral
+  const groupedArray = Object.values(groupedReferrals).map(group => {
+    // Sort referrals within group by date (newest first)
+    group.referrals.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // Get the latest referral for display
+    group.latestReferral = group.referrals[0];
+    group.referralCount = group.referrals.length;
+    return group;
+  });
+
   // Pagination
-  const totalPages = Math.ceil(filteredReferrals.length / itemsPerPage);
+  const totalPages = Math.ceil(groupedArray.length / itemsPerPage);
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i);
-  const currentItems = filteredReferrals.slice(
+  const currentItems = groupedArray.slice(
     currentPage * itemsPerPage,
     (currentPage + 1) * itemsPerPage
   );
+  
+  // Handler to view all referrals for a patient
+  const handleViewAllReferrals = (group) => {
+    setSelectedPatientReferrals(group.referrals);
+    setViewingReferral(group.referrals[0]); // Show the latest referral first
+    setShowHistoryModal(true);
+  };
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -1321,7 +1360,7 @@ function ViewReferrals({ bhwId }) {
     });
   };
 
-  const showingText = `Showing ${Math.min(filteredReferrals.length, (currentPage * itemsPerPage) + 1)}-${Math.min((currentPage + 1) * itemsPerPage, filteredReferrals.length)} of ${filteredReferrals.length} referrals`;
+  const showingText = `Showing ${Math.min(groupedArray.length, (currentPage * itemsPerPage) + 1)}-${Math.min((currentPage + 1) * itemsPerPage, groupedArray.length)} of ${groupedArray.length} patients (${filteredReferrals.length} total referrals)`;
 
   if (loading) {
     return (
@@ -1355,7 +1394,7 @@ function ViewReferrals({ bhwId }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Referral Management</h2>
-          <p className="text-xs sm:text-sm text-gray-600">View and manage all patient referrals</p>
+          <p className="text-xs sm:text-sm text-gray-600">View and manage all patient referrals (grouped by patient)</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <input
@@ -1421,13 +1460,16 @@ function ViewReferrals({ bhwId }) {
                       Patient
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Referred To
+                      Latest Referral To
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Date & Time
+                      Latest Date & Time
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                       Status
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                      Total Referrals
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                       Actions
@@ -1435,43 +1477,47 @@ function ViewReferrals({ bhwId }) {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {currentItems.map((referral) => (
-                    <tr key={referral.id} className="hover:bg-gray-50">
+                  {currentItems.map((group) => (
+                    <tr key={group.patient_id} className="hover:bg-gray-50">
                       <td className="px-4 py-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {referral.patient_last_name}, {referral.patient_first_name}
-                          {referral.patient_middle_name && ` ${referral.patient_middle_name}`}
+                          {group.patient_name}
                         </div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">
-                          {referral.chief_complaints}
+                          {group.latestReferral.chief_complaints}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm text-gray-900">{referral.referred_to}</div>
-                        <div className="text-sm text-gray-500 truncate max-w-xs">{referral.referred_to_address}</div>
+                        <div className="text-sm text-gray-900">{group.latestReferral.referred_to}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">{group.latestReferral.referred_to_address}</div>
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
-                          {formatDate(referral.referral_date)}
+                          {formatDate(group.latestReferral.referral_date)}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {referral.referral_time}
+                          {group.latestReferral.referral_time}
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(referral.status)}`}>
-                          {referral.status || 'Pending'}
+                      <td className="px-4 py-4 text-center">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(group.latestReferral.status)}`}>
+                          {group.latestReferral.status || 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className="inline-flex items-center justify-center px-3 py-1 text-sm font-bold text-green-700 bg-green-100 rounded-full">
+                          {group.referralCount}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
                         <button
-                          onClick={() => setViewReferral(referral)}
+                          onClick={() => handleViewAllReferrals(group)}
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-green-50 text-green-700 border-green-200 hover:bg-green-100 transition-colors"
-                          title="View Referral Details"
-                          aria-label="View Referral Details"
+                          title="View All Referrals"
+                          aria-label="View All Referrals"
                         >
                           <FaEye className="w-4 h-4" />
-                          <span className="hidden sm:inline">View</span>
+                          <span className="hidden sm:inline">View All</span>
                         </button>
                       </td>
                     </tr>
@@ -1482,47 +1528,43 @@ function ViewReferrals({ bhwId }) {
 
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-4 p-4">
-              {currentItems.map((referral) => (
-                <div key={referral.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+              {currentItems.map((group) => (
+                <div key={group.patient_id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-gray-900">
-                        {referral.patient_last_name}, {referral.patient_first_name}
-                        {referral.patient_middle_name && ` ${referral.patient_middle_name}`}
+                        {group.patient_name}
                       </h3>
                       <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                        {referral.chief_complaints}
+                        {group.latestReferral.chief_complaints}
                       </p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ml-2 ${getStatusColor(referral.status)}`}>
-                      {referral.status || 'Pending'}
+                    <span className="px-3 py-1 text-xs font-bold text-green-700 bg-green-100 rounded-full ml-2">
+                      {group.referralCount} referral{group.referralCount > 1 ? 's' : ''}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="font-medium text-gray-700">Referred To:</span>
-                      <p className="text-gray-600 mt-1">{referral.referred_to}</p>
+                      <span className="font-medium text-gray-700">Latest Referred To:</span>
+                      <p className="text-gray-600 mt-1">{group.latestReferral.referred_to}</p>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-700">Date & Time:</span>
+                      <span className="font-medium text-gray-700">Latest Date & Time:</span>
                       <p className="text-gray-600 mt-1">
-                        {formatDate(referral.referral_date)}<br />
-                        {referral.referral_time}
+                        {formatDate(group.latestReferral.referral_date)}<br />
+                        {group.latestReferral.referral_time}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-                    <div className="text-xs text-gray-500">
-                      By: {referral.referred_by_name}
-                    </div>
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
                     <button
-                      onClick={() => setViewReferral(referral)}
+                      onClick={() => handleViewAllReferrals(group)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors text-xs font-medium"
                     >
                       <FaEye className="w-3 h-3" />
-                      View Details
+                      View All ({group.referralCount})
                     </button>
                   </div>
                 </div>
@@ -1744,6 +1786,271 @@ function ViewReferrals({ bhwId }) {
           </div>
         </div>
       )}
+
+      {/* Referral History Modal */}
+      {showHistoryModal && selectedPatientReferrals.length > 0 && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold mb-2">Referral History</h2>
+                  <p className="text-green-100 text-sm">
+                    Patient: {selectedPatientReferrals[0].patient_last_name}, {selectedPatientReferrals[0].patient_first_name}
+                  </p>
+                  <p className="text-green-100 text-xs mt-1">Total Referrals: {selectedPatientReferrals.length}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowHistoryModal(false);
+                    setSelectedPatientReferrals([]);
+                    setViewingReferral(null);
+                  }}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <FaTimes className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden flex">
+              {/* Main Referral View */}
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                {viewingReferral && (
+                  <div className="space-y-6">
+                    {/* Referral Type Section */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Referral Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Referral Type</label>
+                          <p className="text-gray-900 font-medium bg-gray-50 p-3 rounded">{viewingReferral.referral_type}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{formatDate(viewingReferral.referral_date)}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.referral_time}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Referred To Section */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Referred To</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Facility Name</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.referred_to}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Facility Address</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.referred_to_address}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Patient Information */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Patient Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.patient_last_name}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.patient_first_name}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.patient_middle_name || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Patient Address</label>
+                        <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.patient_address}</p>
+                      </div>
+                    </div>
+
+                    {/* Clinical Information */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Clinical Information</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaints</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">{viewingReferral.chief_complaints}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Medical History</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">{viewingReferral.medical_history || 'N/A'}</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Surgical Operations</label>
+                            <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.surgical_operations || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Drug Allergy</label>
+                            <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.drug_allergy || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Last Meal Time</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.last_meal_time || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Vital Signs & Physical Examination */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Vital Signs & Physical Examination</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 text-center font-semibold">{viewingReferral.blood_pressure || 'N/A'}</p>
+                          <p className="text-xs text-gray-500 text-center mt-1">mmHg</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Heart Rate</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 text-center font-semibold">{viewingReferral.heart_rate || 'N/A'}</p>
+                          <p className="text-xs text-gray-500 text-center mt-1">bpm</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Respiratory Rate</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 text-center font-semibold">{viewingReferral.respiratory_rate || 'N/A'}</p>
+                          <p className="text-xs text-gray-500 text-center mt-1">/min</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 text-center font-semibold">{viewingReferral.weight || 'N/A'}</p>
+                          <p className="text-xs text-gray-500 text-center mt-1">kg</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Assessment & Management */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Assessment & Management</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Impression</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">{viewingReferral.impression || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Action Taken (Phone/RECO)</label>
+                          <p className="text-gray-900 p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">{viewingReferral.action_taken || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Information */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Additional Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Health Insurance</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.health_insurance || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Referral</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.referral_reason || viewingReferral.other_reason || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Referred By */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Referred By</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.referred_by_name}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded">{viewingReferral.license_number}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Status</h3>
+                      <span className={`inline-block px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(viewingReferral.status)}`}>
+                        {viewingReferral.status || 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* History Sidebar */}
+              <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
+                <div className="p-4 bg-gray-50 border-b border-gray-200">
+                  <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <FaHistory className="text-green-600" />
+                    Referral History ({selectedPatientReferrals.length})
+                  </h4>
+                </div>
+                <div className="p-4 space-y-3">
+                  {selectedPatientReferrals.map((referral, index) => (
+                    <div
+                      key={referral.id}
+                      onClick={() => setViewingReferral(referral)}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        viewingReferral?.id === referral.id
+                          ? 'border-green-500 bg-green-50 shadow-md'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-500">#{selectedPatientReferrals.length - index}</span>
+                          {viewingReferral?.id === referral.id && (
+                            <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded-full font-medium">
+                              Viewing
+                            </span>
+                          )}
+                        </div>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(referral.status)}`}>
+                          {referral.status || 'Pending'}
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-900 mb-1">{referral.referred_to}</p>
+                        <p className="text-xs text-gray-600">{formatDate(referral.referral_date)}</p>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{referral.chief_complaints}</p>
+                      </div>
+                      {viewingReferral?.id !== referral.id && (
+                        <p className="text-xs text-blue-600 mt-2">Click to view details →</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowHistoryModal(false);
+                  setSelectedPatientReferrals([]);
+                  setViewingReferral(null);
+                }}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1844,8 +2151,13 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
                 <p className="text-sm font-medium text-gray-500">Total Patients</p>
                 <p className="text-2xl font-bold mt-1">{loading ? '—' : stats.totalPatients}</p>
               </div>
-              <div className="p-2 bg-gray-50 rounded-lg">
+              <div className="relative p-2 bg-gray-50 rounded-lg">
                 <FaUsers className="text-blue-600" size={22} />
+                {!loading && stats.totalPatients > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                    {stats.totalPatients > 99 ? '99+' : stats.totalPatients}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1858,8 +2170,13 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
                 <p className="text-sm font-medium text-gray-500">Pending Referrals</p>
                 <p className="text-2xl font-bold mt-1">{loading ? '—' : stats.pendingReferrals}</p>
               </div>
-              <div className="p-2 bg-gray-50 rounded-lg">
+              <div className="relative p-2 bg-gray-50 rounded-lg">
                 <FaClock className="text-amber-500" size={22} />
+                {!loading && stats.pendingReferrals > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+                    {stats.pendingReferrals > 99 ? '99+' : stats.pendingReferrals}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1872,8 +2189,13 @@ function BHWDashboardContent({ onQuickAction, bhwId }) {
                 <p className="text-sm font-medium text-gray-500">Completed Referrals</p>
                 <p className="text-2xl font-bold mt-1">{loading ? '—' : stats.completedReferrals}</p>
               </div>
-              <div className="p-2 bg-gray-50 rounded-lg">
+              <div className="relative p-2 bg-gray-50 rounded-lg">
                 <FaCheckCircle className="text-green-600" size={22} />
+                {!loading && stats.completedReferrals > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                    {stats.completedReferrals > 99 ? '99+' : stats.completedReferrals}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2004,6 +2326,10 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
   const [treatmentPatient, setTreatmentPatient] = useState(null);
   const [treatmentReferral, setTreatmentReferral] = useState(null);
   const treatmentFormRef = useRef(null);
+  
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3;
 
   useEffect(() => {
     if (bhwId) {
@@ -2198,10 +2524,38 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
       });
 
       if (response.ok) {
+        // If adding a new patient (not editing), also add to RHU system
+        if (method === 'POST') {
+          try {
+            // Create the same patient in RHU system with type = 'staff_data'
+            const rhuPatientData = {
+              ...patientData,
+              type: 'staff_data' // Change type to staff_data for RHU
+            };
+            
+            const rhuResponse = await fetch('/api/patients', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(rhuPatientData),
+            });
+
+            if (!rhuResponse.ok) {
+              console.error('Error adding patient to RHU system:', await rhuResponse.text());
+              // Continue anyway - BHW patient was saved successfully
+            }
+          } catch (rhuError) {
+            console.error('Error adding patient to RHU system:', rhuError);
+            // Continue anyway - BHW patient was saved successfully
+          }
+        }
+
         await Swal.fire({
           title: 'Record Saved Successfully',
+          text: method === 'POST' ? 'Patient added to both BHW and RHU systems' : 'Patient updated successfully',
           icon: 'success',
-          timer: 1500,
+          timer: 2000,
           showConfirmButton: false,
           customClass: {
             popup: 'swal-custom-popup swal-success-popup',
@@ -2213,9 +2567,29 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
         resetForm();
       } else {
         console.error('Error saving patient:', await response.text());
+        Swal.fire({
+          title: 'Error',
+          text: 'Failed to save patient. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700',
+            popup: 'rounded-lg'
+          }
+        });
       }
     } catch (error) {
       console.error('Error saving patient:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'An unexpected error occurred. Please try again.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700',
+          popup: 'rounded-lg'
+        }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -2261,8 +2635,9 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
         createdBy: bhwId
       };
 
-      const url = editingReferralId ? `/api/referrals?id=${editingReferralId}` : '/api/referrals';
-      const method = editingReferralId ? 'PUT' : 'POST';
+      // Always POST (create new referral, never update)
+      const url = '/api/referrals';
+      const method = 'POST';
 
       const response = await fetch(url, {
         method,
@@ -2275,17 +2650,14 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
       if (response.ok) {
         await Swal.fire({
           title: 'Success',
-          text: editingReferralId ? 'Referral updated successfully!' : 'Referral sent successfully!',
+          text: 'Referral sent successfully!',
           icon: 'success',
           timer: 1500,
           showConfirmButton: false,
-          customClass: {
-            popup: 'swal-custom-popup swal-success-popup',
-            title: 'swal-custom-title'
-          }
         });
         setShowFormModal(false);
-        resetForm();
+        setSelectedPatient(null);
+        setEditingReferralId(null);
         fetchExistingReferrals();
       } else {
         console.error('Error saving referral:', await response.text());
@@ -2315,6 +2687,411 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Validate required fields for printing
+  const validateRequiredFields = () => {
+    const requiredFields = [
+      { field: 'referralType', name: 'Referral Type' },
+      { field: 'date', name: 'Date' },
+      { field: 'time', name: 'Time' },
+      { field: 'referredTo', name: 'Referred To' },
+      { field: 'referredToAddress', name: 'Referred To Address' },
+      { field: 'patientLastName', name: 'Patient Last Name' },
+      { field: 'patientFirstName', name: 'Patient First Name' },
+      { field: 'patientAddress', name: 'Patient Address' },
+      { field: 'chiefComplaints', name: 'Chief Complaints' },
+      { field: 'bloodPressure', name: 'Blood Pressure' },
+      { field: 'heartRate', name: 'Heart Rate' },
+      { field: 'respiratoryRate', name: 'Respiratory Rate' },
+      { field: 'weight', name: 'Weight' },
+      { field: 'impression', name: 'Impression' },
+      { field: 'actionTaken', name: 'Action Taken' },
+      { field: 'referralReason', name: 'Referral Reason' },
+      { field: 'referredByName', name: 'Referred By Name' },
+      { field: 'licenseNumber', name: 'License Number' }
+    ];
+
+    const missingFields = [];
+    for (const { field, name } of requiredFields) {
+      if (!formData[field] || formData[field].toString().trim() === '') {
+        missingFields.push(name);
+      }
+    }
+
+    return missingFields;
+  };
+
+  // Print referral form
+  const handlePrintReferral = () => {
+    const missingFields = validateRequiredFields();
+    
+    if (missingFields.length > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Required Fields Missing',
+        html: `Please fill in the following required fields before printing:<br><br><strong>${missingFields.join('<br>')}</strong>`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#f59e0b'
+      });
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    };
+
+    const formatTime = (timeStr) => {
+      if (!timeStr) return '';
+      return new Date(`2000-01-01T${timeStr}`).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    };
+
+    const pad = (v = '') => (v == null ? '' : v);
+    const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '');
+    const surgical = formData.surgicalOperations === 'YES' ? `YES - ${pad(formData.surgicalProcedure)}` : (formData.surgicalOperations || 'NO');
+    const allergy = formData.drugAllergy === 'YES' ? `YES - ${pad(formData.allergyType)}` : (formData.drugAllergy || 'NO');
+    const insurance = formData.healthInsurance === 'YES' ? `YES - ${pad(formData.insuranceType)}` : (formData.healthInsurance || 'NO');
+
+    const printContent = `<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Clinical Referral Form - ${pad(formData.patientLastName)}, ${pad(formData.patientFirstName)}</title>
+        <style>
+          @page { size: A4; margin: 15mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            color: #1a1a1a; 
+            line-height: 1.4;
+            font-size: 10pt;
+          }
+          .container { 
+            max-width: 210mm; 
+            margin: 0 auto; 
+            padding: 10mm;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 15px;
+            border-bottom: 3px solid #16a34a;
+            padding-bottom: 10px;
+          }
+          .header h1 { 
+            font-size: 18pt; 
+            color: #16a34a; 
+            margin-bottom: 4px;
+            font-weight: 700;
+          }
+          .header .subtitle { 
+            font-size: 9pt; 
+            color: #666;
+            margin-bottom: 2px;
+          }
+          .form-title { 
+            text-align: center; 
+            font-size: 14pt; 
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .section { 
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+          }
+          .section-title { 
+            font-size: 10pt;
+            font-weight: 700;
+            color: #16a34a;
+            margin-bottom: 6px;
+            padding-bottom: 3px;
+            border-bottom: 2px solid #e5e7eb;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+          }
+          .field-group { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px 12px;
+            margin-bottom: 8px;
+          }
+          .field-group.single { 
+            grid-template-columns: 1fr;
+          }
+          .field-group.triple { 
+            grid-template-columns: repeat(3, 1fr);
+          }
+          .field-group.quad { 
+            grid-template-columns: repeat(4, 1fr);
+          }
+          .field { 
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+          }
+          .field-label { 
+            font-weight: 600;
+            color: #374151;
+            font-size: 9pt;
+            white-space: nowrap;
+          }
+          .field-value { 
+            flex: 1;
+            border-bottom: 1px solid #d1d5db;
+            padding: 2px 4px;
+            min-height: 18px;
+            color: #1a1a1a;
+            font-size: 9pt;
+          }
+          .field-value.multiline { 
+            min-height: 40px;
+            border: 1px solid #d1d5db;
+            padding: 6px;
+            border-radius: 3px;
+            background: #f9fafb;
+          }
+          .note { 
+            font-size: 8pt;
+            color: #6b7280;
+            font-style: italic;
+            margin-top: 12px;
+            padding: 8px;
+            background: #f3f4f6;
+            border-left: 3px solid #16a34a;
+            border-radius: 3px;
+          }
+          .signature-section { 
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 2px solid #e5e7eb;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <!-- Header -->
+          <div class="header">
+            <h1>RURAL HEALTH UNIT - BALINGASAG</h1>
+            <div class="subtitle">Barangay Waterfall, Balingasag, Misamis Oriental</div>
+            <div class="subtitle">Tel. No. 08833-5016</div>
+          </div>
+
+          <div class="form-title">Clinical Referral Form</div>
+
+          <!-- Referral Info -->
+          <div class="section">
+            <div class="field-group triple">
+              <div class="field">
+                <span class="field-label">Date:</span>
+                <span class="field-value">${fmtDate(formData.date)}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">Time:</span>
+                <span class="field-value">${formatTime(formData.time)}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">Type:</span>
+                <span class="field-value">${pad(formData.referralType)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Referred To -->
+          <div class="section">
+            <div class="section-title">Referred To</div>
+            <div class="field-group">
+              <div class="field">
+                <span class="field-label">Facility:</span>
+                <span class="field-value">${pad(formData.referredTo)}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">Address:</span>
+                <span class="field-value">${pad(formData.referredToAddress)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Patient Information -->
+          <div class="section">
+            <div class="section-title">Patient Information</div>
+            <div class="field-group triple">
+              <div class="field">
+                <span class="field-label">Last Name:</span>
+                <span class="field-value">${pad(formData.patientLastName)}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">First Name:</span>
+                <span class="field-value">${pad(formData.patientFirstName)}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">Middle Name:</span>
+                <span class="field-value">${pad(formData.patientMiddleName)}</span>
+              </div>
+            </div>
+            <div class="field-group single">
+              <div class="field">
+                <span class="field-label">Address:</span>
+                <span class="field-value">${pad(formData.patientAddress)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clinical Information -->
+          <div class="section">
+            <div class="section-title">Clinical Information</div>
+            <div class="field-group single">
+              <div class="field">
+                <span class="field-label">Chief Complaints:</span>
+                <div class="field-value multiline">${pad(formData.chiefComplaints)}</div>
+              </div>
+            </div>
+            <div class="field-group single">
+              <div class="field">
+                <span class="field-label">Medical History:</span>
+                <div class="field-value multiline">${pad(formData.medicalHistory)}</div>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field">
+                <span class="field-label">Surgical Operations:</span>
+                <span class="field-value">${surgical}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">Drug Allergy:</span>
+                <span class="field-value">${allergy}</span>
+              </div>
+            </div>
+            <div class="field-group single">
+              <div class="field">
+                <span class="field-label">Last Meal Time:</span>
+                <span class="field-value">${pad(formData.lastMealTime)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vital Signs -->
+          <div class="section">
+            <div class="section-title">Vital Signs & Physical Examination</div>
+            <div class="field-group quad">
+              <div class="field">
+                <span class="field-label">BP:</span>
+                <span class="field-value">${pad(formData.bloodPressure)} mmHg</span>
+              </div>
+              <div class="field">
+                <span class="field-label">HR:</span>
+                <span class="field-value">${pad(formData.heartRate)} bpm</span>
+              </div>
+              <div class="field">
+                <span class="field-label">RR:</span>
+                <span class="field-value">${pad(formData.respiratoryRate)} /min</span>
+              </div>
+              <div class="field">
+                <span class="field-label">WT:</span>
+                <span class="field-value">${pad(formData.weight)} kg</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assessment -->
+          <div class="section">
+            <div class="section-title">Assessment & Management</div>
+            <div class="field-group single">
+              <div class="field">
+                <span class="field-label">Impression:</span>
+                <div class="field-value multiline">${pad(formData.impression)}</div>
+              </div>
+            </div>
+            <div class="field-group single">
+              <div class="field">
+                <span class="field-label">Action Taken:</span>
+                <span class="field-value">${pad(formData.actionTaken)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="section">
+            <div class="section-title">Additional Information</div>
+            <div class="field-group">
+              <div class="field">
+                <span class="field-label">Health Insurance:</span>
+                <span class="field-value">${insurance}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">Reason for Referral:</span>
+                <span class="field-value">${pad(formData.referralReason) || pad(formData.otherReason)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Signature -->
+          <div class="signature-section">
+            <div class="field-group">
+              <div class="field">
+                <span class="field-label">Referred By:</span>
+                <span class="field-value">${pad(formData.referredByName)}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">License No.:</span>
+                <span class="field-value">${pad(formData.licenseNumber)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Note -->
+          <div class="note">
+            <strong>Note:</strong> Referring facility to retain a duplicate copy of Clinical Referral Form for record purposes and data profiling. Please attach laboratory work-ups.
+          </div>
+        </div>
+
+        <!-- Action Buttons (No Print) -->
+        <div class="no-print" style="position: fixed; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000;">
+          <button 
+            onclick="window.print()" 
+            style="padding: 12px 24px; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s;"
+            onmouseover="this.style.background='#15803d'"
+            onmouseout="this.style.background='#16a34a'"
+          >
+            📄 Download PDF
+          </button>
+          <button 
+            onclick="window.close()" 
+            style="padding: 12px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s;"
+            onmouseover="this.style.background='#4b5563'"
+            onmouseout="this.style.background='#6b7280'"
+          >
+            ✕ Close
+          </button>
+        </div>
+
+        <style>
+          @media print {
+            .no-print { display: none !important; }
+          }
+        </style>
+      </body>
+      </html>`;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Auto-print after content loads
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   const resetForm = () => {
@@ -2394,17 +3171,17 @@ function AddPatientRecords({ bhwName, bhwBarangay, bhwId, onRecordSaved, onTabCh
   };
 
   const handleCreateReferral = async (patient) => {
-    // Check if patient already has a referral
-    const existingReferral = existingReferrals.find(ref => ref.patient_id === patient.id);
+    // Check if patient already has referrals
+    const patientReferrals = existingReferrals.filter(ref => ref.patient_id === patient.id);
     
-    if (existingReferral) {
+    if (patientReferrals.length > 0) {
       const result = await Swal.fire({
-        title: 'Referral Already Sent',
-html: `A referral has already been sent for this patient.<br/>Would you like to update and send a <strong>New Referral</strong>?`,
-icon: 'question',
-showCancelButton: true,
-confirmButtonText: 'Yes, Update',
-cancelButtonText: 'Cancel',
+        title: 'Referral History Found',
+        html: `This patient has ${patientReferrals.length} previous referral(s).<br/>Would you like to send a <strong>New Referral</strong>?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Send New',
+        cancelButtonText: 'Cancel',
         customClass: {
           confirmButton: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 mr-2',
           cancelButton: 'px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600',
@@ -2413,46 +3190,9 @@ cancelButtonText: 'Cancel',
       });
       
       if (!result.isConfirmed) return;
-      
-      // Load existing referral data for editing
-      setSelectedPatient(patient);
-      setEditingReferralId(existingReferral.id);
-      setFormData(prev => ({
-        ...prev,
-        referralType: existingReferral.referral_type || "EMERGENCY",
-        date: existingReferral.referral_date?.split('T')[0] || new Date().toISOString().split('T')[0],
-        time: existingReferral.referral_time || new Date().toTimeString().slice(0, 5),
-        referredTo: existingReferral.referred_to || "",
-        referredToAddress: existingReferral.referred_to_address || "",
-        patientLastName: existingReferral.patient_last_name || patient.last_name || "",
-        patientFirstName: existingReferral.patient_first_name || patient.first_name || "",
-        patientMiddleName: existingReferral.patient_middle_name || patient.middle_name || "",
-        patientAddress: existingReferral.patient_address || patient.residential_address || "",
-        chiefComplaints: existingReferral.chief_complaints || "",
-        medicalHistory: existingReferral.medical_history || "",
-        surgicalOperations: existingReferral.surgical_operations || "NO",
-        surgicalProcedure: existingReferral.surgical_procedure || "",
-        drugAllergy: existingReferral.drug_allergy || "NO",
-        allergyType: existingReferral.allergy_type || "",
-        lastMealTime: existingReferral.last_meal_time || ">6hrs",
-        bloodPressure: existingReferral.blood_pressure || "",
-        heartRate: existingReferral.heart_rate || "",
-        respiratoryRate: existingReferral.respiratory_rate || "",
-        weight: existingReferral.weight || "",
-        impression: existingReferral.impression || "",
-        actionTaken: existingReferral.action_taken || "",
-        healthInsurance: existingReferral.health_insurance || "NO",
-        insuranceType: existingReferral.insurance_type || "",
-        referralReason: existingReferral.referral_reason || [],
-        otherReason: existingReferral.other_reason || "",
-        referredByName: existingReferral.referred_by_name || "",
-        licenseNumber: existingReferral.license_number || ""
-      }));
-      setShowFormModal(true);
-      return;
     }
 
-    // Create new referral
+    // Always create new referral (never update existing)
     setSelectedPatient(patient);
     setEditingReferralId(null);
     setFormData(prev => ({
@@ -4220,6 +4960,16 @@ cancelButtonText: 'Cancel',
                     Cancel
                   </button>
                   <button
+                    type="button"
+                    onClick={handlePrintReferral}
+                    className="px-3 sm:px-4 py-1 sm:py-2 border border-blue-300 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 flex items-center text-xs sm:text-sm"
+                    disabled={isLoading}
+                    title="Print Referral Form"
+                  >
+                    <FaPrint className="mr-1" />
+                    Print
+                  </button>
+                  <button
                     type="submit"
                     className="px-4 sm:px-6 py-1 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center text-xs sm:text-sm"
                     disabled={isLoading}
@@ -4381,90 +5131,72 @@ cancelButtonText: 'Cancel',
 
       {/* Individual Treatment Record Modal */}
       {treatmentPatient && showTreatmentModal && (
-        <div className="fixed inset-0 backdrop-blur-3xl backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6" ref={treatmentFormRef}>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">
-                  Individual Treatment Record
-                </h3>
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold mb-2">Individual Treatment Record</h2>
+                  <p className="text-green-100 text-sm">Complete patient consultation and treatment information</p>
+                </div>
                 <button 
-                  onClick={() => { setShowTreatmentModal(false); setTreatmentPatient(null); setTreatmentReferral(null); }}
-                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => { 
+                    setShowTreatmentModal(false); 
+                    setTreatmentPatient(null); 
+                    setTreatmentReferral(null);
+                    setCurrentStep(1);
+                  }}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
                 >
-                  <FaTimes className="w-6 h-6" />
+                  <FaTimes className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Patient Information */}
-              <div className="mb-6">
-                <h4 className="font-bold border-b border-gray-300 pb-1 mb-3">
-                  I. PATIENT INFORMATION (IMPORMASYON NG PASYENTE)
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Last Name (Apelyido)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={treatmentPatient.last_name}
-                      readOnly
-                    />
+              {/* Wizard Steps */}
+              <div className="flex items-center justify-between">
+                {[
+                  { num: 1, label: 'CHU/RHU Info' },
+                  { num: 2, label: 'Nature of Visit' },
+                  { num: 3, label: 'Diagnosis & Treatment' }
+                ].map((step, idx) => (
+                  <div key={step.num} className="flex items-center flex-1">
+                    <div className="flex items-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                        currentStep === step.num
+                          ? 'bg-white text-green-600 shadow-lg scale-110'
+                          : currentStep > step.num
+                          ? 'bg-green-400 text-white'
+                          : 'bg-green-800/50 text-green-200'
+                      }`}>
+                        {currentStep > step.num ? '✓' : step.num}
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-semibold ${
+                          currentStep === step.num ? 'text-white' : 'text-green-200'
+                        }`}>
+                          {step.label}
+                        </div>
+                      </div>
+                    </div>
+                    {idx < 2 && (
+                      <div className={`flex-1 h-1 mx-4 rounded transition-all ${
+                        currentStep > step.num ? 'bg-green-400' : 'bg-green-800/50'
+                      }`} />
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Suffix (e.g Jr., Sr., II, III)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={treatmentPatient.suffix || ''}
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Age (Edad)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={calculateAge(treatmentPatient.birth_date)}
-                      readOnly
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">First Name (Pangalan)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={treatmentPatient.first_name}
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Residential Address (Tirahan)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={treatmentPatient.residential_address || ''}
-                      readOnly
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Middle Name (Gitnang Pangalan)</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={treatmentPatient.middle_name || ''}
-                    readOnly
-                  />
-                </div>
+                ))}
               </div>
+            </div>
 
-              {/* CHU/RHU Information */}
-              <div className="mb-6">
-                <h4 className="font-bold border-b border-gray-300 pb-1 mb-3">
-                  II. FOR CHU/RHU PERSONNEL ONLY (PARA SA KINATAWAN NG CHU/RHU LAMANG)
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50" ref={treatmentFormRef}>
+
+              {/* Step 1: CHU/RHU Information */}
+              {currentStep === 1 && (
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+                  II. For CHU/RHU Personnel Only (Para sa Kinatawan ng CHU/RHU Lamang)
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left column: general visit/consult info */}
@@ -4569,9 +5301,12 @@ cancelButtonText: 'Cancel',
                 </div>
               </div>
 
-              {/* Nature of Visit */}
-              <div className="mb-6">
-                <h4 className="font-bold border-b border-gray-300 pb-1 mb-3">Nature of Visit</h4>
+              )}
+
+              {/* Step 2: Nature of Visit */}
+              {currentStep === 2 && (
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Nature of Visit</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="inline-flex items-center">
@@ -4622,13 +5357,14 @@ cancelButtonText: 'Cancel',
                 </div>
               </div>
 
-              {/* Diagnosis and Treatment */}
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-bold border-b border-gray-300 pb-1">
-                    Diagnosis and Treatment
-                  </h4>
-                </div>
+              )}
+
+              {/* Step 3: Diagnosis and Treatment */}
+              {currentStep === 3 && (
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+                  Diagnosis and Treatment
+                </h4>
 
                 {/* Diagnosis + Medication/Treatment */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -4659,22 +5395,48 @@ cancelButtonText: 'Cancel',
                 </div>
               </div>
 
-              {/* Form Actions */}
-              <div className="flex justify-end space-x-4 mt-6">
+              )}
+
+              {/* Wizard Navigation */}
+              <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => { setShowTreatmentModal(false); setTreatmentPatient(null); setTreatmentReferral(null); }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                  onClick={() => {
+                    if (currentStep > 1) {
+                      setCurrentStep(currentStep - 1);
+                    } else {
+                      setShowTreatmentModal(false);
+                      setTreatmentPatient(null);
+                      setTreatmentReferral(null);
+                      setCurrentStep(1);
+                    }
+                  }}
+                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium transition-colors"
                 >
-                  Cancel
+                  {currentStep === 1 ? 'Cancel' : 'Previous'}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSaveTreatmentRecord}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Save Record
-                </button>
+
+                <div className="text-sm text-gray-600">
+                  Step {currentStep} of {totalSteps}
+                </div>
+
+                {currentStep < totalSteps ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(currentStep + 1)}
+                    className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors shadow-sm"
+                  >
+                    Next Step
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveTreatmentRecord}
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm"
+                  >
+                    Save Record
+                  </button>
+                )}
               </div>
             </div>
           </div>

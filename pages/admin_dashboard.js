@@ -415,8 +415,13 @@ function Dashboard({ setActiveTab }) {
                   <p className="text-sm font-medium text-gray-500">{metric.title}</p>
                   <p className="text-2xl font-bold mt-1">{metric.value}</p>
                 </div>
-                <div className="p-2 bg-gray-50 rounded-lg">
+                <div className="relative p-2 bg-gray-50 rounded-lg">
                   {metric.icon}
+                  {parseInt(metric.value) > 0 && (
+                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                      {parseInt(metric.value) > 99 ? '99+' : metric.value}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
