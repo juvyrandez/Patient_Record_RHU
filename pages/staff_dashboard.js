@@ -685,7 +685,7 @@ function Dashboard({ onQuickAction }) {
       {/* Common Diagnoses by Barangay */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <h3 className="text-lg font-semibold">Common Diagnoses by Barangay</h3>
+          <h3 className="text-lg font-semibold">Total Diagnosis Cases by Barangay</h3>
           <div className="flex gap-1 border border-gray-300 rounded-md p-1">
             <button
               onClick={() => setViewMode('bar')}

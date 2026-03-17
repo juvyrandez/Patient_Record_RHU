@@ -1335,7 +1335,7 @@ function PatientConsultations() {
           <div className="bg-white max-w-6xl w-full mx-auto rounded-2xl shadow-2xl relative max-h-[95vh] overflow-hidden flex flex-col">
             
             {/* Modern Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                   <FaStethoscope className="text-white text-xl" />
@@ -1362,7 +1362,7 @@ function PatientConsultations() {
                   {/* Progress Line */}
                   <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 -z-10">
                     <div 
-                      className="h-full bg-blue-600 transition-all duration-300"
+                      className="h-full bg-green-600 transition-all duration-300"
                       style={{ width: `${((consultationStep - 1) / 2) * 100}%` }}
                     ></div>
                   </div>
@@ -1370,36 +1370,36 @@ function PatientConsultations() {
                   {/* Step 1: Patient Info & Chief Complaints */}
                   <div className="flex flex-col items-center flex-1">
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold transition-all duration-300 ${
-                      consultationStep >= 1 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-200 text-gray-400'
+                      consultationStep >= 1 ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/50' : 'bg-gray-200 text-gray-400'
                     }`}>
                       {consultationStep > 1 ? <FaCheck size={20} /> : '1'}
                     </div>
                     <span className={`text-sm mt-3 text-center font-medium transition-colors ${
-                      consultationStep >= 1 ? 'text-blue-600' : 'text-gray-400'
+                      consultationStep >= 1 ? 'text-green-600' : 'text-gray-400'
                     }`}>Patient Info</span>
                   </div>
 
                   {/* Step 2: AI Diagnoses & Treatment */}
                   <div className="flex flex-col items-center flex-1">
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold transition-all duration-300 ${
-                      consultationStep >= 2 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-200 text-gray-400'
+                      consultationStep >= 2 ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/50' : 'bg-gray-200 text-gray-400'
                     }`}>
                       {consultationStep > 2 ? <FaCheck size={20} /> : '2'}
                     </div>
                     <span className={`text-sm mt-3 text-center font-medium transition-colors ${
-                      consultationStep >= 2 ? 'text-blue-600' : 'text-gray-400'
+                      consultationStep >= 2 ? 'text-green-600' : 'text-gray-400'
                     }`}>Diagnosis & Treatment</span>
                   </div>
 
                   {/* Step 3: Laboratory & Decision */}
                   <div className="flex flex-col items-center flex-1">
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold transition-all duration-300 ${
-                      consultationStep >= 3 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-200 text-gray-400'
+                      consultationStep >= 3 ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/50' : 'bg-gray-200 text-gray-400'
                     }`}>
                       {consultationStep >= 3 ? <FaCheck size={20} /> : '3'}
                     </div>
                     <span className={`text-sm mt-3 text-center font-medium transition-colors ${
-                      consultationStep >= 3 ? 'text-blue-600' : 'text-gray-400'
+                      consultationStep >= 3 ? 'text-green-600' : 'text-gray-400'
                     }`}>Laboratory & Decision</span>
                   </div>
                 </div>
@@ -1408,9 +1408,9 @@ function PatientConsultations() {
               {/* Step 1: Patient Information & Chief Complaints */}
               <div className={consultationStep !== 1 ? 'hidden' : ''}>
               {/* Patient Information Section */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
+              <div className="bg-gradient-to-br from-green-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-green-100">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
                     <FaUser className="text-white text-sm" />
                   </div>
                   <h4 className="text-lg font-semibold text-gray-800">Patient Information</h4>
@@ -1520,10 +1520,10 @@ function PatientConsultations() {
               {/* Step 2: AI Diagnoses & Treatment Section */}
               <div className={consultationStep !== 2 ? 'hidden' : ''}>
               {/* AI Diagnoses */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
+              <div className="bg-gradient-to-br from-green-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-green-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
                       <FaStethoscope className="text-white text-sm" />
                     </div>
                     <div>
@@ -1632,15 +1632,15 @@ function PatientConsultations() {
               </div>
 
               {/* Treatment - Same Step 2 */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100 mt-6">
+              <div className="bg-gradient-to-br from-green-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-green-100 mt-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
                     <FaHandHoldingMedical className="text-white text-sm" />
                   </div>
                   <h4 className="text-lg font-semibold text-gray-800">Treatment</h4>
                 </div>
                 <textarea
-                  className="w-full h-32 p-4 text-sm border-2 border-blue-200 rounded-lg bg-white resize-none focus:outline-none focus:border-blue-400 transition-colors"
+                  className="w-full h-32 p-4 text-sm border-2 border-green-200 rounded-lg bg-white resize-none focus:outline-none focus:border-green-400 transition-colors"
                   placeholder="Treatment plan..."
                   value={treatmentText}
                   onChange={(e) => setTreatmentText(e.target.value)}
@@ -1651,30 +1651,30 @@ function PatientConsultations() {
               {/* Step 3: Laboratory & Consultation Decision */}
               <div className={consultationStep !== 3 ? 'hidden' : ''}>
               {/* Laboratory Findings */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
+              <div className="bg-gradient-to-br from-green-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-green-100">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
                     <FaFileMedical className="text-white text-sm" />
                   </div>
                   <h4 className="text-lg font-semibold text-gray-800">Laboratory Findings / Impression</h4>
                 </div>
                 <textarea
-                  className="w-full h-32 p-4 text-sm border-2 border-blue-200 rounded-lg bg-white resize-none focus:outline-none focus:border-blue-400 transition-colors"
+                  className="w-full h-32 p-4 text-sm border-2 border-green-200 rounded-lg bg-white resize-none focus:outline-none focus:border-green-400 transition-colors"
                   placeholder="Findings or impressions from lab results..."
                   value={labFindingsText}
                   onChange={(e) => setLabFindingsText(e.target.value)}
                 ></textarea>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100 mt-6">
+              <div className="bg-gradient-to-br from-green-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-green-100 mt-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
                     <FaClipboardList className="text-white text-sm" />
                   </div>
                   <h4 className="text-lg font-semibold text-gray-800">Performed Laboratory Test</h4>
                 </div>
                 <textarea
-                  className="w-full h-32 p-4 text-sm border-2 border-blue-200 rounded-lg bg-white resize-none focus:outline-none focus:border-blue-400 transition-colors"
+                  className="w-full h-32 p-4 text-sm border-2 border-green-200 rounded-lg bg-white resize-none focus:outline-none focus:border-green-400 transition-colors"
                   placeholder="List of lab tests performed..."
                   value={labTestsText}
                   onChange={(e) => setLabTestsText(e.target.value)}
@@ -1729,7 +1729,7 @@ function PatientConsultations() {
                   className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
                     consultationStep === 1
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md'
+                      : 'bg-white border-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md'
                   }`}
                 >
                   <FaArrowLeft />
@@ -1740,7 +1740,7 @@ function PatientConsultations() {
                 {consultationStep < 3 ? (
                   <button
                     onClick={() => setConsultationStep(consultationStep + 1)}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
                   >
                     Next
                     <FaArrowRight />
