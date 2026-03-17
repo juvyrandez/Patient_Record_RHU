@@ -8,7 +8,7 @@ import { FaTrash, FaExclamationTriangle} from 'react-icons/fa';
 import { FaUsers } from 'react-icons/fa';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
-import ReferralForm from '/components/StaffComponents/ReferralForm';
+import ReferralForm from './components/StaffComponents/ReferralForm';
 import Swal from "sweetalert2";
 
 // Register ChartJS components
