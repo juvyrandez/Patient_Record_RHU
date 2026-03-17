@@ -9,8 +9,8 @@ import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import Swal from "sweetalert2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import LogHistory from '/components/AdminComponents/LogHistory';
-import Reports from '/components/AdminComponents/Reports';
+import LogHistory from '../components/AdminComponents/LogHistory';
+import Reports from '../components/AdminComponents/Reports';
 
 const JWT_SECRET = process.env.NEXT_PUBLIC_JWT_SECRET || "supersecretkey";
 
